@@ -25,7 +25,10 @@ repos:
               test/.*_band.kpt|
               test/.*_band.labelinfo.dat|
               test/.*_tb.dat|
-              test/.*_wsvec.dat
+              test/.*_hr.dat|
+              test/.*_wsvec.dat|
+              test/.*\.xsf|
+              test/.*\.cube
           )$
       - id: mixed-line-ending
         exclude: *exclude_txtfiles
