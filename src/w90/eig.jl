@@ -7,7 +7,8 @@ export read_eig, write_eig
 
 Read the `eig` file.
 
-Returns a `n_bands * n_kpts` array.
+# Return
+- `E`: a `n_bands * n_kpts` array
 """
 function read_eig(filename::AbstractString)
     @info "Reading $filename"
@@ -53,6 +54,9 @@ end
     write_eig(filename::AbstractString, E::AbstractArray)
 
 Write `eig` file.
+
+# Arguments
+- `E`: `n_bands * n_kpts`
 """
 function write_eig(filename::AbstractString, E::AbstractMatrix{T}) where {T<:Real}
     n_bands, n_kpts = size(E)

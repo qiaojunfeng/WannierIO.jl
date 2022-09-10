@@ -1,6 +1,6 @@
 using Printf: @printf
 
-export read_chk, write_chk, get_model, get_A
+export read_chk, write_chk, get_A
 
 """
 Struct for storing matrices in `seedname.chk` file.
@@ -434,90 +434,6 @@ function write_chk(filename::AbstractString, chk::Chk)
     return nothing
 end
 
-function write_chk(
-    filename::String,
-    model::Model;
-    exclude_bands::Union{AbstractVector{Int},Nothing}=nothing,
-)
-    header = @sprintf "Created by Wannier.jl %s" string(now())
-
-    if isnothing(exclude_bands)
-        exclude_bands = Vector{Int}()
-    end
-
-    checkpoint = "postwann"
-    have_disentangled = true
-    Ω = omega(model)
-    dis_bands = trues(model.n_bands, model.n_kpts)
-    Uᵈ = model.A
-    U = eyes_A(eltype(Uᵈ), model.n_wann, model.n_kpts)
-    M = rotate_M(model.M, model.bvectors.kpb_k, model.A)
-
-    chk = Chk(
-        header,
-        exclude_bands,
-        model.lattice,
-        model.recip_lattice,
-        model.kgrid,
-        model.kpoints,
-        checkpoint,
-        have_disentangled,
-        Ω.ΩI,
-        dis_bands,
-        Uᵈ,
-        U,
-        M,
-        Ω.r,
-        Ω.ω,
-    )
-
-    write_chk(filename, chk)
-    return nothing
-end
-
-"""
-    get_model(chk::Chk)
-
-Construct a model from `chk` file.
-"""
-function get_model(chk::Chk)
-    atom_positions = zeros(Float64, 3, 0)
-    atom_labels = Vector{String}()
-
-    recip_lattice = get_recip_lattice(chk.lattice)
-    # I try to generate bvectors, but it might happen that the generated bvectors
-    # are different from the calculation corresponding to the chk file,
-    # e.g. kmesh_tol is different
-    bvectors = get_bvectors(chk.kpoints, recip_lattice)
-    if bvectors.n_bvecs != chk.n_bvecs
-        error("Number of bvectors is different from the number in the chk file")
-    end
-
-    frozen_bands = falses(chk.n_bands, chk.n_kpts)
-
-    # the M in chk is already rotated by the A matrix
-    M = chk.M
-    # so I set A matrix as identity
-    A = eyes_A(eltype(M), chk.n_wann, chk.n_kpts)
-
-    # no eig in chk file
-    E = zeros(Float64, chk.n_wann, chk.n_kpts)
-
-    model = Model(
-        chk.lattice,
-        atom_positions,
-        atom_labels,
-        chk.kgrid,
-        chk.kpoints,
-        bvectors,
-        frozen_bands,
-        M,
-        A,
-        E,
-    )
-    return model
-end
-
 """
     get_A(chk::Chk)
 
@@ -535,7 +451,7 @@ function get_A(chk::Chk)
         return U
     end
 
-    Uᵈ = get_Aᵈ(chk)
+    Uᵈ = get_Adis(chk)
 
     for ik in 1:n_kpts
         # Uᵈ: semi-unitary matrices from disentanglement
@@ -547,11 +463,11 @@ function get_A(chk::Chk)
 end
 
 """
-    get_Aᵈ(chk::Chk)
+    get_Adis(chk::Chk)
 
 Extract `A` matrices for disentanglement from `Chk`.
 """
-function get_Aᵈ(chk::Chk)
+function get_Adis(chk::Chk)
     n_kpts = chk.n_kpts
     n_bands = chk.n_bands
     n_wann = chk.n_wann

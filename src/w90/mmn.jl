@@ -108,6 +108,6 @@ function write_mmn(
     kpb_k::Matrix{Int},
     kpb_b::Array{Int,3},
 )
-    header = @sprintf "Created by Wannier.jl %s" string(now())
+    header = @sprintf "Created by WannierIO.jl %s" string(now())
     return write_mmn(filename, M, kpb_k, kpb_b, header)
 end

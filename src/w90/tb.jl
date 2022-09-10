@@ -4,6 +4,13 @@ export read_w90_tb
     read_w90_tbdat(filename::AbstractString)
 
 Read `seedname_tb.dat`.
+
+# Return
+- `lattice`: each column is a lattice vector
+- `R`: ``\\bm{R}`` vectors on which operators are defined
+- `N`: degeneracies of ``\\bm{R}`` vectors
+- `H`: Hamiltonian ``\\bm{H}(\\bm{R})``
+- `r`: position operator
 """
 function read_w90_tbdat(filename::AbstractString)
     @info "Reading $filename"
@@ -50,7 +57,7 @@ function read_w90_tbdat(filename::AbstractString)
     end
 
     # WF position operator
-    position_op = Array{ComplexF64}(undef, 3, n_wann, n_wann, n_rvecs)
+    r = Array{ComplexF64}(undef, 3, n_wann, n_wann, n_rvecs)
     for ir in 1:n_rvecs
         readline(io)  # empty line
         @assert R[:, ir] == parse.(Int, split(strip(readline(io))))
@@ -60,15 +67,15 @@ function read_w90_tbdat(filename::AbstractString)
                 @assert m == parse(Int, line[1])
                 @assert n == parse(Int, line[2])
                 f = parse.(Float64, line[3:8])
-                position_op[1, m, n, ir] = f[1] + im * f[2]
-                position_op[2, m, n, ir] = f[3] + im * f[4]
-                position_op[3, m, n, ir] = f[5] + im * f[6]
+                r[1, m, n, ir] = f[1] + im * f[2]
+                r[2, m, n, ir] = f[3] + im * f[4]
+                r[3, m, n, ir] = f[5] + im * f[6]
             end
         end
     end
     close(io)
 
-    return (lattice=lattice, R_vecs=R, R_degen=N, hamiltonian=H, position_op=position_op)
+    return (; lattice, R, N, H, r)
 end
 
 """
@@ -82,13 +89,13 @@ function read_w90_wsvec(filename::AbstractString)
     io = open(filename)
     header = strip(readline(io))
     println(header)
-    # check use_ws_distance
-    use_ws_distance = false
+    # check `use_ws_distance`
+    mdrs = false
     header = split(header)[end]
     if occursin("use_ws_distance", header)
         header = lowercase(split(header, "=")[2])
         if 't' in header
-            use_ws_distance = true
+            mdrs = true
         end
     end
 
@@ -130,12 +137,9 @@ function read_w90_wsvec(filename::AbstractString)
             ir += 1
         end
     end
-    lattice = Mat3{Float64}([NaN for _ in 1:9])  # no lattice in wsvec.dat
-    grid = Vec3{Int}([-1 for _ in 1:3])  # no grid in wsvec.dat
-    Rvecs = RVectors(lattice, grid, R, N)
 
-    if !use_ws_distance
-        return Rvecs
+    if !mdrs
+        return mdrs, (; R)
     end
 
     # reorder T, Nᵀ
@@ -151,34 +155,5 @@ function read_w90_wsvec(filename::AbstractString)
         end
     end
 
-    return RVectorsMDRS(Rvecs, T1, N1)
-end
-
-"""
-    read_w90_tb(seedname::AbstractString)
-
-Read `seedname_tb.dat` and `seedname_wsvec.dat`.
-
-Returns R vectors, Hamiltonian, and position operator.
-"""
-function read_w90_tb(seedname::AbstractString)
-    Rvecs = read_w90_wsvec(seedname * "_wsvec.dat")
-    tbdat = read_w90_tbdat(seedname * "_tb.dat")
-    lattice = tbdat.lattice
-    R_degen = tbdat.R_degen
-    H = tbdat.hamiltonian
-    position_op = tbdat.position_op
-
-    if Rvecs.R != tbdat.R_vecs
-        @error "R vecs in tb.dat and wsvec.dat are not identical"
-    end
-    # grid is still unknown, degen is known
-    Rvecs_ws = RVectors(lattice, Rvecs.grid, Rvecs.R, R_degen)
-
-    if typeof(Rvecs) <: RVectorsMDRS
-        Rvecs_mdrs = RVectorsMDRS(Rvecs_ws, Rvecs.T, Rvecs.Nᵀ)
-        return Rvecs_mdrs, H, position_op
-    end
-
-    return Rvecs_ws, H, position_op
+    return mdrs, (; R, T=T1, Nᵀ=N1)
 end

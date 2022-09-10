@@ -7,6 +7,12 @@ export read_nnkp, write_nnkp
     read_nnkp(filename::AbstractString)
 
 Read the `nnkp` file.
+
+# Return
+- `recip_lattice`: each column is a reciprocal lattice vector
+- `kpoints`: `3 * n_kpts`, in fractional coordinates
+- `kpb_k`: `n_bvecs * n_kpts`, index of kpoints
+- `kpb_b`: `3 * n_bvecs * n_kpts`, fractional w.r.t `recip_lattice`
 """
 function read_nnkp(filename::AbstractString)
     @info "Reading nnkp file: $filename"
@@ -80,34 +86,39 @@ function read_nnkp(filename::AbstractString)
     println("  n_bvecs = ", n_bvecs)
     println()
 
-    bvectors = Matrix{Float64}(undef, 3, n_bvecs)
-    fill!(bvectors, NaN)
-
-    # Generate bvectors from 1st kpoint, in Cartesian coordinates
-    ik = 1
-    for ib in 1:n_bvecs
-        ik2 = kpb_k[ib, ik]
-        b = kpb_b[:, ib, ik]
-        bvec = kpoints[:, ik2] + b - kpoints[:, ik]
-        bvectors[:, ib] = recip_lattice * bvec
-    end
-
-    weights = zeros(Float64, n_bvecs)
-    fill!(weights, NaN)
-
-    return BVectors(Mat3{Float64}(recip_lattice), kpoints, bvectors, weights, kpb_k, kpb_b)
+    return (; recip_lattice, kpoints, kpb_k, kpb_b)
 end
 
 """
     write_nnkp(filename::AbstractString, bvectors::BVectors, n_wann::Integer)
 
-Write nnkp that can be used by `pw2wannier90`.
+Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
+
+# Arguments
+- `recip_lattice`: each column is a reciprocal lattice vector
+- `kpoints`: `3 * n_kpts`, in fractional coordinates
+- `kpb_k`: `n_bvecs * n_kpts`, index of kpoints
+- `kpb_b`: `3 * n_bvecs * n_kpts`, fractional w.r.t `recip_lattice`
+- `n_wann`: if given, write a `auto_projections` block
 
 !!! note
 
     Only a preliminary version, use `auto_projections`, no `exclude_bands`.
 """
-function write_nnkp(filename::AbstractString, bvectors::BVectors, n_wann::Integer)
+function write_nnkp(
+    filename::AbstractString,
+    recip_lattice::AbstractMatrix{T},
+    kpoints::AbstractMatrix{T},
+    kpb_k::AbstractMatrix{Integer},
+    kpb_b::AbstractArray{T,3},
+    n_wann::Union{Nothing,Integer}=nothing,
+) where {T<:Real}
+    size(recip_lattice) == (3, 3) || error("size(recip_lattice) != (3, 3)")
+    n_kpts = size(kpoints, 2)
+    n_bvecs = size(kpb_k, 1)
+    size(kpb_k) == (n_bvecs, n_kpts) || error("size(kpb_k) != (n_bvecs, n_kpts)")
+    size(kpb_b) == (3, n_bvecs, n_kpts) || error("size(kpb_b) != (3, n_bvecs, n_kpts)")
+
     @info "Writing nnkp file: $filename"
 
     io = open(filename, "w")
@@ -118,51 +129,47 @@ function write_nnkp(filename::AbstractString, bvectors::BVectors, n_wann::Intege
     @printf(io, "calc_only_A  :  F\n")
     @printf(io, "\n")
 
-    lattice = get_lattice(bvectors.recip_lattice)
+    lattice = get_lattice(recip_lattice)
     @printf(io, "begin real_lattice\n")
-    for i in 1:3
-        @printf(io, "%12.7f %12.7f %12.7f\n", lattice[:, i]...)
+    for v in eachcol(lattice)
+        @printf(io, "%12.7f %12.7f %12.7f\n", v...)
     end
     @printf(io, "end real_lattice\n")
     @printf(io, "\n")
 
     @printf(io, "begin recip_lattice\n")
-    for i in 1:3
-        @printf(io, "%12.7f %12.7f %12.7f\n", bvectors.recip_lattice[:, i]...)
+    for v in eachcol(recip_lattice)
+        @printf(io, "%12.7f %12.7f %12.7f\n", v...)
     end
     @printf(io, "end recip_lattice\n")
     @printf(io, "\n")
 
     @printf(io, "begin kpoints\n")
-    @printf(io, "%d\n", bvectors.n_kpts)
-    for i in 1:(bvectors.n_kpts)
-        @printf(io, "%14.8f %14.8f %14.8f\n", bvectors.kpoints[:, i]...)
+    @printf(io, "%d\n", n_kpts)
+    for kpt in eachcol(kpoints)
+        @printf(io, "%14.8f %14.8f %14.8f\n", kpt...)
     end
     @printf(io, "end kpoints\n")
     @printf(io, "\n")
 
-    @printf(io, "begin projections\n")
-    @printf(io, "%d\n", 0)
-    @printf(io, "end projections\n")
-    @printf(io, "\n")
+    if !isnothing(n_wann)
+        @printf(io, "begin projections\n")
+        @printf(io, "%d\n", 0)
+        @printf(io, "end projections\n")
+        @printf(io, "\n")
 
-    @printf(io, "begin auto_projections\n")
-    @printf(io, "%d\n", n_wann)
-    @printf(io, "%d\n", 0)
-    @printf(io, "end auto_projections\n")
-    @printf(io, "\n")
+        @printf(io, "begin auto_projections\n")
+        @printf(io, "%d\n", n_wann)
+        @printf(io, "%d\n", 0)
+        @printf(io, "end auto_projections\n")
+        @printf(io, "\n")
+    end
 
     @printf(io, "begin nnkpts\n")
-    @printf(io, "%d\n", bvectors.n_bvecs)
-    for ik in 1:(bvectors.n_kpts)
-        for ib in 1:(bvectors.n_bvecs)
-            @printf(
-                io,
-                "%6d %6d %6d %6d %6d\n",
-                ik,
-                bvectors.kpb_k[ib, ik],
-                bvectors.kpb_b[:, ib, ik]...
-            )
+    @printf(io, "%d\n", n_bvecs)
+    for ik in 1:n_kpts
+        for ib in 1:n_bvecs
+            @printf(io, "%6d %6d %6d %6d %6d\n", ik, kpb_k[ib, ik], kpb_b[:, ib, ik]...)
         end
     end
     @printf(io, "end nnkpts\n")
