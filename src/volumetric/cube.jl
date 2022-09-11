@@ -121,7 +121,7 @@ function write_cube(
     io = open(filename, "w")
 
     # header
-    @printf(io, "Created by Wannier.jl %s\n", string(now()))
+    @printf(io, "Created by WannierIO.jl %s\n", string(now()))
     @printf(io, "outer loop: x, middle loop: y, inner loop: z\n")
 
     # to Bohr

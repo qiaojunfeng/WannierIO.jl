@@ -1,8 +1,8 @@
 @testset "read/write w90 band dat" begin
-    band = read_w90_band(joinpath(FIXTURE_PATH, "valence/band/mdrs/silicon"))
+    band = read_w90_band(joinpath(FIXTURE_PATH, "si2"))
 
     outdir = mktempdir(; cleanup=true)
-    outseedname = joinpath(outdir, "silicon")
+    outseedname = joinpath(outdir, "si2")
 
     write_w90_band(
         outseedname, band.kpoints, band.E, band.x, band.symm_idx, band.symm_label

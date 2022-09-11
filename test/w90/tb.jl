@@ -1,35 +1,29 @@
 
 @testset "read wsvec" begin
-    Rvecs = Wannier.read_w90_wsvec(
-        joinpath(FIXTURE_PATH, "valence/band/ws/silicon_wsvec.dat")
-    )
+    mdrs, wsvec = read_w90_wsvec(joinpath(FIXTURE_PATH, "ws/si2_wsvec.dat"))
     # just some simple tests
-    @test Rvecs.R[:, 1] == [-3, 1, 1]
+    @assert mdrs == false
+    @test wsvec.R[:, 1] == [-1, -1, 1]
 
-    Rvecs = Wannier.read_w90_wsvec(
-        joinpath(FIXTURE_PATH, "valence/band/mdrs/silicon_wsvec.dat")
-    )
-    @test Rvecs.R[:, 1] == [-3, 1, 1]
+    mdrs, wsvec = read_w90_wsvec(joinpath(FIXTURE_PATH, "mdrs/si2_wsvec.dat"))
+    @assert mdrs == true
+    @test wsvec.R[:, 1] == [-1, -1, 1]
+    @test wsvec.T[1, 1, 1] == [0 0 0 2 2 2; 0 2 2 0 0 2; 0 -2 0 -2 0 -2]
+    @test wsvec.Nᵀ[1, 1, 1] == 6
 end
 
 @testset "read tb" begin
-    Rvecs, H, positions = Wannier.read_w90_tb(
-        joinpath(FIXTURE_PATH, "valence/band/ws/silicon")
-    )
+    tbdat = read_w90_tbdat(joinpath(FIXTURE_PATH, "ws/si2_tb.dat"))
     # just some simple tests
-    R1 = [-3, 1, 1]
-    @test Rvecs.R[:, 1] == R1
-    H111 = 0.51893360E-02 + im * -0.29716277E-02
-    @test H[1, 1, 1] ≈ H111
-    P111end = 0.24832468E-03 + im * -0.21054981E-03
-    @test positions[1, 1, 1, end] ≈ P111end
+    R1 = [-1, -1, 1]
+    @test tbdat.R[:, 1] == R1
+    H111 = 0.12534576E-02 + im * -0.75115190E-17
+    @test tbdat.H[1, 1, 1] ≈ H111
+    r111end = 0.17347235E-17 + im * -0.92553612E-23
+    @test tbdat.r[1, 1, 1, end] ≈ r111end
 
-    Rvecs, H, positions = Wannier.read_w90_tb(
-        joinpath(FIXTURE_PATH, "valence/band/mdrs/silicon")
-    )
-    @test Rvecs.R[:, 1] == R1
-    @test Rvecs.T[1, 1, 1] == [0 4 4 4; 0 -4 0 0; 0 0 -4 0]
-    @test Rvecs.Nᵀ[1, 1, 1] == 4
-    @test H[1, 1, 1] ≈ H111
-    @test positions[1, 1, 1, end] ≈ P111end
+    tbdat = read_w90_tbdat(joinpath(FIXTURE_PATH, "mdrs/si2_tb.dat"))
+    @test tbdat.R[:, 1] == R1
+    @test tbdat.H[1, 1, 1] ≈ H111
+    @test tbdat.r[1, 1, 1, end] ≈ r111end
 end

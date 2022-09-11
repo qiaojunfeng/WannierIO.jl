@@ -86,6 +86,9 @@ function read_nnkp(filename::AbstractString)
     println("  n_bvecs = ", n_bvecs)
     println()
 
+    real_lattice = Mat3(real_lattice)
+    recip_lattice = Mat3(recip_lattice)
+
     return (; recip_lattice, kpoints, kpb_k, kpb_b)
 end
 
@@ -109,10 +112,10 @@ function write_nnkp(
     filename::AbstractString,
     recip_lattice::AbstractMatrix{T},
     kpoints::AbstractMatrix{T},
-    kpb_k::AbstractMatrix{Integer},
-    kpb_b::AbstractArray{T,3},
+    kpb_k::AbstractMatrix{U},
+    kpb_b::AbstractArray{U,3},
     n_wann::Union{Nothing,Integer}=nothing,
-) where {T<:Real}
+) where {T<:Real,U<:Integer}
     size(recip_lattice) == (3, 3) || error("size(recip_lattice) != (3, 3)")
     n_kpts = size(kpoints, 2)
     n_bvecs = size(kpb_k, 1)

@@ -1,6 +1,6 @@
 
 @testset "read/write unk" begin
-    ik, Ψ = read_unk(joinpath(FIXTURE_PATH, "silicon/UNK00001.1"))
+    ik, Ψ = read_unk(joinpath(FIXTURE_PATH, "formatted/UNK00001.1"))
 
     tmpfile = tempname(; cleanup=true)
     write_unk(tmpfile, ik, Ψ)

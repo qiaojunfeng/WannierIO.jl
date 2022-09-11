@@ -1,6 +1,6 @@
 
 @testset "read/write eig" begin
-    E = read_eig(joinpath(FIXTURE_PATH, "silicon/silicon.eig"))
+    E = read_eig(joinpath(FIXTURE_PATH, "formatted/si2.eig"))
 
     tmpfile = tempname(; cleanup=true)
     write_eig(tmpfile, E)

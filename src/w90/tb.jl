@@ -1,4 +1,4 @@
-export read_w90_tb
+export read_w90_tbdat, read_w90_wsvec
 
 """
     read_w90_tbdat(filename::AbstractString)

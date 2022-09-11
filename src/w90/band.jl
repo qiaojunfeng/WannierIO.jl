@@ -62,7 +62,7 @@ function read_w90_band(seedname::AbstractString)
     kpoints, _ = read_w90_band_kpt("$(seedname)_band.kpt")
     x, E = read_w90_band_dat("$(seedname)_band.dat")
     symm_idx, symm_label = read_w90_band_labelinfo("$(seedname)_band.labelinfo.dat")
-    return (kpoints=kpoints, E=E, x=x, symm_idx=symm_idx, symm_label=symm_label)
+    return (; kpoints, E, x, symm_idx, symm_label)
 end
 
 function write_w90_band_kpt(

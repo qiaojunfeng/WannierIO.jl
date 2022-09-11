@@ -138,7 +138,7 @@ function write_xsf(
     io = open(filename, "w")
 
     # header
-    @printf(io, "# Created by Wannier.jl %s\n", string(now()))
+    @printf(io, "# Created by WannierIO.jl %s\n", string(now()))
 
     @printf(io, "CRYSTAL\n")
     @printf(io, "PRIMVEC\n")

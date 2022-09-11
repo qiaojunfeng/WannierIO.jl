@@ -1,11 +1,9 @@
 using YAML
 
-mat2vec(A::AbstractMatrix) = [v for v in eachcol(A)]
-
 @testset "read win" begin
     test_data = YAML.load_file(String(@__DIR__) * "/test_data/win.yaml")
 
-    win = read_win(joinpath(FIXTURE_PATH, "silicon/silicon.win"))
+    win = read_win(joinpath(FIXTURE_PATH, "si2.win"))
 
     # Convert type so YAML can write it.
     unit_cell = mat2vec(win.unit_cell)
@@ -22,23 +20,33 @@ mat2vec(A::AbstractMatrix) = [v for v in eachcol(A)]
     #     "kpoints" => kpoints,
     #     "dis_froz_max" => win.dis_froz_max,
     #     "dis_win_max" => win.dis_win_max,
-    #     "kpoint_path" => Dict(
-    #         "basis" => win.kpoint_path.basis,
-    #         "paths" => win.kpoint_path.paths,
-    #         "points" => win.kpoint_path.points,
-    #         "setting" => win.kpoint_path.setting,
-    #     ),
+    #     "kpoint_path" => win.kpoint_path,
     # )
     # YAML.write_file(String(@__DIR__) * "/test_data/win.yaml", yaml_dict)
 
     test_kpath = test_data["kpoint_path"]
-    win_kpath = win.kpoint_path
-    t_points = Dict(Symbol(k) => v for (k, v) in test_kpath["points"])
-    @test t_points == win_kpath.points
-    t_paths = [[Symbol(i) for i in l] for l in test_kpath["paths"]]
-    @test t_paths == win_kpath.paths
-    @test test_kpath["basis"] == win_kpath.basis
-    @test Symbol(test_kpath["setting"]) == Symbol(win_kpath.setting)
+    @test begin
+        for (i, path) in enumerate(test_kpath)
+            win_path = win.kpoint_path[i]
+            k1, k2 = path
+            # Dict to pair
+            k1 = first(k1)
+            k2 = first(k2)
+            if Symbol(k1.first) != win_path[1].first
+                return false
+            end
+            if k1.second ≉ win_path[1].second
+                return false
+            end
+            if Symbol(k2.first) != win_path[2].first
+                return false
+            end
+            if k2.second ≉ win_path[2].second
+                return false
+            end
+        end
+        return true
+    end
 
     @test test_data["num_wann"] == win.num_wann
     @test test_data["num_bands"] == win.num_bands

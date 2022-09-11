@@ -89,9 +89,9 @@ end
 
 Write the `spn` file.
 
-The header is "Created by Wannier.jl CURRENT_DATE".
+The header is "Created by WannierIO.jl CURRENT_DATE".
 """
 function write_spn(filename::AbstractString, S::AbstractArray{T,4}) where {T<:Complex}
-    header = @sprintf "Created by Wannier.jl %s" string(now())
+    header = @sprintf "Created by WannierIO.jl %s" string(now())
     return write_spn(filename, S, header)
 end

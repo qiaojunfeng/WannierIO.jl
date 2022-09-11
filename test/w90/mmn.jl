@@ -1,6 +1,6 @@
 
 @testset "read/write mmn" begin
-    M, kpb_k, kpb_b = read_mmn(joinpath(FIXTURE_PATH, "silicon/silicon.mmn"))
+    M, kpb_k, kpb_b = read_mmn(joinpath(FIXTURE_PATH, "formatted/si2.mmn"))
 
     tmpfile = tempname(; cleanup=true)
 

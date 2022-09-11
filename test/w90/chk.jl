@@ -1,15 +1,15 @@
 
 @testset "read chk" begin
-    chk = read_chk(joinpath(FIXTURE_PATH, "silicon/silicon.chk.fmt"))
+    chk = read_chk(joinpath(FIXTURE_PATH, "formatted/si2.chk.fmt"))
 
-    @test chk.n_wann == 8
-    @test chk.n_bands == 12
+    @test chk.n_wann == 4
+    @test chk.n_bands == 4
 end
 
 @testset "read/write chk" begin
-    chk = read_chk(joinpath(FIXTURE_PATH, "silicon/silicon.chk.fmt"))
+    chk = read_chk(joinpath(FIXTURE_PATH, "formatted/si2.chk.fmt"))
 
-    win = read_win(joinpath(FIXTURE_PATH, "silicon/silicon.win"))
+    win = read_win(joinpath(FIXTURE_PATH, "si2.win"))
     @test chk.lattice ≈ win.unit_cell
 
     tmpfile = tempname(; cleanup=true)

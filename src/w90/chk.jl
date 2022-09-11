@@ -1,6 +1,6 @@
 using Printf: @printf
 
-export read_chk, write_chk, get_A
+export read_chk, write_chk, get_A, get_Adis
 
 """
 Struct for storing matrices in `seedname.chk` file.

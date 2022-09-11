@@ -1,6 +1,8 @@
 module WannierIO
 
 include("type.jl")
+include("util/fortran.jl")
+include("util/lattice.jl")
 
 include("w90/win.jl")
 include("w90/wout.jl")
@@ -14,9 +16,9 @@ include("w90/band.jl")
 include("w90/tb.jl")
 include("w90/spn.jl")
 
-include("xsf.jl")
-include("cube.jl")
+include("volumetric/xsf.jl")
+include("volumetric/cube.jl")
 
-include("qe.jl")
+include("qe/band.jl")
 
 end
