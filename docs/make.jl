@@ -11,7 +11,7 @@ makedocs(;
             "Convention" => "api/convention.md",
             "Util" => "api/util.md",
             "Wannier90" => "api/w90.md",
-            "Volumetric data" => "api/vol.md",
+            "Volumetric data" => "api/volumetric.md",
             "QE" => "api/qe.md",
         ],
     ],

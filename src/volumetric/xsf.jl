@@ -116,9 +116,6 @@ Write `xsf` file.
 - `origin`: `3`, Å, origin of the grid
 - `span_vectors`: `3 * 3`, Å, each column is a spanning vector
 - `W`: `nx * ny * nz`, volumetric data
-
-See also [`write_xsf(filename, lattice, atom_positions, atom_numbers, rgrid, W)`]
-(@ref write_xsf(filename, lattice, atom_positions, atom_numbers, rgrid, W))
 """
 function write_xsf(
     filename::AbstractString,

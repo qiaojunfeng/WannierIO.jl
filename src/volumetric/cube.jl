@@ -101,8 +101,6 @@ Write `cube` file.
 - `origin`: `3`, Å, origin of the grid
 - `span_vectors`: `3 * 3`, Å, each column is a spanning vector
 - `W`: `nx * ny * nz`, volumetric data
-
-See also [`write_cube(filename, lattice, atom_positions, atom_numbers, wf_center, rgrid, W; radius=4.0)`](@ref write_cube(filename, lattice, atom_positions, atom_numbers, wf_center, rgrid, W; radius=4.0))
 """
 function write_cube(
     filename::AbstractString,

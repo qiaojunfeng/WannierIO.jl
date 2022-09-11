@@ -1,4 +1,4 @@
-# Quantum ESPRESSO files
+# Volumetric data files
 
 ```@meta
 CurrentModule = WannierIO
@@ -7,24 +7,26 @@ CurrentModule = WannierIO
 ## Contents
 
 ```@contents
-Pages = ["qe.md"]
+Pages = ["volumetric.md"]
 Depth = 2
 ```
 
 ## Index
 
 ```@index
-Pages = ["qe.md"]
+Pages = ["volumetric.md"]
 ```
 
 ## Read
 
 ```@docs
-read_qe_band
+read_xsf
+read_cube
 ```
 
-## Misc
+## Write
 
 ```@docs
-guess_kpath
+write_xsf
+write_cube
 ```

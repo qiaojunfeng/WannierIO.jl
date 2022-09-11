@@ -1,6 +1,6 @@
 
 """
-isbinary(chars::Vector{UInt8})
+    isbinary(chars::Vector{UInt8})
 
 Check if a sequence of chars is binary.
 """
@@ -19,7 +19,7 @@ function isbinary(chars::AbstractVector{UInt8})::Bool
 end
 
 """
-isbinary(filename::AbstractString)
+    isbinary(filename::AbstractString)
 
 Check if the file is in binary format.
 """
@@ -34,7 +34,7 @@ function isbinary(filename::AbstractString)
 end
 
 """
-parse_float(s::AbstractString)
+    parse_float(s::AbstractString)
 
 Parse a string as `Float64`.
 
@@ -43,7 +43,7 @@ The is capable of parsing Fortran outputs, e.g. `1.0D-10`, to the ordinary `1e-1
 parse_float(s::AbstractString) = parse(Float64, replace(lowercase(strip(s)), "d" => "e"))
 
 """
-parse_bool(s::AbstractString)
+    parse_bool(s::AbstractString)
 
 Parse a string as `bool`.
 

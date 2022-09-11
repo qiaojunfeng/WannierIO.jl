@@ -3,6 +3,15 @@ using DelimitedFiles: readdlm
 
 export read_w90_band, write_w90_band
 
+"""
+    read_w90_band_kpt(filename::AbstractString)
+
+Read `seedname_band.kpt` file.
+
+# Return
+- `kpoints`: `3 * n_kpts`, fractional coordinates
+- `weights`: `n_kpts`, weights of kpoints
+"""
 function read_w90_band_kpt(filename::AbstractString)
     # in fractional coordinates
     kpoints = readdlm(filename, Float64; skipstart=1)
@@ -12,6 +21,15 @@ function read_w90_band_kpt(filename::AbstractString)
     return kpoints, weights
 end
 
+"""
+    read_w90_band_dat(filename::AbstractString)
+
+Read `seedname_band.dat` file.
+
+# Return
+- `x`: `n_kpts`, x axis value, in cartesian length
+- `E`: `n_bands * n_kpts`, band energies
+"""
 function read_w90_band_dat(filename::AbstractString)
     # 1st read to get n_kpts
     io = open(filename)
@@ -33,6 +51,15 @@ function read_w90_band_dat(filename::AbstractString)
     return x, E
 end
 
+"""
+    read_w90_band_labelinfo(filename::AbstractString)
+
+Read `seedname_band.labelinfo` file.
+
+# Return
+- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
+- `symm_label`: name of high-symmetry points
+"""
 function read_w90_band_labelinfo(filename::AbstractString)
     io = open(filename)
     labels = readlines(io)
@@ -55,8 +82,12 @@ end
 
 Read `SEEDNAME_band.dat`, `SEEDNAME_band.kpt`, `SEEDNAME_band.labelinfo.dat`.
 
-See also [`read_w90_band(seedname::AbstractString, recip_lattice::AbstractMatrix)`]
-(@ref read_w90_band(seedname::AbstractString, recip_lattice::AbstractMatrix)).
+# Return
+- `kpoints`: `3 * n_kpts`, fractional coordinates
+- `E`: `n_bands * n_kpts`, band energies
+- `x`: `n_kpts`, x axis value, in cartesian length
+- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
+- `symm_label`: name of high-symmetry points
 """
 function read_w90_band(seedname::AbstractString)
     kpoints, _ = read_w90_band_kpt("$(seedname)_band.kpt")
@@ -65,6 +96,16 @@ function read_w90_band(seedname::AbstractString)
     return (; kpoints, E, x, symm_idx, symm_label)
 end
 
+"""
+    write_w90_band_kpt(filename, kpoints, weights=nothing)
+
+Write `seedname_band.kpt` file.
+
+# Arguments
+- `filename`: filename of `seedname_band.kpt`
+- `kpoints`: `3 * n_kpts`, fractional coordinates
+- `weights`: `n_kpts`, optional, weights of kpoints
+"""
 function write_w90_band_kpt(
     filename::AbstractString,
     kpoints::AbstractMatrix{T},
@@ -87,6 +128,16 @@ function write_w90_band_kpt(
     @info "Written to $filename"
 end
 
+"""
+    write_w90_band_dat(filename, x, E)
+
+Write `seedname_band.dat` file.
+
+# Arguments
+- `filename`: filename of `seedname_band.dat`
+- `x`: `n_kpts`, x axis value, in cartesian length
+- `E`: `n_bands * n_kpts`, band energies
+"""
 function write_w90_band_dat(
     filename::AbstractString, x::AbstractVector{T}, E::AbstractMatrix{T}
 ) where {T<:Real}
@@ -104,6 +155,18 @@ function write_w90_band_dat(
     @info "Written to $filename"
 end
 
+"""
+    write_w90_band_labelinfo(filename, symm_idx, symm_label, x, kpoints)
+
+Write `seedname_band.labelinfo` file.
+
+# Arguments
+- `filename`: filename of `seedname_band.labelinfo`
+- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
+- `symm_label`: name of high-symmetry points
+- `x`: `n_kpts`, x axis value, in cartesian length
+- `kpoints`: `3 * n_kpts`, fractional coordinates
+"""
 function write_w90_band_labelinfo(
     filename::AbstractString,
     symm_idx::AbstractVector{T},
@@ -135,7 +198,13 @@ end
 
 Write `SEEDNAME_band.dat, SEEDNAME_band.kpt, SEEDNAME_band.labelinfo.dat`.
 
-See also [`write_w90_band(seedname, kpi, E)`](@ref write_w90_band(seedname, kpi, E)).
+# Arguments
+- `seedname`: seedname of `SEEDNAME_band.dat, SEEDNAME_band.kpt, SEEDNAME_band.labelinfo.dat`
+- `kpoints`: `3 * n_kpts`, fractional coordinates
+- `E`: `n_bands * n_kpts`, band energies
+- `x`: `n_kpts`, x axis value, in cartesian length
+- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
+- `symm_label`: name of high-symmetry points
 """
 function write_w90_band(
     seedname::AbstractString,
