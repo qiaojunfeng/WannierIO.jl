@@ -1,6 +1,7 @@
 module WannierIO
 
-include("type.jl")
+include("common/const.jl")
+include("common/type.jl")
 include("util/fortran.jl")
 include("util/lattice.jl")
 
