@@ -11,7 +11,17 @@ export read_xsf, write_xsf
 
 Read `xsf` file.
 
-All outputs in cartesian coordinates, Å unit.
+# Return
+- `primvec`: `3 * 3`, Å, each column is a primitive lattice vector
+- `convvec`: `3 * 3`, Å, each column is a conventional lattice vector
+- `atoms`: `n_atoms` String, atomic symbols or numbers
+- `atom_positions`: `3 * n_atoms`, Å, cartesian coordinates
+- `origin`: `3`, Å, origin of the grid
+- `span_vectors`: `3 * 3`, Å, each column is a spanning vector
+- `X`: `nx`, fractional coordinate of grid points along the first spanning vector
+- `Y`: `ny`, fractional coordinate of grid points along the second spanning vector
+- `Z`: `nz`, fractional coordinate of grid points along the third spanning vector
+- `W`: `nx * ny * nz`, volumetric data
 
 !!! note
 
@@ -26,6 +36,7 @@ function read_xsf(filename::AbstractString)
     atom_positions = nothing
     origin = nothing
     span_vectors = nothing
+    X = Y = Z = nothing
     W = nothing
 
     while !eof(io)
@@ -92,13 +103,9 @@ function read_xsf(filename::AbstractString)
 
     if !isnothing(W)
         n_x, n_y, n_z = size(W)
-        # fractional w.r.t. span_vectors
-        O = inv(span_vectors) * origin
-        X = range(0, 1, n_x) .+ O[1]
-        Y = range(0, 1, n_y) .+ O[2]
-        Z = range(0, 1, n_z) .+ O[3]
-        Xg, Yg, Zg = ndgrid(X, Y, Z)
-        rgrid = RGrid(span_vectors, Xg, Yg, Zg)
+        X = range(0, 1, n_x)
+        Y = range(0, 1, n_y)
+        Z = range(0, 1, n_z)
     end
 
     return (; primvec, convvec, atoms, atom_positions, origin, span_vectors, X, Y, Z, W)
