@@ -4,17 +4,11 @@ using Dates: now
 export read_mmn, write_mmn
 
 """
-    read_mmn(filename::AbstractString)
-
-Read `mmn` file.
-
-Returns a `n_bands * n_bands * n_bvecs * n_kpts` array.
+Read plain text mmn file.
 """
-function read_mmn(filename::AbstractString)
-    @info "Reading mmn file: $filename"
+function _read_mmn_fmt(filename::AbstractString)
     io = open(filename)
 
-    # skip header
     header = readline(io)
 
     line = readline(io)
@@ -45,9 +39,74 @@ function read_mmn(filename::AbstractString)
     end
 
     @assert !any(isnan.(M))
-
     close(io)
 
+    return header, M, kpb_k, kpb_b
+end
+
+"""
+Read Fortran binary mmn file.
+"""
+function _read_mmn_bin(filename::AbstractString)
+    # I use stream io to write mmn, so I should use plain julia `open`
+    io = open(filename)
+
+    header_len = 60
+    header = read(io, FString{header_len})
+
+    # gfortran default integer size = 4
+    # https://gcc.gnu.org/onlinedocs/gfortran/KIND-Type-Parameters.html
+    Tint = Int32
+    n_bands = read(io, Tint)
+    n_kpts = read(io, Tint)
+    n_bvecs = read(io, Tint)
+
+    # overlap matrix
+    M = zeros(ComplexF64, n_bands, n_bands, n_bvecs, n_kpts)
+    # for each point, list of neighbors, (K) representation
+    kpb_k = zeros(Int64, n_bvecs, n_kpts)
+    kpb_b = zeros(Int64, 3, n_bvecs, n_kpts)
+
+    while !eof(io)
+        for ib in 1:n_bvecs
+            k = read(io, Tint)
+            kpb_k[ib, k] = read(io, Tint)
+            kpb_b[1, ib, k] = read(io, Tint)
+            kpb_b[2, ib, k] = read(io, Tint)
+            kpb_b[3, ib, k] = read(io, Tint)
+            for n in 1:n_bands
+                for m in 1:n_bands
+                    r = read(io, Float64)
+                    i = read(io, Float64)
+                    M[m, n, ib, k] = r + im * i
+                end
+            end
+        end
+    end
+
+    @assert !any(isnan.(M))
+    close(io)
+
+    return header, M, kpb_k, kpb_b
+end
+
+"""
+    read_mmn(filename::AbstractString)
+
+Read `mmn` file.
+
+Returns a `n_bands * n_bands * n_bvecs * n_kpts` array.
+"""
+function read_mmn(filename::AbstractString)
+    @info "Reading mmn file: $filename"
+
+    if isbinary(filename)
+        header, M, kpb_k, kpb_b = _read_mmn_bin(filename)
+    else
+        header, M, kpb_k, kpb_b = _read_mmn_fmt(filename)
+    end
+
+    n_bands, _, n_bvecs, n_kpts = size(M)
     println("  header  = ", header)
     println("  n_bands = ", n_bands)
     println("  n_bvecs = ", n_bvecs)
@@ -58,23 +117,16 @@ function read_mmn(filename::AbstractString)
 end
 
 """
-    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b)
-    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b, header)
-
-Write `mmn` file.
+Write plain text mmn file.
 """
-function write_mmn(
+function _write_mmn_fmt(
     filename::AbstractString,
-    M::Array{ComplexF64,4},
-    kpb_k::Matrix{Int},
-    kpb_b::Array{Int,3},
-    header::AbstractString,
+    M::AbstractArray{<:Complex,4},
+    kpb_k::AbstractMatrix{Int},
+    kpb_b::AbstractArray{Int,3},
+    header::AbstractString;
 )
     n_bands, _, n_bvecs, n_kpts = size(M)
-    n_bands != size(M, 2) && error("M must be n_bands x n_bands x n_bvecs x n_kpts")
-
-    size(kpb_k) != (n_bvecs, n_kpts) && error("kpb_k has wrong size")
-    size(kpb_b) != (3, n_bvecs, n_kpts) && error("kpb_b has wrong size")
 
     open(filename, "w") do io
         header = strip(header)
@@ -95,6 +147,77 @@ function write_mmn(
             end
         end
     end
+end
+
+"""
+Write binary mmn file.
+"""
+function _write_mmn_bin(
+    filename::AbstractString,
+    M::AbstractArray{<:Complex,4},
+    kpb_k::AbstractMatrix{Int},
+    kpb_b::AbstractArray{Int,3},
+    header::AbstractString;
+)
+    n_bands, _, n_bvecs, n_kpts = size(M)
+
+    # gfortran default integer size = 4
+    Tint = Int32
+    # I use stream io to write mmn, so I should use plain julia `open`
+    open(filename, "w") do io
+        header_len = 60
+        header = FString(header_len, String(strip(header)))
+        write(io, header)
+
+        write(io, Tint(n_bands))
+        write(io, Tint(n_kpts))
+        write(io, Tint(n_bvecs))
+
+        for ik in 1:n_kpts
+            for ib in 1:n_bvecs
+                write(io, Tint(ik))
+                write(io, Tint(kpb_k[ib, ik]))
+                write(io, Tint(kpb_b[1, ib, ik]))
+                write(io, Tint(kpb_b[2, ib, ik]))
+                write(io, Tint(kpb_b[3, ib, ik]))
+
+                for n in 1:n_bands
+                    for m in 1:n_bands
+                        o = M[m, n, ib, ik]
+                        write(io, Float64(real(o)))
+                        write(io, Float64(imag(o)))
+                    end
+                end
+            end
+        end
+    end
+end
+
+"""
+    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b)
+    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b, header)
+
+Write `mmn` file.
+"""
+function write_mmn(
+    filename::AbstractString,
+    M::AbstractArray{<:Complex,4},
+    kpb_k::AbstractMatrix{Int},
+    kpb_b::AbstractArray{Int,3},
+    header::AbstractString;
+    binary::Bool=false,
+)
+    n_bands, _, n_bvecs, n_kpts = size(M)
+    n_bands != size(M, 2) && error("M must be n_bands x n_bands x n_bvecs x n_kpts")
+
+    size(kpb_k) != (n_bvecs, n_kpts) && error("kpb_k has wrong size")
+    size(kpb_b) != (3, n_bvecs, n_kpts) && error("kpb_b has wrong size")
+
+    if binary
+        _write_mmn_bin(filename, M, kpb_k, kpb_b, header)
+    else
+        _write_mmn_fmt(filename, M, kpb_k, kpb_b, header)
+    end
 
     @info "Written to file: $(filename)"
     println()
@@ -104,10 +227,11 @@ end
 
 function write_mmn(
     filename::AbstractString,
-    M::Array{ComplexF64,4},
-    kpb_k::Matrix{Int},
-    kpb_b::Array{Int,3},
+    M::AbstractArray{<:Complex,4},
+    kpb_k::AbstractMatrix{Int},
+    kpb_b::AbstractArray{Int,3};
+    binary::Bool=false,
 )
     header = @sprintf "Created by WannierIO.jl %s" string(now())
-    return write_mmn(filename, M, kpb_k, kpb_b, header)
+    return write_mmn(filename, M, kpb_k, kpb_b, header; binary=binary)
 end
