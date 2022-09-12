@@ -3,16 +3,25 @@ using Printf: @printf
 export read_eig, write_eig
 
 """
-    read_eig(filename::AbstractString)
-
-Read the `eig` file.
-
-# Return
-- `E`: a `n_bands * n_kpts` array
+Reshape a vector of eigenvalues into a matrix of eigenvalues.
 """
-function read_eig(filename::AbstractString)
-    @info "Reading $filename"
+function _reshape_eig(
+    idx_b::AbstractVector{<:Integer},
+    idx_k::AbstractVector{<:Integer},
+    eig::AbstractVector{<:Real},
+)
+    # find unique elements
+    n_bands = length(Set(idx_b))
+    n_kpts = length(Set(idx_k))
+    E = reshape(eig, (n_bands, n_kpts))
 
+    return E
+end
+
+"""
+Read plain text eig file.
+"""
+function _read_eig_fmt(filename::AbstractString)
     lines = open(filename) do io
         readlines(io)
     end
@@ -29,13 +38,54 @@ function read_eig(filename::AbstractString)
         eig[i] = parse(Float64, arr[3])
     end
 
-    # find unique elements
-    n_bands = length(Set(idx_b))
-    n_kpts = length(Set(idx_k))
-    E = reshape(eig, (n_bands, n_kpts))
+    E = _reshape_eig(idx_b, idx_k, eig)
+    return E
+end
 
-    # check eigenvalues should be in order
-    # some times there are small noise
+"""
+Read binary eig file.
+"""
+function _read_eig_bin(filename::AbstractString)
+    idx_b = Vector{Int}()
+    idx_k = Vector{Int}()
+    eig = Vector{Float64}()
+
+    # gfortran integer is 4 bytes
+    Tint = Int32
+
+    open(filename) do io
+        while !eof(io)
+            push!(idx_b, read(io, Tint))
+            push!(idx_k, read(io, Tint))
+            push!(eig, read(io, Float64))
+        end
+    end
+
+    E = _reshape_eig(idx_b, idx_k, eig)
+    return E
+end
+
+"""
+    read_eig(filename::AbstractString)
+
+Read the `eig` file.
+
+# Return
+- `E`: a `n_bands * n_kpts` array
+"""
+function read_eig(filename::AbstractString)
+    @info "Reading $filename"
+
+    if isbinary(filename)
+        E = _read_eig_bin(filename)
+    else
+        E = _read_eig_fmt(filename)
+    end
+
+    n_bands, n_kpts = size(E)
+
+    # check that eigenvalues are in order
+    # some times there are small noises
     round_digits(x) = round(x; digits=7)
     for ik in 1:n_kpts
         if !issorted(E[:, ik]; by=round_digits)
@@ -51,14 +101,9 @@ function read_eig(filename::AbstractString)
 end
 
 """
-    write_eig(filename::AbstractString, E::AbstractArray)
-
-Write `eig` file.
-
-# Arguments
-- `E`: `n_bands * n_kpts`
+Write plain text eig file.
 """
-function write_eig(filename::AbstractString, E::AbstractMatrix{T}) where {T<:Real}
+function _write_eig_fmt(filename::AbstractString, E::AbstractMatrix{<:Real})
     n_bands, n_kpts = size(E)
 
     open(filename, "w") do io
@@ -67,6 +112,45 @@ function write_eig(filename::AbstractString, E::AbstractMatrix{T}) where {T<:Rea
                 @printf(io, "%5d%5d%18.12f\n", ib, ik, E[ib, ik])
             end
         end
+    end
+end
+
+"""
+Write binary eig file.
+"""
+function _write_eig_bin(filename::AbstractString, E::AbstractMatrix{<:Real})
+    n_bands, n_kpts = size(E)
+
+    # gfortran integer is 4 bytes
+    Tint = Int32
+    # I write in Fortran stream IO, so just plain julia `open`
+    open(filename, "w") do io
+        for ik in 1:n_kpts
+            for ib in 1:n_bands
+                write(io, Tint(ib))
+                write(io, Tint(ik))
+                write(io, Float64(E[ib, ik]))
+            end
+        end
+    end
+end
+
+"""
+    write_eig(filename::AbstractString, E::AbstractArray)
+
+Write `eig` file.
+
+# Arguments
+- `E`: `n_bands * n_kpts`
+
+# Keyword arguments
+- `binary`: if true write in Fortran binary format
+"""
+function write_eig(filename::AbstractString, E::AbstractMatrix{<:Real}; binary::Bool=false)
+    if binary
+        _write_eig_bin(filename, E)
+    else
+        _write_eig_fmt(filename, E)
     end
 
     @info "Written to file: $(filename)"

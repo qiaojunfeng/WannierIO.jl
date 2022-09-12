@@ -8,6 +8,8 @@ function isbinary(chars::AbstractVector{UInt8})::Bool
     # normal ASCII chars
     text_chars = Vector{UInt8}([7, 8, 9, 10, 12, 13, 27])
     append!(text_chars, 0x20:0x99)
+    # null character
+    push!(text_chars, 0x00)
     deleteat!(text_chars, text_chars .== 0x7F)
 
     # remove normal ASCII
