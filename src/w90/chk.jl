@@ -145,24 +145,9 @@ function Chk(
 end
 
 """
-    read_chk(filename::AbstractString)
-
-Read formatted `chk` file.
-
-!!! note
-
-    The `Wannier90` output `chk` is in Fortran binary format, you need to
-    first run `w90chk2chk.x -export seedname` to convert to text format
-    to use this function.
+Read formatted `seedname.chk` file.
 """
-function read_chk(filename::AbstractString)
-    if isbinary(filename)
-        error("$filename is a binary file? Consider using `w90chk2chk.x`?")
-    end
-
-    @info "Reading chk file:" filename
-    println()
-
+function _read_chk_fmt(filename::AbstractString)
     io = open(filename)
 
     # strip and read line
@@ -304,19 +289,139 @@ function read_chk(filename::AbstractString)
 end
 
 """
-    write_chk(filename::AbstractString, chk::Chk)
-    write_chk(filename, model::Model; exclude_bands::Vector{Int}=nothing)
+Read unformatted `seedname.chk` file.
+"""
+function _read_chk_bin(filename::AbstractString)
+    io = FortranFile(filename)
 
-Write formatted `chk` file.
+    # strip and read line
+    header_len = 33
+    header = trimstring(read(io, FString{header_len}))
+
+    # gfortran default integer is 4 bytes
+    Tint = Int32
+    n_bands = read(io, Tint)
+
+    n_exclude_bands = read(io, Tint)
+
+    exclude_bands = zeros(Int, n_exclude_bands)
+    exclude_bands .= read(io, (Tint, n_exclude_bands))
+    # I don't know why but I need to skip a record here
+    # probably because the FortranFiles.read does not handle 0-length arrays correctly
+    n_exclude_bands == 0 && read(io)
+
+    # Each column is a lattice vector
+    # but W90 writes x components first, then y, z. Not a1 first, then a2, a3.
+    lattice = read(io, (Float64, 3, 3))
+    lattice = Mat3{Float64}(lattice')
+
+    # Each column is a lattice vector
+    recip_lattice = read(io, (Float64, 3, 3))
+    recip_lattice = Mat3{Float64}(recip_lattice')
+
+    n_kpts = read(io, Tint)
+
+    kgrid = Vec3{Int}(read(io, (Tint, 3)))
+
+    kpoints = zeros(Float64, 3, n_kpts)
+    read(io, kpoints)
+
+    n_bvecs = read(io, Tint)
+
+    n_wann = read(io, Tint)
+
+    checkpoint = trimstring(read(io, FString{20}))
+
+    # treat Bool as Int32
+    # 1 -> true, 0 -> false
+    have_disentangled = parse_bool(read(io, Tint))
+
+    if have_disentangled
+        # omega_invariant
+        ΩI = read(io, Float64)
+
+        dis_bands = falses(n_bands, n_kpts)
+        dis_bands .= parse_bool.(read(io, (Tint, n_bands, n_kpts)))
+
+        n_dis = zeros(Int, n_kpts)
+        n_dis .= read(io, (Tint, n_kpts))
+        for ik in 1:n_kpts
+            @assert n_dis[ik] == count(dis_bands[:, ik])
+        end
+
+        # u_matrix_opt
+        Uᵈ = zeros(ComplexF64, n_bands, n_wann, n_kpts)
+        read(io, Uᵈ)
+    else
+        ΩI = -1.0
+        dis_bands = falses(0, 0)
+        n_dis = zeros(Int, 0)
+        Uᵈ = zeros(ComplexF64, 0, 0, 0)
+    end
+
+    # u_matrix
+    U = zeros(ComplexF64, n_wann, n_wann, n_kpts)
+    read(io, U)
+
+    #  m_matrix
+    M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
+    read(io, M)
+
+    # wannier_centres
+    r = zeros(Float64, 3, n_wann)
+    read(io, r)
+
+    # wannier_spreads
+    ω = zeros(Float64, n_wann)
+    read(io, ω)
+
+    close(io)
+
+    return Chk(
+        header,
+        exclude_bands,
+        lattice,
+        recip_lattice,
+        kgrid,
+        kpoints,
+        checkpoint,
+        have_disentangled,
+        ΩI,
+        dis_bands,
+        Uᵈ,
+        U,
+        M,
+        r,
+        ω,
+    )
+end
+
+"""
+    read_chk(filename::AbstractString)
+
+Read formatted `chk` file.
 
 !!! note
 
-    The `Wannier90` input/output `chk` is in Fortran binary format, you need to
-    first run `w90chk2chk.x -import seedname` to convert the output text format
-    `seedname.chk.fmt` to binary format `seedname.chk` so that `Wannier90` can read it.
+    The `Wannier90` output `chk` is in Fortran binary format, you need to
+    first run `w90chk2chk.x -export seedname` to convert to text format
+    to use this function.
 """
-function write_chk(filename::AbstractString, chk::Chk)
-    @info "Writing chk file:" filename
+function read_chk(filename::AbstractString)
+    @info "Reading chk file:" filename
+    println()
+
+    if isbinary(filename)
+        return _read_chk_bin(filename)
+    else
+        return _read_chk_fmt(filename)
+    end
+end
+
+"""
+Write formatted `chk` file.
+"""
+function _write_chk_fmt(filename::AbstractString, chk::Chk)
     io = open(filename, "w")
 
     n_bands = chk.n_bands
@@ -427,7 +532,99 @@ function write_chk(filename::AbstractString, chk::Chk)
         @printf(io, "%25.17f\n", chk.ω[iw])
     end
 
-    close(io)
+    return close(io)
+end
+
+"""
+Write unformatted `chk` file.
+"""
+function _write_chk_bin(filename::AbstractString, chk::Chk)
+    io = FortranFile(filename, "w")
+
+    n_bands = chk.n_bands
+    n_wann = chk.n_wann
+    n_kpts = chk.n_kpts
+    n_bvecs = chk.n_bvecs
+
+    write(io, FString(33, chk.header))
+
+    # gfortran default integer is 4 bytes
+    Tint = Int32
+    write(io, Tint(n_bands))
+
+    write(io, Tint(chk.n_exclude_bands))
+
+    write(io, Tint.(chk.exclude_bands))
+
+    # Each column is a lattice vector
+    # but W90 writes x components first, then y, z. Not a1 first, then a2, a3.
+    write(io, Float64.(reshape(chk.lattice', 9)))
+
+    # Each column is a lattice vector
+    write(io, Float64.(reshape(chk.recip_lattice', 9)))
+
+    write(io, Tint(n_kpts))
+
+    write(io, Tint.(chk.kgrid))
+
+    write(io, Float64.(chk.kpoints))
+
+    write(io, Tint(n_bvecs))
+
+    write(io, Tint(n_wann))
+
+    # left-justified
+    write(io, FString(20, chk.checkpoint))
+
+    # true -> 1, false -> 0
+    write(io, Tint(chk.have_disentangled))
+
+    if chk.have_disentangled
+        # omega_invariant
+        write(io, Float64(chk.ΩI))
+
+        # true -> 1, false -> 0
+        write(io, Tint.(chk.dis_bands))
+
+        write(io, Tint.(chk.n_dis))
+
+        # u_matrix_opt
+        write(io, ComplexF64.(chk.Uᵈ))
+    end
+
+    # u_matrix
+    write(io, ComplexF64.(chk.U))
+
+    #  m_matrix
+    write(io, ComplexF64.(chk.M))
+
+    # wannier_centres
+    write(io, Float64.(chk.r))
+
+    # wannier_spreads
+    write(io, Float64.(chk.ω))
+
+    return close(io)
+end
+
+"""
+    write_chk(filename::AbstractString, chk::Chk)
+    write_chk(filename, model::Model; exclude_bands::Vector{Int}=nothing)
+
+Write formatted `chk` file.
+
+!!! note
+
+    The `Wannier90` input/output `chk` is in Fortran binary format, you need to
+    first run `w90chk2chk.x -import seedname` to convert the output text format
+    `seedname.chk.fmt` to binary format `seedname.chk` so that `Wannier90` can read it.
+"""
+function write_chk(filename::AbstractString, chk::Chk; binary::Bool=false)
+    if binary
+        _write_chk_bin(filename, chk)
+    else
+        _write_chk_fmt(filename, chk)
+    end
 
     @info "Written to file: $(filename)"
     println()

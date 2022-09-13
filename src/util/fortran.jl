@@ -55,3 +55,15 @@ function parse_bool(s::AbstractString)
     s = replace(lowercase(strip(s)), "." => "")[1]  # only 1st char
     return s == 't' || s == '1'
 end
+
+"""
+    parse_bool(i::Integer)
+
+Parse an integer as `bool`.
+
+- `0`: `false`
+- `1` or `-1`: `true`
+"""
+function parse_bool(i::Integer)
+    return i != 0
+end
