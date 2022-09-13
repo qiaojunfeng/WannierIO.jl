@@ -1,6 +1,5 @@
 using Printf: @printf, @sprintf
 using Dates: now
-using FortranFiles: FortranFile, FString
 
 export read_amn, write_amn
 

@@ -5,6 +5,8 @@ include("common/type.jl")
 include("util/fortran.jl")
 include("util/lattice.jl")
 
+using FortranFiles: FortranFile, FString
+
 include("w90/win.jl")
 include("w90/wout.jl")
 include("w90/nnkp.jl")
