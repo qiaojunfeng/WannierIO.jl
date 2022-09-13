@@ -194,10 +194,19 @@ function _write_mmn_bin(
 end
 
 """
-    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b)
-    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b, header)
+    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b, header; binary=false)
 
 Write `mmn` file.
+
+# Arguments
+- `filename`: output file name
+- `M`: `n_bands * n_bands * n_bvecs * n_kpts` array
+- `kpb_k`: `n_bvecs * n_kpts` array
+- `kpb_b`: `3 * n_bvecs * n_kpts` array
+- `header`: header string
+
+# Keyword arguments
+- `binary`: if true write in Fortran binary format
 """
 function write_mmn(
     filename::AbstractString,
@@ -225,6 +234,22 @@ function write_mmn(
     return nothing
 end
 
+"""
+    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b; binary=false)
+
+Write `mmn` file.
+
+Default header is "Created by WannierIO.jl CURRENT_DATE".
+
+# Arguments
+- `filename`: output file name
+- `M`: `n_bands * n_bands * n_bvecs * n_kpts` array
+- `kpb_k`: `n_bvecs * n_kpts` array
+- `kpb_b`: `3 * n_bvecs * n_kpts` array
+
+# Keyword arguments
+- `binary`: if true write in Fortran binary format
+"""
 function write_mmn(
     filename::AbstractString,
     M::AbstractArray{<:Complex,4},

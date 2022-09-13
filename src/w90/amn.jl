@@ -166,16 +166,17 @@ function _write_amn_bin(
 end
 
 """
-    write_amn(filename::AbstractString, A::Array{ComplexF64,3})
-    write_amn(filename::AbstractString, A::Array{ComplexF64,3}, header::AbstractString)
+    write_amn(filename, A::Array{Complex,3}, header; binary=false)
 
-Output `amn` file.
+Write `amn` file.
 
 # Arguments
-- `header`: optional, default is "Created by WannierIO.jl CURRENT_DATE"
+- `filename`: output filename
+- `A`: a `n_bands * n_wann * n_kpts` array
+- `header`: 1st line of the file
 
 # Keyword arguments
-- `binary`: write as Fortran unformatted file, optional, default is `false`
+- `binary`: write as Fortran unformatted file
 """
 function write_amn(
     filename::AbstractString,
@@ -195,6 +196,20 @@ function write_amn(
     return nothing
 end
 
+"""
+    write_amn(filename, A::Array{Complex,3})
+
+Write `amn` file.
+
+Default header is "Created by WannierIO.jl CURRENT_DATE".
+
+# Arguments
+- `filename`: output filename
+- `A`: a `n_bands * n_wann * n_kpts` array
+
+# Keyword arguments
+- `binary`: write as Fortran unformatted file
+"""
 function write_amn(
     filename::AbstractString, A::AbstractArray{<:Complex,3}; binary::Bool=false
 )

@@ -136,7 +136,7 @@ function _write_eig_bin(filename::AbstractString, E::AbstractMatrix{<:Real})
 end
 
 """
-    write_eig(filename::AbstractString, E::AbstractArray)
+    write_eig(filename::AbstractString, E::AbstractArray; binary=false)
 
 Write `eig` file.
 

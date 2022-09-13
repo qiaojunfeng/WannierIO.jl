@@ -54,6 +54,10 @@ end
     read_unk(filename::AbstractString)
 
 Read `UNK` file for the periodic part of Bloch wavefunctions.
+
+# Return
+- `ik`: k-point index
+- `Ψ`: periodic part of Bloch wavefunctions in real space
 """
 function read_unk(filename::AbstractString)
     @info "Reading unk file:" filename

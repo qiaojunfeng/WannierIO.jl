@@ -399,13 +399,7 @@ end
 """
     read_chk(filename::AbstractString)
 
-Read formatted `chk` file.
-
-!!! note
-
-    The `Wannier90` output `chk` is in Fortran binary format, you need to
-    first run `w90chk2chk.x -export seedname` to convert to text format
-    to use this function.
+Read formatted or binary `chk` file.
 """
 function read_chk(filename::AbstractString)
     @info "Reading chk file:" filename
@@ -608,16 +602,12 @@ function _write_chk_bin(filename::AbstractString, chk::Chk)
 end
 
 """
-    write_chk(filename::AbstractString, chk::Chk)
-    write_chk(filename, model::Model; exclude_bands::Vector{Int}=nothing)
+    write_chk(filename, chk::Chk)
 
-Write formatted `chk` file.
+Write formatted or binary `chk` file.
 
-!!! note
-
-    The `Wannier90` input/output `chk` is in Fortran binary format, you need to
-    first run `w90chk2chk.x -import seedname` to convert the output text format
-    `seedname.chk.fmt` to binary format `seedname.chk` so that `Wannier90` can read it.
+# Keyword arguments
+- `binary`: write as Fortran unformatted file
 """
 function write_chk(filename::AbstractString, chk::Chk; binary::Bool=false)
     if binary
