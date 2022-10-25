@@ -18,7 +18,7 @@ Read `bxsf` file.
 - `X`: `nx`, fractional coordinate of grid points along the first spanning vector
 - `Y`: `ny`, fractional coordinate of grid points along the second spanning vector
 - `Z`: `nz`, fractional coordinate of grid points along the third spanning vector
-- `V`: `nx * ny * nz * n_bands`, eigenvalues at each grid point
+- `E`: `n_bands * nx * ny * nz`, eigenvalues at each grid point
 """
 function read_bxsf(filename::AbstractString)
     io = open(filename)
@@ -27,7 +27,7 @@ function read_bxsf(filename::AbstractString)
     origin = nothing
     span_vectors = nothing
     X = Y = Z = nothing
-    V = nothing
+    E = nothing
 
     while !eof(io)
         line = strip(readline(io))
@@ -60,9 +60,9 @@ function read_bxsf(filename::AbstractString)
                 line = strip(readline(io))
                 span_vectors[:, i] = parse.(Float64, split(line))
             end
-            V = zeros(Float64, n_x, n_y, n_z, n_bands)
+            E = zeros(Float64, n_bands, n_x, n_y, n_z)
             # temp storage for each band, but in row-major
-            Vib = similar(V, n_z, n_y, n_x)
+            Eib = similar(E, n_z, n_y, n_x)
             for ib in 1:n_bands
                 line = strip(readline(io))
                 @assert split(line) == ["BAND:", string(ib)]
@@ -70,20 +70,20 @@ function read_bxsf(filename::AbstractString)
                 while idx <= n_x * n_y * n_z
                     line = split(strip(readline(io)))
                     ncol = length(line)
-                    Vib[idx:(idx + ncol - 1)] = parse.(Float64, line)
+                    Eib[idx:(idx + ncol - 1)] = parse.(Float64, line)
                     idx += ncol
                 end
                 @assert idx == n_x * n_y * n_z + 1
                 # to column-major
-                V[:, :, :, ib] = permutedims(Vib, [3, 2, 1])
+                E[ib, :, :, :] = permutedims(Eib, [3, 2, 1])
             end
             @assert occursin("END_BANDGRID_3D", strip(readline(io)))
             @assert strip(readline(io)) == "END_BLOCK_BANDGRID_3D"
         end
     end
 
-    if !isnothing(V)
-        n_x, n_y, n_z, _ = size(V)
+    if !isnothing(E)
+        _, n_x, n_y, n_z = size(E)
         # the kpoint grid is a general grid, i.e., it includes the last kpoint
         # which is periodic to the first kpoint
         X = range(0, 1, n_x)
@@ -91,7 +91,7 @@ function read_bxsf(filename::AbstractString)
         Z = range(0, 1, n_z)
     end
 
-    return (; fermi_energy, origin, span_vectors, X, Y, Z, V)
+    return (; fermi_energy, origin, span_vectors, X, Y, Z, E)
 end
 
 """
@@ -100,7 +100,7 @@ end
         fermi_energy::T,
         origin::AbstractVector{T},
         span_vectors::AbstractMatrix{T},
-        V::AbstractArray{T,4},
+        E::AbstractArray{T,4},
     ) where {T<:Real}
 
 Write `bxsf` file.
@@ -109,14 +109,14 @@ Write `bxsf` file.
 - `fermi_energy`: Fermi energy in eV
 - `origin`: `3`, Å⁻¹, origin of the grid
 - `span_vectors`: `3 * 3`, Å⁻¹, each column is a spanning vector
-- `V`: `nx * ny * nz * n_bands`, eigenvalues at each grid point
+- `E`: `n_bands * nx * ny * nz`, eigenvalues at each grid point
 """
 function write_bxsf(
     filename::AbstractString,
     fermi_energy::T,
     origin::AbstractVector{T},
     span_vectors::AbstractMatrix{T},
-    V::AbstractArray{T,4},
+    E::AbstractArray{T,4},
 ) where {T<:Real}
     size(origin) == (3,) || error("origin should be a 3-element vector")
     size(span_vectors) == (3, 3) || error("span_vectors should be a 3×3 matrix")
@@ -133,7 +133,7 @@ function write_bxsf(
     @printf(io, "BEGIN_BLOCK_BANDGRID_3D\n")
     @printf(io, "from_WannierIO.jl_code\n")
     @printf(io, "BEGIN_BANDGRID_3D_fermi\n")
-    n_x, n_y, n_z, n_bands = size(V)
+    n_bands, n_x, n_y, n_z = size(E)
     @printf(io, "%d\n", n_bands)
     @printf(io, "%d %d %d\n", n_x, n_y, n_z)
     @printf(io, "%12.7f %12.7f %12.7f\n", origin...)
@@ -148,7 +148,7 @@ function write_bxsf(
         for i in 1:n_x
             for j in 1:n_y
                 for k in 1:n_z
-                    @printf(io, " %16.8e", V[i, j, k, ib])
+                    @printf(io, " %16.8e", E[ib, i, j, k])
                     ncol += 1
                     if ncol == 6
                         @printf(io, "\n")
