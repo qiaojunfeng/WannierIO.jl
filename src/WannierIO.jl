@@ -19,8 +19,10 @@ include("w90/band.jl")
 include("w90/tb.jl")
 include("w90/spn.jl")
 
-include("volumetric/xsf.jl")
-include("volumetric/cube.jl")
+# volumetric files
+include("volume/xsf.jl")
+include("volume/cube.jl")
+include("volume/bxsf.jl")
 
 include("qe/band.jl")
 
