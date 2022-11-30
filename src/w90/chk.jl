@@ -1,6 +1,6 @@
 using Printf: @printf
 
-export read_chk, write_chk, get_A, get_Adis
+export read_chk, write_chk, get_U, get_Udis
 
 """
 Struct for storing matrices in `seedname.chk` file.
@@ -624,9 +624,9 @@ end
 """
     get_A(chk::Chk)
 
-Extract `A` matrices from `Chk`.
+Extract `U` matrices from `Chk`.
 """
-function get_A(chk::Chk)
+function get_U(chk::Chk)
     n_kpts = chk.n_kpts
     n_bands = chk.n_bands
     n_wann = chk.n_wann
@@ -638,7 +638,7 @@ function get_A(chk::Chk)
         return U
     end
 
-    Uᵈ = get_Adis(chk)
+    Uᵈ = get_Udis(chk)
 
     for ik in 1:n_kpts
         # Uᵈ: semi-unitary matrices from disentanglement
@@ -650,11 +650,11 @@ function get_A(chk::Chk)
 end
 
 """
-    get_Adis(chk::Chk)
+    get_Udis(chk::Chk)
 
 Extract `A` matrices for disentanglement from `Chk`.
 """
-function get_Adis(chk::Chk)
+function get_Udis(chk::Chk)
     n_kpts = chk.n_kpts
     n_bands = chk.n_bands
     n_wann = chk.n_wann
