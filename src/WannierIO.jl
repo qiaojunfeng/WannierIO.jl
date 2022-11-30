@@ -18,6 +18,7 @@ include("w90/unk.jl")
 include("w90/band.jl")
 include("w90/tb.jl")
 include("w90/spn.jl")
+include("w90/hh_r.jl")
 
 # volumetric files
 include("volume/xsf.jl")
