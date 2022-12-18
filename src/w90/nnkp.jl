@@ -103,6 +103,7 @@ Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
 - `kpb_k`: `n_bvecs * n_kpts`, index of kpoints
 - `kpb_b`: `3 * n_bvecs * n_kpts`, fractional w.r.t `recip_lattice`
 - `n_wann`: if given, write a `auto_projections` block
+- `exclude_bands`: if given, write the specified band indexes in the `exclude_bands` block
 
 !!! note
 
@@ -115,6 +116,7 @@ function write_nnkp(
     kpb_k::AbstractMatrix{U},
     kpb_b::AbstractArray{U,3},
     n_wann::Union{Nothing,Integer}=nothing,
+    exclude_bands::Union{Nothing,AbstractVector{U}}=nothing,
 ) where {T<:Real,U<:Integer}
     size(recip_lattice) == (3, 3) || error("size(recip_lattice) != (3, 3)")
     n_kpts = size(kpoints, 2)
@@ -179,7 +181,14 @@ function write_nnkp(
     @printf(io, "\n")
 
     @printf(io, "begin exclude_bands\n")
-    @printf(io, "%d\n", 0)
+    if exclude_bands === nothing
+        @printf(io, "%d\n", 0)
+    else
+        @printf(io, "%d\n", length(exclude_bands))
+        for b in exclude_bands
+            @printf(io, "%d\n", b)
+        end
+    end
     @printf(io, "end exclude_bands\n")
     @printf(io, "\n")
 
