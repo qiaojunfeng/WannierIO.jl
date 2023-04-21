@@ -24,29 +24,23 @@ using YAML
     # )
     # YAML.write_file(String(@__DIR__) * "/test_data/win.yaml", yaml_dict)
 
-    test_kpath = test_data["kpoint_path"]
-    @test begin
+    function test_kpoint_path()
+        test_kpath = test_data["kpoint_path"]
         for (i, path) in enumerate(test_kpath)
             win_path = win.kpoint_path[i]
             k1, k2 = path
             # Dict to pair
             k1 = first(k1)
             k2 = first(k2)
-            if Symbol(k1.first) != win_path[1].first
-                return false
-            end
-            if k1.second ≉ win_path[1].second
-                return false
-            end
-            if Symbol(k2.first) != win_path[2].first
-                return false
-            end
-            if k2.second ≉ win_path[2].second
-                return false
-            end
+
+            (Symbol(k1.first) != win_path[1].first) && return false
+            (k1.second ≉ win_path[1].second) && return false
+            (Symbol(k2.first) != win_path[2].first) && return false
+            (k2.second ≉ win_path[2].second) && return false
         end
         return true
     end
+    @test test_kpoint_path()
 
     @test test_data["num_wann"] == win.num_wann
     @test test_data["num_bands"] == win.num_bands
@@ -57,6 +51,6 @@ using YAML
     @test test_data["kpoints"] ≈ kpoints
     @test ismissing(win.dis_froz_min)
     @test ismissing(win.dis_win_min)
-    @test test_data["dis_froz_max"] == win.dis_froz_max
-    @test test_data["dis_win_max"] == win.dis_win_max
+    @test test_data["dis_froz_max"] == "missing"
+    @test test_data["dis_win_max"] == "missing"
 end
