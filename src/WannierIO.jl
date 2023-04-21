@@ -26,5 +26,6 @@ include("volume/cube.jl")
 include("volume/bxsf.jl")
 
 include("qe/band.jl")
+include("qe/xml.jl")
 
 end

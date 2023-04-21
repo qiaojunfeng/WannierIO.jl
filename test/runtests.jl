@@ -28,5 +28,7 @@ mat2vec(A::AbstractMatrix) = [v for v in eachcol(A)]
     include("w90/band.jl")
     include("w90/tb.jl")
 
+    include("qe/xml.jl")
+
     include("volume/bxsf.jl")
 end
