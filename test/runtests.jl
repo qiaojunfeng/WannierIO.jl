@@ -12,6 +12,7 @@ const TEST_PATH = @__DIR__
 const FIXTURE_PATH = joinpath(TEST_PATH, "fixtures")
 
 mat2vec(A::AbstractMatrix) = [v for v in eachcol(A)]
+vec2mat(A::AbstractVector) = hcat(A...)
 
 @testset "WannierIO.jl" begin
     include("util/fortran.jl")

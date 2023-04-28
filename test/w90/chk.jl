@@ -17,7 +17,7 @@ end
 
     # make sure we read the lattice as column-major
     win = read_win(joinpath(FIXTURE_PATH, "si2.win"))
-    @test chk.lattice ≈ win.unit_cell
+    @test chk.lattice ≈ win.unit_cell_cart
 end
 
 @testset "read/write chk" begin

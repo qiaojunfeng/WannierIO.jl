@@ -1,8 +1,6 @@
-atom_labels:
-  - "Si"
-  - "Si"
-dis_froz_max: missing
-dis_win_max: missing
+fermi_energy: 6.5589
+num_bands: 4
+num_iter: 4000
 atoms_frac:
   -
     - 0.0
@@ -12,6 +10,64 @@ atoms_frac:
     - 0.25
     - 0.25
     - 0.25
+wannier_plot: true
+kpoints:
+  -
+    - 0.0
+    - 0.0
+    - 0.0
+  -
+    - 0.0
+    - 0.0
+    - 0.5
+  -
+    - 0.0
+    - 0.5
+    - 0.0
+  -
+    - 0.0
+    - 0.5
+    - 0.5
+  -
+    - 0.5
+    - 0.0
+    - 0.0
+  -
+    - 0.5
+    - 0.0
+    - 0.5
+  -
+    - 0.5
+    - 0.5
+    - 0.0
+  -
+    - 0.5
+    - 0.5
+    - 0.5
+num_cg_steps: 200
+conv_window: 3
+mp_grid:
+  - 2
+  - 2
+  - 2
+unit_cell_cart:
+  -
+    - 0.0
+    - 2.715265
+    - 2.715265
+  -
+    - 2.715265
+    - 0.0
+    - 2.715265
+  -
+    - 2.715265
+    - 2.715265
+    - 0.0
+spn_formatted: true
+write_hr: true
+atom_labels:
+  - "Si"
+  - "Si"
 kpoint_path:
   -
     - G:
@@ -76,55 +132,14 @@ kpoint_path:
         - 0.5
         - 0.0
         - 0.5
-num_bands: 4
 num_wann: 4
-unit_cell:
-  -
-    - 0.0
-    - 2.715265
-    - 2.715265
-  -
-    - 2.715265
-    - 0.0
-    - 2.715265
-  -
-    - 2.715265
-    - 2.715265
-    - 0.0
-mp_grid:
-  - 2
-  - 2
-  - 2
-kpoints:
-  -
-    - 0.0
-    - 0.0
-    - 0.0
-  -
-    - 0.0
-    - 0.0
-    - 0.5
-  -
-    - 0.0
-    - 0.5
-    - 0.0
-  -
-    - 0.0
-    - 0.5
-    - 0.5
-  -
-    - 0.5
-    - 0.0
-    - 0.0
-  -
-    - 0.5
-    - 0.0
-    - 0.5
-  -
-    - 0.5
-    - 0.5
-    - 0.0
-  -
-    - 0.5
-    - 0.5
-    - 0.5
+conv_tol: 2.0e-7
+wvfn_formatted: true
+write_tb: true
+projections:
+  - "c=0.67882, -0.67882, -0.67882:s"
+  - "c=-0.67882, -0.67882, 0.67882:s"
+  - "c=-0.67882, 0.67882, -0.67882:s"
+  - "c=0.67882, 0.67882, 0.67882:s"
+bands_plot: true
+wannier_plot_supercell: 3
