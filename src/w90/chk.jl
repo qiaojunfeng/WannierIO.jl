@@ -30,7 +30,7 @@ struct Chk{T<:Real}
     kgrid::Vec3{Int}
 
     # 2D array, size: 3 x n_kpts, each column is a vector
-    kpoints::Matrix{T}
+    kpoints::Vector{Vec3{T}}
 
     # n_bvecs:: Int
 
@@ -50,22 +50,22 @@ struct Chk{T<:Real}
     # so directly multiplying eigenvalues e.g.
     # (Uᵈ * U)' * diag(eigenvalues) * (Uᵈ * U) is wrong!
     # 2D bool array, size: n_bands x n_kpts
-    dis_bands::BitMatrix
+    dis_bands::Vector{BitVector}
 
     # 1D int array, size: n_kpts
     # n_dimfrozen:: Vector{Int}
 
     # u_matrix_opt, 3D array, size: num_bands x num_wann x num_kpts
-    Uᵈ::Array{Complex{T},3}
+    Uᵈ::Vector{Matrix{Complex{T}}}
 
     # u_matrix, 3D array, size: num_wann x num_wann x num_kpts
-    U::Array{Complex{T},3}
+    U::Vector{Matrix{Complex{T}}}
 
     # m_matrix, 4D array, size:num_wann x num_wann x n_bvecs x num_kpts
-    M::Array{Complex{T},4}
+    M::Vector{Array{Complex{T},3}}
 
     # wannier_centres, 2D array, size: 3 x num_wann
-    r::Matrix{T}
+    r::Vector{Vec3{T}}
 
     # wannier_spreads, 1D array, size: num_wann
     ω::Vector{T}
@@ -85,35 +85,35 @@ function Chk(
     lattice::Mat3{T},
     recip_lattice::Mat3{T},
     kgrid::Vec3{Int},
-    kpoints::Matrix{T},
+    kpoints::Vector{Vec3{T}},
     checkpoint::String,
     have_disentangled::Bool,
     ΩI::T,
-    dis_bands::BitMatrix,
-    Uᵈ::Array{Complex{T},3},
-    U::Array{Complex{T},3},
-    M::Array{Complex{T},4},
-    r::Matrix{T},
+    dis_bands::Vector{BitVector},
+    Uᵈ::Vector,
+    U::Vector,
+    M::Vector{Array{Complex{T},3}},
+    r::Vector{Vec3{T}},
     ω::Vector{T},
 ) where {T<:Real}
     if have_disentangled
-        n_bands = size(Uᵈ, 1)
+        n_bands = size(Uᵈ[1], 1)
     else
-        n_bands = size(U, 1)
+        n_bands = size(U[1], 1)
     end
 
     n_exclude_bands = length(exclude_bands)
 
-    n_kpts = size(M, 4)
+    n_kpts = length(M)
 
-    n_bvecs = size(M, 3)
+    n_bvecs = size(M[1], 3)
 
-    n_wann = size(U, 1)
+    n_wann = size(U[1], 1)
 
     if have_disentangled
         n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
-            n_dis[ik] = count(dis_bands[:, ik])
+            n_dis[ik] = count(dis_bands[ik])
         end
     else
         n_dis = zeros(Int, 0)
@@ -130,8 +130,8 @@ function Chk(
         have_disentangled,
         ΩI,
         dis_bands,
-        Uᵈ,
-        U,
+        collect.(Uᵈ),
+        collect.(U),
         M,
         r,
         ω,
@@ -181,9 +181,9 @@ function _read_chk_fmt(filename::AbstractString)
 
     kgrid = Vec3{Int}(parse.(Int, split(srline())))
 
-    kpoints = zeros(Float64, 3, n_kpts)
+    kpoints = zeros(Vec3{Float64}, n_kpts)
     for ik in 1:n_kpts
-        kpoints[:, ik] = parse.(Float64, split(srline()))
+        kpoints[ik] = Vec3(parse.(Float64, split(srline()))...)
     end
 
     n_bvecs = parse(Int, srline())
@@ -199,66 +199,66 @@ function _read_chk_fmt(filename::AbstractString)
         # omega_invariant
         ΩI = parse(Float64, srline())
 
-        dis_bands = falses(n_bands, n_kpts)
+        dis_bands = [falses(n_bands) for i = 1:n_kpts]
         for ik in 1:n_kpts
             for ib in 1:n_bands
                 # 1 -> True, 0 -> False
-                dis_bands[ib, ik] = Bool(parse(Int, srline()))
+                dis_bands[ik][ib] = Bool(parse(Int, srline()))
             end
         end
 
         n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
             n_dis[ik] = parse(Int, srline())
-            @assert n_dis[ik] == count(dis_bands[:, ik])
+            @assert n_dis[ik] == count(dis_bands[ik])
         end
 
         # u_matrix_opt
-        Uᵈ = zeros(ComplexF64, n_bands, n_wann, n_kpts)
+        Uᵈ = [zeros(ComplexF64, n_bands, n_wann) for i = 1:n_kpts]
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_bands
                     vals = parse.(Float64, split(srline()))
-                    Uᵈ[ib, iw, ik] = vals[1] + im * vals[2]
+                    Uᵈ[ik][ib, iw] = vals[1] + im * vals[2]
                 end
             end
         end
 
     else
         ΩI = -1.0
-        dis_bands = falses(0, 0)
+        dis_bands = [falses(0)]
         n_dis = zeros(Int, 0)
-        Uᵈ = zeros(ComplexF64, 0, 0, 0)
+        Uᵈ = [zeros(ComplexF64, 0, 0)]
     end
 
     # u_matrix
-    U = zeros(ComplexF64, n_wann, n_wann, n_kpts)
+    U = [zeros(ComplexF64, n_wann, n_wann) for i = 1:n_kpts]
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_wann
                 vals = parse.(Float64, split(srline()))
-                U[ib, iw, ik] = vals[1] + im * vals[2]
+                U[ik][ib, iw] = vals[1] + im * vals[2]
             end
         end
     end
 
     #  m_matrix
-    M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
+    M = [zeros(ComplexF64, n_wann, n_wann, n_bvecs) for i = 1:n_kpts]
     for ik in 1:n_kpts
         for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
                     vals = parse.(Float64, split(srline()))
-                    M[ib, iw, inn, ik] = vals[1] + im * vals[2]
+                    M[ik][ib, iw, inn] = vals[1] + im * vals[2]
                 end
             end
         end
     end
 
     # wannier_centres
-    r = zeros(Float64, 3, n_wann)
+    r = zeros(Vec3{Float64}, n_wann)
     for iw in 1:n_wann
-        r[:, iw] = parse.(Float64, split(srline()))
+        r[iw] = Vec3(parse.(Float64, split(srline()))...)
     end
 
     # wannier_spreads
@@ -323,7 +323,7 @@ function _read_chk_bin(filename::AbstractString)
 
     kgrid = Vec3{Int}(read(io, (Tint, 3)))
 
-    kpoints = zeros(Float64, 3, n_kpts)
+    kpoints = zeros(Vec3{Float64}, n_kpts)
     read(io, kpoints)
 
     n_bvecs = read(io, Tint)
@@ -340,23 +340,24 @@ function _read_chk_bin(filename::AbstractString)
         # omega_invariant
         ΩI = read(io, Float64)
 
-        dis_bands = falses(n_bands, n_kpts)
-        dis_bands .= parse_bool.(read(io, (Tint, n_bands, n_kpts)))
+        t = parse_bool.(read(io, (Tint, n_bands, n_kpts)))
+        dis_bands = [t[:][i] for i =1:n_kpts]
 
         n_dis = zeros(Int, n_kpts)
-        n_dis .= read(io, (Tint, n_kpts))
         for ik in 1:n_kpts
-            @assert n_dis[ik] == count(dis_bands[:, ik])
+            @assert n_dis[ik] == count(dis_bands[ik])
         end
 
         # u_matrix_opt
-        Uᵈ = zeros(ComplexF64, n_bands, n_wann, n_kpts)
-        read(io, Uᵈ)
+        U_t = zeros(ComplexF64, n_bands, n_wann, n_kpts)
+        read(io, U_t)
+        Uᵈ = [U_t[:, :, ik] for ik in 1:n_kpts]
+        
     else
         ΩI = -1.0
-        dis_bands = falses(0, 0)
+        dis_bands = [falses(0)]
         n_dis = zeros(Int, 0)
-        Uᵈ = zeros(ComplexF64, 0, 0, 0)
+        Uᵈ = [zeros(ComplexF64, 0, 0)]
     end
 
     # u_matrix
@@ -389,9 +390,9 @@ function _read_chk_bin(filename::AbstractString)
         ΩI,
         dis_bands,
         Uᵈ,
-        U,
-        M,
-        r,
+        [U[:,:,ik]   for ik in 1:n_kpts],
+        [M[:,:,:,ik] for ik in 1:n_kpts],
+        [Vec3(r[:, ir]) for ir in 1:n_wann],
         ω,
     )
 end
@@ -454,7 +455,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
     @printf(io, "%d %d %d\n", chk.kgrid...)
 
     for ik in 1:n_kpts
-        @printf(io, "%25.17f %25.17f %25.17f\n", chk.kpoints[:, ik]...)
+        @printf(io, "%25.17f %25.17f %25.17f\n", chk.kpoints[ik]...)
     end
 
     @printf(io, "%d\n", n_bvecs)
@@ -475,7 +476,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
         for ik in 1:n_kpts
             for ib in 1:n_bands
                 # 1 -> True, 0 -> False
-                @printf(io, "%d\n", chk.dis_bands[ib, ik])
+                @printf(io, "%d\n", chk.dis_bands[ik][ib])
             end
         end
 
@@ -487,7 +488,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_bands
-                    v = chk.Uᵈ[ib, iw, ik]
+                    v = chk.Uᵈ[ik][ib, iw]
                     @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
@@ -498,7 +499,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_wann
-                v = chk.U[ib, iw, ik]
+                v = chk.U[ik][ib, iw]
                 @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
             end
         end
@@ -509,7 +510,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
         for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
-                    v = chk.M[ib, iw, inn, ik]
+                    v = chk.M[ik][ib, iw, inn]
                     @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
@@ -518,7 +519,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
 
     # wannier_centres
     for iw in 1:n_wann
-        @printf(io, "%25.17f %25.17f %25.17f\n", chk.r[:, iw]...)
+        @printf(io, "%25.17f %25.17f %25.17f\n", chk.r[iw]...)
     end
 
     # wannier_spreads
@@ -529,6 +530,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
     return close(io)
 end
 
+#TODO Check whether this is correct
 """
 Write unformatted `chk` file.
 """
@@ -560,8 +562,8 @@ function _write_chk_bin(filename::AbstractString, chk::Chk)
     write(io, Tint(n_kpts))
 
     write(io, Tint.(chk.kgrid))
-
-    write(io, Float64.(chk.kpoints))
+    kpoints = [chk.kpoints[ik][i] for i = 1:3, ik=1:length(chk.kpoints)]
+    write(io, Float64.(kpoints))
 
     write(io, Tint(n_bvecs))
 
@@ -578,22 +580,23 @@ function _write_chk_bin(filename::AbstractString, chk::Chk)
         write(io, Float64(chk.ΩI))
 
         # true -> 1, false -> 0
-        write(io, Tint.(chk.dis_bands))
+        write(io, Tint.(cat(chk.dis_bands..., dims=2)))
 
         write(io, Tint.(chk.n_dis))
 
         # u_matrix_opt
-        write(io, ComplexF64.(chk.Uᵈ))
+        write(io, ComplexF64.(cat(chk.Uᵈ..., dims=3)))
     end
 
     # u_matrix
-    write(io, ComplexF64.(chk.U))
+    write(io, ComplexF64.(cat(chk.U..., dims=3)))
 
     #  m_matrix
-    write(io, ComplexF64.(chk.M))
+    write(io, ComplexF64.(cat(chk.M..., dims=4)))
 
     # wannier_centres
-    write(io, Float64.(chk.r))
+    r = [chk.r[ik][i] for i = 1:3, ik=1:length(chk.r)]
+    write(io, Float64.(r))
 
     # wannier_spreads
     write(io, Float64.(chk.ω))
@@ -631,24 +634,18 @@ function get_U(chk::Chk)
     n_bands = chk.n_bands
     n_wann = chk.n_wann
 
-    U = similar(chk.U, n_bands, n_wann, n_kpts)
-
     if !chk.have_disentangled
-        U .= chk.U
-        return U
+        return chk.U
     end
 
     Uᵈ = get_Udis(chk)
-
-    for ik in 1:n_kpts
-        # Uᵈ: semi-unitary matrices from disentanglement
-        # chk.U: unitary matrices from maximal localization
-        U[:, :, ik] = Uᵈ[:, :, ik] * chk.U[:, :, ik]
+    
+    return map(zip(Uᵈ, chk.U)) do u
+        u[1] * u[2]
     end
-
-    return U
 end
 
+# TODO I Don't think it works
 """
     get_Udis(chk::Chk)
 
@@ -659,20 +656,19 @@ function get_Udis(chk::Chk)
     n_bands = chk.n_bands
     n_wann = chk.n_wann
 
+    U = chk.U
     if !chk.have_disentangled
         return eyes_A(eltype(U), n_bands, n_kpts)
     end
 
-    U = similar(chk.U, n_bands, n_wann, n_kpts)
-
     # need to permute wavefunctions since Uᵈ is stored in a way that
     # the bands taking part in disentanglement are in the first few rows
-    Iᵏ = Matrix{eltype(U)}(I, n_bands, n_bands)
+    Iᵏ = Matrix{eltype(U[1])}(I, n_bands, n_bands)
 
-    for ik in 1:n_kpts
+    return map(1:n_kpts) do ik
         # sortperm is stable, and
         # need descending order (dis bands at the front)
-        p = sortperm(chk.dis_bands[:, ik]; order=Base.Order.Reverse)
+        p = sortperm(chk.dis_bands[ik]; order=Base.Order.Reverse)
         # usually we don't need this permutation, but if
         # 1. the dis_win_min > minimum(E), then these below
         #    dis_win_min bands are shifted to the last rows of Uᵈ
@@ -685,8 +681,6 @@ function get_Udis(chk::Chk)
         # so we need to permute the Bloch states before multiplying Uᵈ
         # chk.Uᵈ: semi-unitary matrices from disentanglement
         # chk.U: unitary matrices from maximal localization
-        U[:, :, ik] = Iᵏ[:, p] * chk.Uᵈ[:, :, ik]
+        return Iᵏ[:, p] * chk.Uᵈ[ik]
     end
-
-    return U
 end

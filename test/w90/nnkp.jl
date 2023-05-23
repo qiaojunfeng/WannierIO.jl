@@ -7,11 +7,12 @@
     # Convert type so YAML can write it.
     kpb_b = nnkp.kpb_b
     dict = Dict(
-        "recip_lattice" => mat2vec(nnkp.recip_lattice),
-        "kpoints" => mat2vec(nnkp.kpoints),
-        "kpb_k" => mat2vec(nnkp.kpb_k),
-        "kpb_b" => [mat2vec(kpb_b[:, :, ik]) for ik in axes(kpb_b, 3)],
+        "recip_lattice" => [[nnkp.recip_lattice[i,j] for i = 1:3] for j = 1:3],
+        "kpoints" => nnkp.kpoints,
+        "kpb_k" => nnkp.kpb_k,
+        "kpb_b" => nnkp.kpb_b
     )
+
 
     # YAML.write_file(String(@__DIR__) * "/test_data/nnkp.yaml", dict)
 

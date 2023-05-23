@@ -121,12 +121,12 @@ function read_win(filename::AbstractString; fix_inputs::Bool=true)
                 line = read_line_until_nonempty(; lower=false)
             end
             n_atoms = length(lines)
-            atoms_frac = zeros(Float64, 3, n_atoms)
+            atoms_frac = zeros(Vec3{Float64}, n_atoms)
             atom_labels = Vector{String}()
             for i in 1:n_atoms
                 l = split(lines[i])
                 push!(atom_labels, l[1])
-                atoms_frac[:, i] = parse_float.(l[2:end])
+                atoms_frac[i] = Vec3(parse_float.(l[2:end])...)
             end
 
             if iscart
@@ -157,10 +157,10 @@ function read_win(filename::AbstractString; fix_inputs::Bool=true)
             end
 
             n_kpts = length(lines)
-            kpoints = zeros(Float64, 3, n_kpts)
+            kpoints = zeros(Vec3{Float64}, n_kpts)
             for i in 1:n_kpts
                 # There might be weight at 4th column, but we don't use it.
-                kpoints[:, i] = parse_array(lines[i])[1:3]
+                kpoints[i] = Vec3(parse_array(lines[i])[1:3])
             end
             push!(params, :kpoints => kpoints)
         elseif occursin(r"begin\skpoint_path", line)
@@ -241,7 +241,7 @@ function _fix_win!(params::Dict)
 
     if haskey(params, :kpoints)
         n_kpts = prod(params[:mp_grid])
-        size(params[:kpoints]) != (3, n_kpts) && error("kpoints has wrong shape")
+        length(params[:kpoints]) != n_kpts && error("kpoints has wrong shape")
     else
         error("kpoints not found")
     end
@@ -256,7 +256,7 @@ function _fix_win!(params::Dict)
     if !haskey(params, :atoms_frac)
         !haskey(params, :atoms_cart) && error("both atoms_frac and atoms_cart are missing")
         atoms_cart = pop!(params, :atoms_cart)
-        atoms_frac = inv(params[:unit_cell_cart]) * atoms_cart
+        atoms_frac = map(a -> inv(params[:unit_cell_cart]) * a, atoms_cart)
         push!(params, :atoms_frac => atoms_frac)
     end
     return nothing
@@ -331,7 +331,7 @@ function write_win(filename::AbstractString; kwargs...)
     unit_cell_cart = pop!(params, :unit_cell_cart)
     atom_labels = pop!(params, :atom_labels)
     atoms_frac = pop!(params, :atoms_frac)
-    @assert length(atom_labels) == size(atoms_frac, 2)
+    @assert length(atom_labels) == length(atoms_frac)
     projections = pop!(params, :projections, nothing)
     kpoint_path = pop!(params, :kpoint_path, nothing)
     mp_grid = pop!(params, :mp_grid)
@@ -372,7 +372,7 @@ function write_win(filename::AbstractString; kwargs...)
         println(fp, "end unit_cell_cart\n")
 
         println(fp, "begin atoms_frac")
-        for (element, position) in zip(atom_labels, eachcol(atoms_frac))
+        for (element, position) in zip(atom_labels, atoms_frac)
             if isa(element, Symbol)
                 element = string(element)
             end
@@ -405,7 +405,7 @@ function write_win(filename::AbstractString; kwargs...)
         @printf fp "mp_grid = %d  %d  %d\n\n" mp_grid...
 
         println(fp, "begin kpoints")
-        for kpt in eachcol(kpoints)
+        for kpt in kpoints
             @printf fp "%14.8f  %14.8f  %14.8f\n" kpt...
         end
         println(fp, "end kpoints")

@@ -1,5 +1,5 @@
 using YAML
-
+using WannierIO: Mat3
 @testset "read win" begin
     yaml_path = joinpath(@__DIR__, "test_data/win.yaml")
     test_data = YAML.load_file(yaml_path)
@@ -41,8 +41,8 @@ using YAML
     end
 
     # 3) upon loading, convert nested vectors to arrays
-    test_data = preprocess_params(test_data)
-
+    # test_data = preprocess_params(test_data)
+    test_data["unit_cell_cart"] = Mat3([test_data["unit_cell_cart"][i][j] for j = 1:3, i=1:3])
     function test_kpoint_path()
         test_kpath = test_data["kpoint_path"]
         for (i, path) in enumerate(test_kpath)

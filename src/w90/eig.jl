@@ -15,7 +15,7 @@ function _reshape_eig(
     n_kpts = length(Set(idx_k))
     E = reshape(eig, (n_bands, n_kpts))
 
-    return E
+    return map(ik -> E[:, ik], 1:n_kpts)
 end
 
 """
@@ -82,14 +82,15 @@ function read_eig(filename::AbstractString)
         E = _read_eig_fmt(filename)
     end
 
-    n_bands, n_kpts = size(E)
+    n_bands = length(E[1])
+    n_kpts = length(E)
 
     # check that eigenvalues are in order
     # some times there are small noises
     round_digits(x) = round(x; digits=7)
     for ik in 1:n_kpts
-        if !issorted(E[:, ik]; by=round_digits)
-            @warn "Eigenvalues are not sorted at " ik E[:, ik]
+        if !issorted(E[ik]; by=round_digits)
+            @warn "Eigenvalues are not sorted at " ik E[ik]
         end
     end
 
@@ -103,13 +104,14 @@ end
 """
 Write plain text eig file.
 """
-function _write_eig_fmt(filename::AbstractString, E::AbstractMatrix{<:Real})
-    n_bands, n_kpts = size(E)
+function _write_eig_fmt(filename::AbstractString, E::AbstractVector)
+    n_bands = length(E[1])
+    n_kpts = length(E)
 
     open(filename, "w") do io
         for ik in 1:n_kpts
             for ib in 1:n_bands
-                @printf(io, "%5d%5d%18.12f\n", ib, ik, E[ib, ik])
+                @printf(io, "%5d%5d%18.12f\n", ib, ik, E[ik][ib])
             end
         end
     end
@@ -118,8 +120,9 @@ end
 """
 Write binary eig file.
 """
-function _write_eig_bin(filename::AbstractString, E::AbstractMatrix{<:Real})
-    n_bands, n_kpts = size(E)
+function _write_eig_bin(filename::AbstractString, E::AbstractVector)
+    n_bands = length(E[1])
+    n_kpts = length(E)
 
     # gfortran integer is 4 bytes
     Tint = Int32
@@ -129,7 +132,7 @@ function _write_eig_bin(filename::AbstractString, E::AbstractMatrix{<:Real})
             for ib in 1:n_bands
                 write(io, Tint(ib))
                 write(io, Tint(ik))
-                write(io, Float64(E[ib, ik]))
+                write(io, Float64(E[ik][ib]))
             end
         end
     end
@@ -146,7 +149,7 @@ Write `eig` file.
 # Keyword arguments
 - `binary`: if true write in Fortran binary format
 """
-function write_eig(filename::AbstractString, E::AbstractMatrix{<:Real}; binary::Bool=false)
+function write_eig(filename::AbstractString, E::AbstractVector; binary::Bool=false)
     if binary
         _write_eig_bin(filename, E)
     else
