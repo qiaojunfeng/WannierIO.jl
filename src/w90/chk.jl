@@ -29,7 +29,7 @@ struct Chk{T<:Real}
     # List of 3 int
     kgrid::Vec3{Int}
 
-    # 2D array, size: 3 x n_kpts, each column is a vector
+    # length-`n_kpts` vector
     kpoints::Vector{Vec3{T}}
 
     # n_bvecs:: Int
@@ -49,22 +49,22 @@ struct Chk{T<:Real}
     # (and the first few columns of Uᵈ are the frozen bands)
     # so directly multiplying eigenvalues e.g.
     # (Uᵈ * U)' * diag(eigenvalues) * (Uᵈ * U) is wrong!
-    # 2D bool array, size: n_bands x n_kpts
+    # length-`n_kpts` vector, each element is a length-`n_bands` vector of bool
     dis_bands::Vector{BitVector}
 
     # 1D int array, size: n_kpts
     # n_dimfrozen:: Vector{Int}
 
-    # u_matrix_opt, 3D array, size: num_bands x num_wann x num_kpts
+    # u_matrix_opt, length-`n_kpts` vector, each elment has size: num_bands x num_wann
     Uᵈ::Vector{Matrix{Complex{T}}}
 
-    # u_matrix, 3D array, size: num_wann x num_wann x num_kpts
+    # u_matrix, length-`n_kpts` vector, each element has size: num_wann x num_wann
     U::Vector{Matrix{Complex{T}}}
 
-    # m_matrix, 4D array, size:num_wann x num_wann x n_bvecs x num_kpts
+    # m_matrix, length-`n_kpts` vector, each element is a 3D array with size: num_wann x num_wann x n_bvecs
     M::Vector{Array{Complex{T},3}}
 
-    # wannier_centres, 2D array, size: 3 x num_wann
+    # wannier_centres, length-`num_wann` vector
     r::Vector{Vec3{T}}
 
     # wannier_spreads, 1D array, size: num_wann
@@ -199,7 +199,7 @@ function _read_chk_fmt(filename::AbstractString)
         # omega_invariant
         ΩI = parse(Float64, srline())
 
-        dis_bands = [falses(n_bands) for i = 1:n_kpts]
+        dis_bands = [falses(n_bands) for _ in 1:n_kpts]
         for ik in 1:n_kpts
             for ib in 1:n_bands
                 # 1 -> True, 0 -> False
@@ -214,7 +214,7 @@ function _read_chk_fmt(filename::AbstractString)
         end
 
         # u_matrix_opt
-        Uᵈ = [zeros(ComplexF64, n_bands, n_wann) for i = 1:n_kpts]
+        Uᵈ = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_bands
@@ -232,7 +232,7 @@ function _read_chk_fmt(filename::AbstractString)
     end
 
     # u_matrix
-    U = [zeros(ComplexF64, n_wann, n_wann) for i = 1:n_kpts]
+    U = [zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_kpts]
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_wann
@@ -243,7 +243,7 @@ function _read_chk_fmt(filename::AbstractString)
     end
 
     #  m_matrix
-    M = [zeros(ComplexF64, n_wann, n_wann, n_bvecs) for i = 1:n_kpts]
+    M = [zeros(ComplexF64, n_wann, n_wann, n_bvecs) for _ in 1:n_kpts]
     for ik in 1:n_kpts
         for inn in 1:n_bvecs
             for iw in 1:n_wann
@@ -340,8 +340,9 @@ function _read_chk_bin(filename::AbstractString)
         # omega_invariant
         ΩI = read(io, Float64)
 
+        # TODO check this
         t = parse_bool.(read(io, (Tint, n_bands, n_kpts)))
-        dis_bands = [t[:][i] for i =1:n_kpts]
+        dis_bands = [t[:][i] for i in 1:n_kpts]
 
         n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
@@ -352,7 +353,7 @@ function _read_chk_bin(filename::AbstractString)
         U_t = zeros(ComplexF64, n_bands, n_wann, n_kpts)
         read(io, U_t)
         Uᵈ = [U_t[:, :, ik] for ik in 1:n_kpts]
-        
+
     else
         ΩI = -1.0
         dis_bands = [falses(0)]
@@ -390,8 +391,8 @@ function _read_chk_bin(filename::AbstractString)
         ΩI,
         dis_bands,
         Uᵈ,
-        [U[:,:,ik]   for ik in 1:n_kpts],
-        [M[:,:,:,ik] for ik in 1:n_kpts],
+        [U[:, :, ik] for ik in 1:n_kpts],
+        [M[:, :, :, ik] for ik in 1:n_kpts],
         [Vec3(r[:, ir]) for ir in 1:n_wann],
         ω,
     )
@@ -562,7 +563,7 @@ function _write_chk_bin(filename::AbstractString, chk::Chk)
     write(io, Tint(n_kpts))
 
     write(io, Tint.(chk.kgrid))
-    kpoints = [chk.kpoints[ik][i] for i = 1:3, ik=1:length(chk.kpoints)]
+    kpoints = [chk.kpoints[ik][i] for i in 1:3, ik in 1:length(chk.kpoints)]
     write(io, Float64.(kpoints))
 
     write(io, Tint(n_bvecs))
@@ -580,22 +581,22 @@ function _write_chk_bin(filename::AbstractString, chk::Chk)
         write(io, Float64(chk.ΩI))
 
         # true -> 1, false -> 0
-        write(io, Tint.(cat(chk.dis_bands..., dims=2)))
+        write(io, Tint.(cat(chk.dis_bands...; dims=2)))
 
         write(io, Tint.(chk.n_dis))
 
         # u_matrix_opt
-        write(io, ComplexF64.(cat(chk.Uᵈ..., dims=3)))
+        write(io, ComplexF64.(cat(chk.Uᵈ...; dims=3)))
     end
 
     # u_matrix
-    write(io, ComplexF64.(cat(chk.U..., dims=3)))
+    write(io, ComplexF64.(cat(chk.U...; dims=3)))
 
     #  m_matrix
-    write(io, ComplexF64.(cat(chk.M..., dims=4)))
+    write(io, ComplexF64.(cat(chk.M...; dims=4)))
 
     # wannier_centres
-    r = [chk.r[ik][i] for i = 1:3, ik=1:length(chk.r)]
+    r = [chk.r[ik][i] for i in 1:3, ik in 1:length(chk.r)]
     write(io, Float64.(r))
 
     # wannier_spreads
@@ -639,7 +640,7 @@ function get_U(chk::Chk)
     end
 
     Uᵈ = get_Udis(chk)
-    
+
     return map(zip(Uᵈ, chk.U)) do u
         u[1] * u[2]
     end

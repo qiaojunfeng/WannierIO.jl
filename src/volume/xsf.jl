@@ -15,7 +15,7 @@ Read `xsf` file.
 - `primvec`: `3 * 3`, Å, each column is a primitive lattice vector
 - `convvec`: `3 * 3`, Å, each column is a conventional lattice vector
 - `atoms`: `n_atoms` String, atomic symbols or numbers
-- `atom_positions`: `3 * n_atoms`, Å, cartesian coordinates
+- `atom_positions`: length-`n_atoms` vector, Å, cartesian coordinates
 - `origin`: `3`, Å, origin of the grid
 - `span_vectors`: `3 * 3`, Å, each column is a spanning vector
 - `X`: `nx`, fractional coordinate of grid points along the first spanning vector
@@ -118,7 +118,7 @@ Write `xsf` file.
 
 # Arguments
 - `lattice`: `3 * 3`, Å, each column is a lattice vector
-- `atom_positions`: `3 * n_atoms`, fractional coordinates
+- `atom_positions`: length-`n_atoms` vector, fractional coordinates
 - `atom_numbers`: `n_atoms`, atomic numbers
 - `origin`: `3`, Å, origin of the grid
 - `span_vectors`: `3 * 3`, Å, each column is a spanning vector
@@ -134,6 +134,7 @@ function write_xsf(
     W::AbstractArray{T,3},
 ) where {T<:Real}
     n_atoms = length(atom_numbers)
+    length(atom_positions) == n_atoms || error("incompatible n_atoms")
     size(lattice) == (3, 3) || error("incompatible lattice")
     size(span_vectors) == (3, 3) || error("incompatible span_vectors")
 
