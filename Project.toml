@@ -13,6 +13,7 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+DelimitedFiles = "1"
 EzXML = "1.1.0"
 FortranFiles = "0.6.0"
 StaticArrays = "1.5.6"
