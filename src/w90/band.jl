@@ -109,7 +109,7 @@ Write `seedname_band.kpt` file.
 """
 function write_w90_band_kpt(
     filename::AbstractString,
-    kpoints::AbstractVector{Vec3{<:Real}},
+    kpoints::AbstractVector{<:Vec3{<:Real}},
     weights::Union{Nothing,AbstractVector{<:Real}}=nothing,
 )
     n_kpts = length(kpoints)
@@ -175,7 +175,7 @@ function write_w90_band_labelinfo(
     symm_idx::AbstractVector{<:Integer},
     symm_label::AbstractVector{<:AbstractString},
     x::AbstractVector{<:Real},
-    kpoints::AbstractVector{Vec3{<:Real}},
+    kpoints::AbstractVector{<:Vec3{<:Real}},
 )
     n_symm = length(symm_idx)
     n_symm == length(symm_label) || error("symm_idx and symm_label must be same length")
