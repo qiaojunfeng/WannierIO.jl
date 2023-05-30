@@ -342,9 +342,9 @@ function _read_chk_bin(filename::AbstractString)
 
         # TODO check this
         t = parse_bool.(read(io, (Tint, n_bands, n_kpts)))
-        dis_bands = [t[:][i] for i in 1:n_kpts]
-
+        dis_bands = [t[:, i] for i =1:n_kpts]
         n_dis = zeros(Int, n_kpts)
+        n_dis .= read(io, (Tint, n_kpts))
         for ik in 1:n_kpts
             @assert n_dis[ik] == count(dis_bands[ik])
         end
