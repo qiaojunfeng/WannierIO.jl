@@ -61,8 +61,9 @@ struct Chk{T<:Real}
     # u_matrix, length-`n_kpts` vector, each element has size: num_wann x num_wann
     U::Vector{Matrix{Complex{T}}}
 
-    # m_matrix, length-`n_kpts` vector, each element is a 3D array with size: num_wann x num_wann x n_bvecs
-    M::Vector{Array{Complex{T},3}}
+    # m_matrix, length-`n_kpts` vector of length-`n_bvecs` vector, each element is
+    # matrix with size: num_wann x num_wann
+    M::Vector{Vector{Matrix{Complex{T}}}}
 
     # wannier_centres, length-`num_wann` vector
     r::Vector{Vec3{T}}
@@ -82,20 +83,20 @@ end
 function Chk(
     header::String,
     exclude_bands::Vector{Int},
-    lattice::Mat3{T},
-    recip_lattice::Mat3{T},
+    lattice::Mat3,
+    recip_lattice::Mat3,
     kgrid::Vec3{Int},
-    kpoints::Vector{Vec3{T}},
+    kpoints::Vector,
     checkpoint::String,
     have_disentangled::Bool,
-    ΩI::T,
+    ΩI::Real,
     dis_bands::Vector{BitVector},
     Uᵈ::Vector,
     U::Vector,
-    M::Vector{Array{Complex{T},3}},
-    r::Vector{Vec3{T}},
-    ω::Vector{T},
-) where {T<:Real}
+    M::Vector,
+    r::Vector,
+    ω::Vector,
+)
     if have_disentangled
         n_bands = size(Uᵈ[1], 1)
     else
@@ -103,11 +104,8 @@ function Chk(
     end
 
     n_exclude_bands = length(exclude_bands)
-
     n_kpts = length(M)
-
-    n_bvecs = size(M[1], 3)
-
+    n_bvecs = length(M[1])
     n_wann = size(U[1], 1)
 
     if have_disentangled
@@ -243,13 +241,13 @@ function _read_chk_fmt(filename::AbstractString)
     end
 
     #  m_matrix
-    M = [zeros(ComplexF64, n_wann, n_wann, n_bvecs) for _ in 1:n_kpts]
+    M = [[zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_bvecs] for _ in 1:n_kpts]
     for ik in 1:n_kpts
         for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
                     vals = parse.(Float64, split(srline()))
-                    M[ik][ib, iw, inn] = vals[1] + im * vals[2]
+                    M[ik][inn][ib, iw] = vals[1] + im * vals[2]
                 end
             end
         end
@@ -391,7 +389,7 @@ function _read_chk_bin(filename::AbstractString)
         dis_bands,
         Uᵈ,
         [U[:, :, ik] for ik in 1:n_kpts],
-        [M[:, :, :, ik] for ik in 1:n_kpts],
+        [[M[:, :, ib, ik] for ib in 1:n_bvecs] for ik in 1:n_kpts],
         [Vec3(r[:, iw]) for iw in 1:n_wann],
         ω,
     )
@@ -424,7 +422,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
     n_kpts = chk.n_kpts
     n_bvecs = chk.n_bvecs
 
-    # Read formatted chk file
+    # Write formatted chk file
     @printf(io, "%33s\n", chk.header)
 
     @printf(io, "%d\n", n_bands)
@@ -510,7 +508,7 @@ function _write_chk_fmt(filename::AbstractString, chk::Chk)
         for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
-                    v = chk.M[ik][ib, iw, inn]
+                    v = chk.M[ik][inn][ib, iw]
                     @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
@@ -592,7 +590,13 @@ function _write_chk_bin(filename::AbstractString, chk::Chk)
     write(io, ComplexF64.(cat(chk.U...; dims=3)))
 
     #  m_matrix
-    write(io, ComplexF64.(cat(chk.M...; dims=4)))
+    M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
+    for ik in 1:n_kpts
+        for inn in 1:n_bvecs
+            M[:, :, inn, ik] = chk.M[ik][inn]
+        end
+    end
+    write(io, M)
 
     # wannier_centres
     r = hcat(chk.r...)

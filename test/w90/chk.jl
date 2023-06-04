@@ -3,6 +3,8 @@
 
     @test chk.n_wann == 4
     @test chk.n_bands == 4
+    @test chk.n_kpts == 8
+    @test chk.n_bvecs == 8
 
     # make sure we read the lattice as column-major
     win = read_win(joinpath(FIXTURE_PATH, "si2.win"))
@@ -25,7 +27,7 @@ end
 
     @test chk ≈ chk1
 
-    tmpfile = tempname(; cleanup=false)#cleanup=true)
+    tmpfile = tempname(; cleanup=true)
     write_chk(tmpfile, chk; binary=true)
     chk2 = read_chk(tmpfile)
 
