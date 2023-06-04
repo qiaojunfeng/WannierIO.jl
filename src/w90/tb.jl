@@ -1,7 +1,7 @@
 export read_w90_tbdat, read_w90_wsvec
 
 """
-    read_w90_tbdat(filename::AbstractString)
+    read_w90_tbdat(filename)
 
 Read `seedname_tb.dat`.
 
@@ -42,29 +42,28 @@ function read_w90_tbdat(filename::AbstractString)
     end
 
     R = zeros(Vec3{Int}, n_rvecs)
-    H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for i = 1:n_rvecs]
-    
+    H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+
     for ir in 1:n_rvecs
         readline(io)  # empty line
         R[ir] = Vec3(parse.(Int, split(strip(readline(io))))...)
-        
+
         for n in 1:n_wann
             for m in 1:n_wann
-                
                 line = split(strip(readline(io)))
                 @assert m == parse(Int, line[1]) line
                 @assert n == parse(Int, line[2]) line
-                
+
                 H[ir][m, n] = parse(Float64, line[3]) + 1im * parse(Float64, line[4])
             end
         end
     end
 
     # WF position operator
-    rx = [Matrix{ComplexF64}(undef, n_wann, n_wann) for ir = 1:n_rvecs]
-    ry = [Matrix{ComplexF64}(undef, n_wann, n_wann) for ir = 1:n_rvecs]
-    rz = [Matrix{ComplexF64}(undef, n_wann, n_wann) for ir = 1:n_rvecs]
-    
+    rx = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+    ry = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+    rz = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+
     for ir in 1:n_rvecs
         readline(io)  # empty line
         @assert R[ir] == Vec3(parse.(Int, split(strip(readline(io))))...)
@@ -73,7 +72,7 @@ function read_w90_tbdat(filename::AbstractString)
                 line = split(strip(readline(io)))
                 @assert m == parse(Int, line[1])
                 @assert n == parse(Int, line[2])
-                
+
                 f = parse.(Float64, line[3:8])
                 rx[ir][m, n] = f[1] + 1im * f[2]
                 ry[ir][m, n] = f[3] + 1im * f[4]
@@ -83,7 +82,7 @@ function read_w90_tbdat(filename::AbstractString)
     end
     close(io)
 
-    return (lattice=lattice, R=R, N=N, H=H, Rx=rx, Ry=ry, Rz=rz)
+    return (; lattice, R, N, H, rx, ry, rz)
 end
 
 """
@@ -109,6 +108,8 @@ function read_w90_wsvec(filename::AbstractString)
 
     Rmn = Vector{Vector{Int}}()
     Nᵀ = Vector{Int}()
+    # T[iR][iT] is Vec3 for Tvector, where iR and iT are the indices
+    # of Rvector and Tvector degeneracy, respectively.
     T = Vector{Vector{Vec3{Int}}}()
 
     while !eof(io)
@@ -150,8 +151,10 @@ function read_w90_wsvec(filename::AbstractString)
     end
 
     # reorder T, Nᵀ
-    T1 = [Matrix{Vector{Vec3{Int}}}(undef, n_wann, n_wann) for i = 1:n_rvecs]
-    N1 = [Matrix{Int}(undef, n_wann, n_wann) for i = 1:n_rvecs]
+    # Ti[iR][m,n][iT] is Vec3 for Tvector
+    T1 = [Matrix{Vector{Vec3{Int}}}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+    # N1[iR][m,n] is Int for Tvector degeneracy
+    N1 = [Matrix{Int}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
     ir = 1
     for (i, rmn) in enumerate(Rmn)
         m, n = rmn[(end - 1):end]

@@ -1,14 +1,3 @@
-function Base.isapprox(a::WannierIO.Chk, b::WannierIO.Chk)
-    for f in fieldnames(typeof(a))
-        if getfield(a, f) isa String
-            getfield(a, f) == getfield(b, f) || return false
-        else
-            getfield(a, f) ≈ getfield(b, f) || return false
-        end
-    end
-    return true
-end
-
 @testset "read chk" begin
     chk = read_chk(joinpath(FIXTURE_PATH, "formatted/si2.chk.fmt"))
 
@@ -42,3 +31,20 @@ end
 
     @test chk ≈ chk2
 end
+
+# TODO enable this when artifacts is done
+# using LazyArtifacts
+
+# @testset "get_Udis" begin
+#     chk = read_chk(joinpath(artifact"Si2", "si2.chk"))
+#     Udis = get_Udis(chk)
+#     Udis_ref = read_amn(joinpath(artifact"Si2", "reference", "si2.chk_Udis.amn"))
+#     @test Udis ≈ Udis_ref
+# end
+
+# @testset "get_U" begin
+#     chk = read_chk(joinpath(artifact"Si2", "si2.chk"))
+#     U = get_U(chk)
+#     U_ref = read_amn(joinpath(artifact"Si2", "reference", "si2.chk_U.amn"))
+#     @test U ≈ U_ref
+# end

@@ -10,8 +10,8 @@ Parse `wout` file.
 # Return
 - `lattice`: in Å, each column is a lattice vector
 - `atom_labels`: atomic symbols
-- `atom_positions`: in fractional coordinates, each column is a coordinate vector
-- `centers`: WF centers in Å, each column is a WF center vector
+- `atom_positions`: in fractional coordinates
+- `centers`: WF centers in Å
 - `spreads`: WF spreads in Å^2
 """
 function read_wout(filename::AbstractString)

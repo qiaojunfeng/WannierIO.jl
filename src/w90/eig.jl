@@ -71,7 +71,7 @@ end
 Read the `eig` file.
 
 # Return
-- `E`: a `n_bands * n_kpts` array
+- `E`: a lenth-`n_kpts` vector, each element is a length-`n_bands` vector
 """
 function read_eig(filename::AbstractString)
     @info "Reading $filename"
@@ -144,7 +144,7 @@ end
 Write `eig` file.
 
 # Arguments
-- `E`: `n_bands * n_kpts`
+- `E`: a lenth-`n_kpts` vector, each element is a length-`n_bands` vector
 
 # Keyword arguments
 - `binary`: if true write in Fortran binary format

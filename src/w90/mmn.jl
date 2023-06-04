@@ -1,5 +1,4 @@
-using Printf: @printf, @sprintf
-using Dates: now
+using Printf: @printf
 
 export read_mmn, write_mmn
 
@@ -15,10 +14,10 @@ function _read_mmn_fmt(filename::AbstractString)
     n_bands, n_kpts, n_bvecs = map(x -> parse(Int64, x), split(line))
 
     # overlap matrix
-    M = [zeros(ComplexF64, n_bands, n_bands, n_bvecs) for i in 1:n_kpts]
+    M = [zeros(ComplexF64, n_bands, n_bands, n_bvecs) for _ in 1:n_kpts]
     # for each point, list of neighbors, (K) representation
-    kpb_k = [zeros(Int, n_bvecs) for i in 1:n_kpts]
-    kpb_b = [zeros(Vec3{Int}, n_bvecs) for i in 1:n_kpts]
+    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+    kpb_b = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
 
     while !eof(io)
         for ib in 1:n_bvecs
@@ -38,7 +37,7 @@ function _read_mmn_fmt(filename::AbstractString)
         end
     end
 
-    # @assert !any(x->!any(isnan.(M[x])), 1:length(M))
+    @assert all(x -> all((!isnan).(M[x])), 1:length(M))
     close(io)
 
     return header, M, kpb_k, kpb_b
@@ -62,10 +61,10 @@ function _read_mmn_bin(filename::AbstractString)
     n_bvecs = read(io, Tint)
 
     # overlap matrix
-    M = [zeros(ComplexF64, n_bands, n_bands, n_bvecs) for i in 1:n_kpts]
+    M = [zeros(ComplexF64, n_bands, n_bands, n_bvecs) for _ in 1:n_kpts]
     # for each point, list of neighbors, (K) representation
-    kpb_k = [zeros(Int, n_bvecs) for i in 1:n_kpts]
-    kpb_b = [zeros(Vec3{Int}, n_bvecs) for i in 1:n_kpts]
+    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+    kpb_b = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
 
     while !eof(io)
         for ib in 1:n_bvecs
@@ -82,7 +81,7 @@ function _read_mmn_bin(filename::AbstractString)
         end
     end
 
-    @assert !any(x->any(isnan.(x)), M)
+    @assert all(x -> all((!isnan).(M[x])), 1:length(M))
     close(io)
 
     return header, M, kpb_k, kpb_b
@@ -93,7 +92,10 @@ end
 
 Read `mmn` file.
 
-Returns a `n_bands * n_bands * n_bvecs * n_kpts` array.
+# Return
+- `M`: length-`n_kpts` vector of `n_bands * n_bands * n_bvecs` arrays
+- `kpb_k`: length-`n_kpts` vector of length-`n_bvecs` vector of integers
+- `kpb_b`: length-`n_kpts` vector of length-`n_bvecs` vector of `Vec3{Int}` for bvectors
 """
 function read_mmn(filename::AbstractString)
     @info "Reading mmn file: $filename"
@@ -104,8 +106,8 @@ function read_mmn(filename::AbstractString)
         header, M, kpb_k, kpb_b = _read_mmn_fmt(filename)
     end
 
-     n_kpts = length(M)
-     n_bands, _, n_bvecs = size(M[1])
+    n_kpts = length(M)
+    n_bands, _, n_bvecs = size(M[1])
     println("  header  = ", header)
     println("  n_bands = ", n_bands)
     println("  n_bvecs = ", n_bvecs)
@@ -120,9 +122,9 @@ Write plain text mmn file.
 """
 function _write_mmn_fmt(
     filename::AbstractString,
-    M,
-    kpb_k,
-    kpb_b,
+    M::AbstractVector,
+    kpb_k::AbstractVector,
+    kpb_b::AbstractVector,
     header::AbstractString;
 )
     n_bands, _, n_bvecs = size(M[1])
@@ -154,9 +156,9 @@ Write binary mmn file.
 """
 function _write_mmn_bin(
     filename::AbstractString,
-    M,
-    kpb_k,
-    kpb_b,
+    M::AbstractVector,
+    kpb_k::AbstractVector,
+    kpb_b::AbstractVector,
     header::AbstractString;
 )
     n_bands, _, n_bvecs = size(M[1])
@@ -203,9 +205,9 @@ Write `mmn` file.
 
 # Arguments
 - `filename`: output file name
-- `M`: `n_bands * n_bands * n_bvecs * n_kpts` array
-- `kpb_k`: `n_bvecs * n_kpts` array
-- `kpb_b`: `3 * n_bvecs * n_kpts` array
+- `M`: length-`n_kpts` vector of `n_bands * n_bands * n_bvecs` arrays
+- `kpb_k`: length-`n_kpts` vector of length-`n_bvecs` vector of integers
+- `kpb_b`: length-`n_kpts` vector of length-`n_bvecs` vector of `Vec3{Int}` for bvectors
 - `header`: header string
 
 # Keyword arguments
@@ -213,15 +215,16 @@ Write `mmn` file.
 """
 function write_mmn(
     filename::AbstractString,
-    M,
-    kpb_k,
-    kpb_b,
-    header::AbstractString;
+    M::AbstractVector,
+    kpb_k::AbstractVector,
+    kpb_b::AbstractVector,
+    header::AbstractString=default_header();
     binary::Bool=false,
 )
     n_bands, _, n_bvecs = size(M[1])
     n_kpts = length(M)
-    n_bands != size(M[1], 2) && error("M must be n_bands x n_bands x n_bvecs x n_kpts")
+    n_bands != size(M[1], 2) &&
+        error("M at each kpoint must be n_bands x n_bands x n_bvecs")
 
     (length(kpb_k), length(kpb_k[1])) != (n_kpts, n_bvecs) && error("kpb_k has wrong size")
     (length(kpb_b), length(kpb_b[1])) != (n_kpts, n_bvecs) && error("kpb_b has wrong size")
@@ -236,31 +239,4 @@ function write_mmn(
     println()
 
     return nothing
-end
-
-"""
-    write_mmn(filename, M::Array{ComplexF64,4}, kpb_k, kpb_b; binary=false)
-
-Write `mmn` file.
-
-Default header is "Created by WannierIO.jl CURRENT_DATE".
-
-# Arguments
-- `filename`: output file name
-- `M`: `n_bands * n_bands * n_bvecs * n_kpts` array
-- `kpb_k`: `n_bvecs * n_kpts` array
-- `kpb_b`: `3 * n_bvecs * n_kpts` array
-
-# Keyword arguments
-- `binary`: if true write in Fortran binary format
-"""
-function write_mmn(
-    filename::AbstractString,
-    M::AbstractVector,
-    kpb_k::AbstractVector,
-    kpb_b::AbstractVector;
-    binary::Bool=false,
-)
-    header = @sprintf "Created by WannierIO.jl %s" string(now())
-    return write_mmn(filename, M, kpb_k, kpb_b, header; binary=binary)
 end
