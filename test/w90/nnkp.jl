@@ -1,23 +1,16 @@
 
 @testset "read nnkp" begin
-    test_data = YAML.load_file(String(@__DIR__) * "/test_data/nnkp.yaml")
+    toml_path = joinpath(@__DIR__, "test_data/nnkp.toml")
 
     nnkp = read_nnkp(joinpath(FIXTURE_PATH, "si2.nnkp"))
 
-    # Convert type so YAML can write it.
-    kpb_b = nnkp.kpb_b
-    dict = Dict(
-        "recip_lattice" => mat2vec(nnkp.recip_lattice),
-        "kpoints" => mat2vec(nnkp.kpoints),
-        "kpb_k" => mat2vec(nnkp.kpb_k),
-        "kpb_b" => [mat2vec(kpb_b[:, :, ik]) for ik in axes(kpb_b, 3)],
-    )
+    WRITE_TOML = false
+    WRITE_TOML && WannierIO._write_nnkp_toml(toml_path; nnkp...)
 
-    # YAML.write_file(String(@__DIR__) * "/test_data/nnkp.yaml", dict)
+    test_data = WannierIO._read_nnkp_toml(toml_path)
 
-    for (key, value) in dict
-        @test value ≈ test_data[key]
-    end
+    # make their keys unordered for comparison
+    @test pairs(nnkp) == pairs(test_data)
 end
 
 @testset "read/write nnkp" begin
@@ -31,4 +24,16 @@ end
     @test nnkp.kpoints ≈ nnkp2.kpoints
     @test nnkp.kpb_k ≈ nnkp2.kpb_k
     @test nnkp.kpb_b ≈ nnkp2.kpb_b
+end
+
+@testset "read/write nnkp toml" begin
+    toml_path = joinpath(@__DIR__, "test_data/nnkp.toml")
+    nnkp = WannierIO._read_nnkp_toml(toml_path)
+
+    tmpfile = tempname(; cleanup=true)
+    WannierIO._write_nnkp_toml(tmpfile; nnkp...)
+
+    nnkp2 = WannierIO._read_nnkp_toml(tmpfile)
+
+    @test nnkp == nnkp2
 end

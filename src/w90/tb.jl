@@ -1,7 +1,7 @@
 export read_w90_tbdat, read_w90_wsvec
 
 """
-    read_w90_tbdat(filename::AbstractString)
+    read_w90_tbdat(filename)
 
 Read `seedname_tb.dat`.
 
@@ -41,41 +41,48 @@ function read_w90_tbdat(filename::AbstractString)
         N[s:e] = parse.(Int, split(strip(readline(io))))
     end
 
-    R = zeros(Int, 3, n_rvecs)
-    H = Array{ComplexF64}(undef, n_wann, n_wann, n_rvecs)
+    R = zeros(Vec3{Int}, n_rvecs)
+    H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+
     for ir in 1:n_rvecs
         readline(io)  # empty line
-        R[:, ir] = parse.(Int, split(strip(readline(io))))
+        R[ir] = Vec3(parse.(Int, split(strip(readline(io))))...)
+
         for n in 1:n_wann
             for m in 1:n_wann
                 line = split(strip(readline(io)))
                 @assert m == parse(Int, line[1]) line
                 @assert n == parse(Int, line[2]) line
-                H[m, n, ir] = parse(Float64, line[3]) + im * parse(Float64, line[4])
+
+                H[ir][m, n] = parse(Float64, line[3]) + 1im * parse(Float64, line[4])
             end
         end
     end
 
     # WF position operator
-    r = Array{ComplexF64}(undef, 3, n_wann, n_wann, n_rvecs)
+    rx = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+    ry = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+    rz = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+
     for ir in 1:n_rvecs
         readline(io)  # empty line
-        @assert R[:, ir] == parse.(Int, split(strip(readline(io))))
+        @assert R[ir] == Vec3(parse.(Int, split(strip(readline(io))))...)
         for n in 1:n_wann
             for m in 1:n_wann
                 line = split(strip(readline(io)))
                 @assert m == parse(Int, line[1])
                 @assert n == parse(Int, line[2])
+
                 f = parse.(Float64, line[3:8])
-                r[1, m, n, ir] = f[1] + im * f[2]
-                r[2, m, n, ir] = f[3] + im * f[4]
-                r[3, m, n, ir] = f[5] + im * f[6]
+                rx[ir][m, n] = f[1] + 1im * f[2]
+                ry[ir][m, n] = f[3] + 1im * f[4]
+                rz[ir][m, n] = f[5] + 1im * f[6]
             end
         end
     end
     close(io)
 
-    return (; lattice, R, N, H, r)
+    return (; lattice, R, N, H, rx, ry, rz)
 end
 
 """
@@ -101,7 +108,9 @@ function read_w90_wsvec(filename::AbstractString)
 
     Rmn = Vector{Vector{Int}}()
     Nᵀ = Vector{Int}()
-    T = Vector{Matrix{Int}}()
+    # T[iR][iT] is Vec3 for Tvector, where iR and iT are the indices
+    # of Rvector and Tvector degeneracy, respectively.
+    T = Vector{Vector{Vec3{Int}}}()
 
     while !eof(io)
         line = strip(readline(io))
@@ -112,11 +121,10 @@ function read_w90_wsvec(filename::AbstractString)
         push!(Rmn, [Rx, Ry, Rz, m, n])
         n = parse(Int, strip(readline(io)))
         push!(Nᵀ, n)
-        t = zeros(Int, 3, n)
+        t = zeros(Vec3{Int}, n)
         for it in 1:n
             line = strip(readline(io))
-            Tx, Ty, Tz = parse.(Int, split(line))
-            t[:, it] = [Tx, Ty, Tz]
+            t[it] = Vec3(parse.(Int, split(line))...)
         end
         push!(T, t)
     end
@@ -126,13 +134,13 @@ function read_w90_wsvec(filename::AbstractString)
     n_wann = length(unique(n))
     n_rvecs = Int(length(Rmn)//n_wann^2)
 
-    R = zeros(Int, 3, n_rvecs)
+    R = zeros(Vec3{Int}, n_rvecs)
     N = zeros(Int, n_rvecs)
     ir = 1
     for rmn in Rmn
         m, n = rmn[4:5]
         if m == 1 && n == 1
-            R[:, ir] = rmn[1:3]
+            R[ir] = Vec3(rmn[1:3])
             N[ir] = -1  # degeneracy is stored in tb.dat
             ir += 1
         end
@@ -143,13 +151,15 @@ function read_w90_wsvec(filename::AbstractString)
     end
 
     # reorder T, Nᵀ
-    T1 = Array{Matrix{Int},3}(undef, n_wann, n_wann, n_rvecs)
-    N1 = Array{Int,3}(undef, n_wann, n_wann, n_rvecs)
+    # Ti[iR][m,n][iT] is Vec3 for Tvector
+    T1 = [Matrix{Vector{Vec3{Int}}}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+    # N1[iR][m,n] is Int for Tvector degeneracy
+    N1 = [Matrix{Int}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
     ir = 1
     for (i, rmn) in enumerate(Rmn)
         m, n = rmn[(end - 1):end]
-        T1[m, n, ir] = T[i]
-        N1[m, n, ir] = Nᵀ[i]
+        T1[ir][m, n] = T[i]
+        N1[ir][m, n] = Nᵀ[i]
         if m == n_wann && n == n_wann
             ir += 1
         end

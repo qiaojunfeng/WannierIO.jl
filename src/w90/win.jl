@@ -1,14 +1,15 @@
 using Printf: @printf, @sprintf
+using TOML
 
 export read_win, write_win
 
 """
     read_win(filename; fix_inputs=true)
 
-Read the input file of `Wannier90`.
+Read the input file of `wannier90`.
 
 # Arguments
-- `filename::AbstractString`: The name of the input file.
+- `filename`: The name of the input file.
 
 # Keyword Arguments
 - `fix_inputs`: sanity check and fix the input parameters, e.g., set
@@ -121,12 +122,12 @@ function read_win(filename::AbstractString; fix_inputs::Bool=true)
                 line = read_line_until_nonempty(; lower=false)
             end
             n_atoms = length(lines)
-            atoms_frac = zeros(Float64, 3, n_atoms)
-            atom_labels = Vector{String}()
+            atoms_frac = SymbolVec3[]
             for i in 1:n_atoms
                 l = split(lines[i])
-                push!(atom_labels, l[1])
-                atoms_frac[:, i] = parse_float.(l[2:end])
+                symbol = Symbol(l[1])
+                frac = Vec3(parse_float.(l[2:end])...)
+                push!(atoms_frac, SymbolVec3(symbol, frac))
             end
 
             if iscart
@@ -138,7 +139,6 @@ function read_win(filename::AbstractString; fix_inputs::Bool=true)
             else
                 push!(params, :atoms_frac => atoms_frac)
             end
-            push!(params, :atom_labels => atom_labels)
         elseif occursin(r"begin\s+projections", line)
             projections = Vector{String}()
             line = read_line_until_nonempty(; lower=false)
@@ -157,15 +157,14 @@ function read_win(filename::AbstractString; fix_inputs::Bool=true)
             end
 
             n_kpts = length(lines)
-            kpoints = zeros(Float64, 3, n_kpts)
+            kpoints = zeros(Vec3{Float64}, n_kpts)
             for i in 1:n_kpts
                 # There might be weight at 4th column, but we don't use it.
-                kpoints[:, i] = parse_array(lines[i])[1:3]
+                kpoints[i] = Vec3(parse_array(lines[i])[1:3])
             end
             push!(params, :kpoints => kpoints)
         elseif occursin(r"begin\skpoint_path", line)
-            KV = Pair{Symbol,Vec3{Float64}}
-            kpoint_path = Vector{Vector{KV}}()
+            kpoint_path = Vector{Vector{SymbolVec3}}()
 
             # allow uppercase
             line = read_line_until_nonempty(; lower=false)
@@ -241,7 +240,7 @@ function _fix_win!(params::Dict)
 
     if haskey(params, :kpoints)
         n_kpts = prod(params[:mp_grid])
-        size(params[:kpoints]) != (3, n_kpts) && error("kpoints has wrong shape")
+        length(params[:kpoints]) != n_kpts && error("kpoints has wrong shape")
     else
         error("kpoints not found")
     end
@@ -256,22 +255,21 @@ function _fix_win!(params::Dict)
     if !haskey(params, :atoms_frac)
         !haskey(params, :atoms_cart) && error("both atoms_frac and atoms_cart are missing")
         atoms_cart = pop!(params, :atoms_cart)
-        atoms_frac = inv(params[:unit_cell_cart]) * atoms_cart
+        inv_cell = inv(params[:unit_cell_cart])
+        atoms_frac = map(atoms_cart) do (symbol, cart)
+            SymbolVec3(symbol, inv_cell * cart)
+        end
         push!(params, :atoms_frac => atoms_frac)
     end
     return nothing
 end
 
 """
-    write_win(filename::AbstractString; kwargs...)
+    write_win(filename; kwargs...)
 
-Write input parameters into a Wannier90 `win` file.
+Write input parameters into a wannier90 `win` file.
 
-The input parameters are keyword arguments, with key names same as that of
-Wannier90. The only exception is `atoms_frac`, which contains both atom
-labels and fractional coordinates; however, here it is split into two keywords:
-`atom_labels` which is a vector of element names, and `atoms_frac` which is
-a matrix.
+The input parameters are keyword arguments, with key names same as that of wannier90.
 
 # Examples
 
@@ -288,13 +286,12 @@ write_win(
         2.71527  0.0      2.71527
         2.71527  2.71527  0.0
     ],
-    # both [:Si, :Si] and ["Si", "Si"] are allowed
-    atom_labels = ["Si", "Si"],
-    # atoms_frac is a matrix, its columns are the fractional coordinates
+    # atoms_frac is a vector of pairs of atom_label and fractional coordinates
     atoms_frac=[
-        0.0  0.25
-        0.0  0.25
-        0.0  0.25
+        :Si => [0.0, 0.0, 0.0],
+        :Si => [0.25, 0.25, 0.25],
+        # both `:Si` and `"Si"` are allowed
+        # "Si" => [0.25, 0.25, 0.25],
     ],
     # each element in projections will be written as a line in the win file
     projections=[
@@ -307,9 +304,14 @@ write_win(
     mp_grid=[2, 2, 2],
     # kpoints is a matrix, its columns are the fractional coordinates
     kpoints=[
-        0.0  0.0  0.0  0.0  0.5  0.5  0.5  0.5
-        0.0  0.0  0.5  0.5  0.0  0.0  0.5  0.5
-        0.0  0.5  0.0  0.5  0.0  0.5  0.0  0.5
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.5],
+        [0.0, 0.5, 0.0],
+        [0.0, 0.5, 0.5],
+        [0.5, 0.0, 0.0],
+        [0.5, 0.0, 0.5],
+        [0.5, 0.5, 0.0],
+        [0.5, 0.5, 0.5],
     ],
     # additional parameters can be passed as keyword arguments, e.g.,
     num_iter=500,
@@ -317,9 +319,7 @@ write_win(
 ```
 """
 function write_win(filename::AbstractString; kwargs...)
-    required_keys = [
-        :num_wann, :unit_cell_cart, :atom_labels, :atoms_frac, :mp_grid, :kpoints
-    ]
+    required_keys = [:num_wann, :unit_cell_cart, :atoms_frac, :mp_grid, :kpoints]
     for k in required_keys
         haskey(kwargs, k) || error("Required parameter $k not found")
     end
@@ -329,9 +329,7 @@ function write_win(filename::AbstractString; kwargs...)
     num_wann = pop!(params, :num_wann)
     num_bands = pop!(params, :num_bands, nothing)
     unit_cell_cart = pop!(params, :unit_cell_cart)
-    atom_labels = pop!(params, :atom_labels)
     atoms_frac = pop!(params, :atoms_frac)
-    @assert length(atom_labels) == size(atoms_frac, 2)
     projections = pop!(params, :projections, nothing)
     kpoint_path = pop!(params, :kpoint_path, nothing)
     mp_grid = pop!(params, :mp_grid)
@@ -372,7 +370,7 @@ function write_win(filename::AbstractString; kwargs...)
         println(fp, "end unit_cell_cart\n")
 
         println(fp, "begin atoms_frac")
-        for (element, position) in zip(atom_labels, eachcol(atoms_frac))
+        for (element, position) in atoms_frac
             if isa(element, Symbol)
                 element = string(element)
             end
@@ -405,10 +403,75 @@ function write_win(filename::AbstractString; kwargs...)
         @printf fp "mp_grid = %d  %d  %d\n\n" mp_grid...
 
         println(fp, "begin kpoints")
-        for kpt in eachcol(kpoints)
+        for kpt in kpoints
             @printf fp "%14.8f  %14.8f  %14.8f\n" kpt...
         end
         println(fp, "end kpoints")
     end
     return nothing
+end
+
+"""
+Read a win file in TOML format.
+
+Used only in tests.
+"""
+function _read_win_toml(filename::AbstractString; fix_inputs::Bool=true)
+    win = TOML.parsefile(filename)
+
+    # I store atoms_frac and kpoint_path as Vector of SymbolVec3.
+    # However, TOML.print does not accept Pair (specifically, SymbolVec3),
+    # instead I convert SymbolVec3 to Dict in _write_win_toml.
+    # On reading I convert it back.
+    function convert_SymbolVec3(d::Dict)
+        # SymbolVec3 are converted to Dict of length 1 when writing
+        if length(d) == 1
+            k, v = only(d)
+            isa(k, String) && isa(v, Vector{<:Real}) && return SymbolVec3(k, v)
+        end
+
+        # Need to do the conversion recursively
+        for (k, v) in pairs(d)
+            if isa(v, Dict) || isa(v, Vector)
+                d[k] = convert_SymbolVec3(v)
+            end
+        end
+        return d
+    end
+    function convert_SymbolVec3(v::Vector)
+        if isa(v, Vector{<:Dict}) || isa(v, Vector{<:Vector})
+            return map(convert_SymbolVec3, v)
+        end
+        return v
+    end
+    win = convert_SymbolVec3(win)
+
+    # Convert keys to Symbol
+    win = Dict(Symbol(k) => v for (k, v) in pairs(win))
+
+    fix_inputs && _fix_win!(win)
+
+    # Vector{Vector} -> Mat3
+    if haskey(win, :unit_cell_cart)
+        win[:unit_cell_cart] = Mat3(win[:unit_cell_cart])
+    end
+
+    return NamedTuple(win)
+end
+
+"""
+Write a win file in TOML format.
+
+Used only in tests.
+Currently the output file is not formatted nicely.
+"""
+function _write_win_toml(filename::AbstractString; kwargs...)
+    open(filename, "w") do io
+        TOML.print(io, kwargs) do x
+            x isa Pair && return Dict(x)
+            x isa Symbol && return String(x)
+            x isa WannierIO.Mat3 && return eachcol(x)
+            error("unhandled type $(typeof(x))")
+        end
+    end
 end

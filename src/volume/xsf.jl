@@ -15,7 +15,7 @@ Read `xsf` file.
 - `primvec`: `3 * 3`, Å, each column is a primitive lattice vector
 - `convvec`: `3 * 3`, Å, each column is a conventional lattice vector
 - `atoms`: `n_atoms` String, atomic symbols or numbers
-- `atom_positions`: `3 * n_atoms`, Å, cartesian coordinates
+- `atom_positions`: length-`n_atoms` vector, Å, cartesian coordinates
 - `origin`: `3`, Å, origin of the grid
 - `span_vectors`: `3 * 3`, Å, each column is a spanning vector
 - `X`: `nx`, fractional coordinate of grid points along the first spanning vector
@@ -66,12 +66,12 @@ function read_xsf(filename::AbstractString)
             n_atom = parse(Int, split(line)[1])
             atoms = Vector{String}(undef, n_atom)
             # each column is a position vector
-            atom_positions = zeros(Float64, 3, n_atom)
+            atom_positions = zeros(Vec3{Float64}, n_atom)
             for i in 1:n_atom
                 line = strip(readline(io))
                 # might be element label, or atomic number
                 atoms[i] = split(line)[1]
-                atom_positions[:, i] = parse.(Float64, split(line)[2:4])
+                atom_positions[i] = Vec3(parse.(Float64, split(line)[2:4])...)
             end
         elseif occursin("BEGIN_BLOCK_DATAGRID_3D", line)
             comment = strip(readline(io))
@@ -118,7 +118,7 @@ Write `xsf` file.
 
 # Arguments
 - `lattice`: `3 * 3`, Å, each column is a lattice vector
-- `atom_positions`: `3 * n_atoms`, fractional coordinates
+- `atom_positions`: length-`n_atoms` vector, fractional coordinates
 - `atom_numbers`: `n_atoms`, atomic numbers
 - `origin`: `3`, Å, origin of the grid
 - `span_vectors`: `3 * 3`, Å, each column is a spanning vector
@@ -127,14 +127,14 @@ Write `xsf` file.
 function write_xsf(
     filename::AbstractString,
     lattice::AbstractMatrix{T},
-    atom_positions::AbstractMatrix{T},
+    atom_positions::Vector{Vec3{T}},
     atom_numbers::AbstractVector{Int},
     origin::AbstractVector{T},
     span_vectors::AbstractMatrix{T},
     W::AbstractArray{T,3},
 ) where {T<:Real}
     n_atoms = length(atom_numbers)
-    size(atom_positions, 2) == n_atoms || error("incompatible n_atoms")
+    length(atom_positions) == n_atoms || error("incompatible n_atoms")
     size(lattice) == (3, 3) || error("incompatible lattice")
     size(span_vectors) == (3, 3) || error("incompatible span_vectors")
 
@@ -156,7 +156,7 @@ function write_xsf(
     @printf(io, "PRIMCOORD\n")
     @printf(io, "%d 1\n", n_atoms)
     for i in 1:n_atoms
-        pos = lattice * atom_positions[:, i]
+        pos = lattice * atom_positions[i]
         @printf(io, "%d %12.7f %12.7f %12.7f\n", atom_numbers[i], pos...)
     end
 

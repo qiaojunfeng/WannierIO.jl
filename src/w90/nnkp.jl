@@ -10,9 +10,9 @@ Read the `nnkp` file.
 
 # Return
 - `recip_lattice`: each column is a reciprocal lattice vector
-- `kpoints`: `3 * n_kpts`, in fractional coordinates
-- `kpb_k`: `n_bvecs * n_kpts`, index of kpoints
-- `kpb_b`: `3 * n_bvecs * n_kpts`, fractional w.r.t `recip_lattice`
+- `kpoints`: length-`n_kpts` vector of `Vec3`, in fractional coordinates
+- `kpb_k`: length-`n_kpts` vector of length-`n_bvecs` vector of integers, index of kpoints
+- `kpb_b`: length-`n_kpts` vector of length-`n_bvecs` vector of `Vec3` for bvectors, fractional w.r.t `recip_lattice`
 """
 function read_nnkp(filename::AbstractString)
     @info "Reading nnkp file: $filename"
@@ -51,10 +51,10 @@ function read_nnkp(filename::AbstractString)
 
         elseif occursin("begin kpoints", line)
             n_kpts = parse(Int, readline(io))
-            kpoints = zeros(Float64, 3, n_kpts)
+            kpoints = zeros(Vec3{Float64}, n_kpts)
 
             for i in 1:n_kpts
-                kpoints[:, i] = read_array(Float64)
+                kpoints[i] = Vec3(read_array(Float64)...)
             end
 
             line = strip(readline(io))
@@ -64,15 +64,15 @@ function read_nnkp(filename::AbstractString)
             n_kpts === nothing && error("no kpoints block before nnkpts block?")
 
             n_bvecs = parse(Int, readline(io))
-            kpb_k = zeros(Int, n_bvecs, n_kpts)
-            kpb_b = zeros(Int, 3, n_bvecs, n_kpts)
+            kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+            kpb_b = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
 
             for ik in 1:n_kpts
                 for ib in 1:n_bvecs
                     arr = read_array(Int)
                     ik != arr[1] && error("expected ik = $ik, got $(arr[1])")
-                    kpb_k[ib, ik] = arr[2]
-                    kpb_b[:, ib, ik] = arr[3:end]
+                    kpb_k[ik][ib] = arr[2]
+                    kpb_b[ik][ib] = Vec3(arr[3:end]...)
                 end
             end
 
@@ -93,36 +93,39 @@ function read_nnkp(filename::AbstractString)
 end
 
 """
-    write_nnkp(filename::AbstractString, bvectors::BVectors, n_wann::Integer)
+    write_nnkp(filename, bvectors::BVectors, n_wann)
 
 Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
 
 # Arguments
 - `recip_lattice`: each column is a reciprocal lattice vector
-- `kpoints`: `3 * n_kpts`, in fractional coordinates
-- `kpb_k`: `n_bvecs * n_kpts`, index of kpoints
-- `kpb_b`: `3 * n_bvecs * n_kpts`, fractional w.r.t `recip_lattice`
+- `kpoints`: length-`n_kpts` vector of `Vec3`, in fractional coordinates
+- `kpb_k`: length-`n_kpts` vector of length-`n_bvecs` vector of integers, index of kpoints
+- `kpb_b`: length-`n_kpts` vector of length-`n_bvecs` vector of `Vec3` for bvectors, fractional w.r.t `recip_lattice`
 - `n_wann`: if given, write a `auto_projections` block
 - `exclude_bands`: if given, write the specified band indexes in the `exclude_bands` block
 
 !!! note
 
-    Only a preliminary version, use `auto_projections`, no `exclude_bands`.
+    Only a preliminary version, use `auto_projections`.
 """
 function write_nnkp(
     filename::AbstractString,
-    recip_lattice::AbstractMatrix{T},
-    kpoints::AbstractMatrix{T},
-    kpb_k::AbstractMatrix{U},
-    kpb_b::AbstractArray{U,3},
+    recip_lattice::AbstractMatrix,
+    kpoints::AbstractVector,
+    kpb_k::AbstractVector,
+    kpb_b::AbstractVector,
     n_wann::Union{Nothing,Integer}=nothing,
-    exclude_bands::Union{Nothing,AbstractVector{U}}=nothing,
-) where {T<:Real,U<:Integer}
+    exclude_bands::Union{Nothing,AbstractVector}=nothing,
+)
     size(recip_lattice) == (3, 3) || error("size(recip_lattice) != (3, 3)")
-    n_kpts = size(kpoints, 2)
-    n_bvecs = size(kpb_k, 1)
-    size(kpb_k) == (n_bvecs, n_kpts) || error("size(kpb_k) != (n_bvecs, n_kpts)")
-    size(kpb_b) == (3, n_bvecs, n_kpts) || error("size(kpb_b) != (3, n_bvecs, n_kpts)")
+    n_kpts = length(kpoints)
+    n_bvecs = length(kpb_k[1])
+
+    (length(kpb_k), length(kpb_k[1])) == (n_kpts, n_bvecs) ||
+        error("size(kpb_k) != (n_bvecs, n_kpts)")
+    (length(kpb_b), length(kpb_b[1])) == (n_kpts, n_bvecs) ||
+        error("size(kpb_b) != (n_bvecs, n_kpts)")
 
     @info "Writing nnkp file: $filename"
 
@@ -151,7 +154,7 @@ function write_nnkp(
 
     @printf(io, "begin kpoints\n")
     @printf(io, "%d\n", n_kpts)
-    for kpt in eachcol(kpoints)
+    for kpt in kpoints
         @printf(io, "%14.8f %14.8f %14.8f\n", kpt...)
     end
     @printf(io, "end kpoints\n")
@@ -174,7 +177,7 @@ function write_nnkp(
     @printf(io, "%d\n", n_bvecs)
     for ik in 1:n_kpts
         for ib in 1:n_bvecs
-            @printf(io, "%6d %6d %6d %6d %6d\n", ik, kpb_k[ib, ik], kpb_b[:, ib, ik]...)
+            @printf(io, "%6d %6d %6d %6d %6d\n", ik, kpb_k[ik][ib], kpb_b[ik][ib]...)
         end
     end
     @printf(io, "end nnkpts\n")
@@ -193,4 +196,34 @@ function write_nnkp(
     @printf(io, "\n")
 
     return close(io)
+end
+
+"""
+Read a nnkp file in TOML format.
+
+Used only in tests.
+"""
+function _read_nnkp_toml(filename::AbstractString)
+    nnkp = _read_win_toml(filename; fix_inputs=false)
+
+    # Convert to Mat3
+    if haskey(nnkp, :recip_lattice)
+        # Need to set value to Any, otherwise it is Dict{Symbol,Vector},
+        # then I cannot assign Mat3 to it.
+        nnkp = Dict{Symbol,Any}(pairs(nnkp))
+        nnkp[:recip_lattice] = Mat3(nnkp[:recip_lattice])
+        nnkp = NamedTuple(nnkp)
+    end
+
+    return nnkp
+end
+
+"""
+Write a nnkp file in TOML format.
+
+Used only in tests.
+Internally calls [`_write_win_toml`](@ref).
+"""
+function _write_nnkp_toml(filename::AbstractString; kwargs...)
+    return _write_win_toml(filename; kwargs...)
 end

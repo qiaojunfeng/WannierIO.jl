@@ -10,8 +10,8 @@ Parse `wout` file.
 # Return
 - `lattice`: in Å, each column is a lattice vector
 - `atom_labels`: atomic symbols
-- `atom_positions`: in fractional coordinates, each column is a coordinate vector
-- `centers`: WF centers in Å, each column is a WF center vector
+- `atom_positions`: in fractional coordinates
+- `centers`: WF centers in Å
 - `spreads`: WF spreads in Å^2
 """
 function read_wout(filename::AbstractString)
@@ -71,7 +71,7 @@ function read_wout(filename::AbstractString)
 
             n_atom = length(lines)
             atom_labels = Vector{String}()
-            atom_positions = zeros(Float64, 3, n_atom)
+            atom_positions = zeros(Vec3{Float64}, n_atom)
             for (i, line) in enumerate(lines)
                 line = split(line)
                 @assert line[1] == "|" line
@@ -79,7 +79,7 @@ function read_wout(filename::AbstractString)
                 # cartesian
                 # atom_positions[:, i] = parse.(Float64, line[8:10])
                 # fractional
-                atom_positions[:, i] = parse.(Float64, line[4:6])
+                atom_positions[i] = Vec3(parse.(Float64, line[4:6])...)
             end
 
             continue
@@ -94,7 +94,7 @@ function read_wout(filename::AbstractString)
             end
 
             n_wann = length(lines)
-            centers = zeros(Float64, 3, n_wann)
+            centers = zeros(Vec3{Float64}, n_wann)
             spreads = zeros(Float64, n_wann)
             for (i, line) in enumerate(lines)
                 line = split(line)
@@ -106,7 +106,7 @@ function read_wout(filename::AbstractString)
                 z = parse(Float64, replace(line[9], "," => ""))
                 s = parse(Float64, line[11])
 
-                centers[:, i] = [x, y, z]
+                centers[i] = Vec3(x, y, z)
                 spreads[i] = s
             end
 
@@ -117,6 +117,6 @@ function read_wout(filename::AbstractString)
     close(io)
 
     @assert ang_unit
-
+    lattice = Mat3(lattice)
     return (; lattice, atom_labels, atom_positions, centers, spreads)
 end

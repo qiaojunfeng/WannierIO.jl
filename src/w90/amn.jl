@@ -16,7 +16,7 @@ function _read_amn_fmt(filename::AbstractString)
     arr = split(readline(io))
     n_bands, n_kpts, n_wann = parse.(Int64, arr[1:3])
 
-    A = zeros(ComplexF64, n_bands, n_wann, n_kpts)
+    A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
 
     while !eof(io)
         line = readline(io)
@@ -25,7 +25,7 @@ function _read_amn_fmt(filename::AbstractString)
         m, n, k = parse.(Int64, arr[1:3])
 
         a = parse(Float64, arr[4]) + im * parse(Float64, arr[5])
-        A[m, n, k] = a
+        A[k][m, n] = a
     end
 
     close(io)
@@ -55,7 +55,7 @@ function _read_amn_bin(filename::AbstractString)
     n_kpts = read(io, Tint)
     n_wann = read(io, Tint)
 
-    A = zeros(ComplexF64, n_bands, n_wann, n_kpts)
+    A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
 
     while !eof(io)
         m = read(io, Tint)
@@ -63,7 +63,7 @@ function _read_amn_bin(filename::AbstractString)
         k = read(io, Tint)
         r = read(io, Float64)
         i = read(io, Float64)
-        A[m, n, k] = r + im * i
+        A[k][m, n] = r + im * i
     end
 
     close(io)
@@ -77,7 +77,7 @@ end
 Read the `amn` file.
 
 # Return
-- `A`: a `n_bands * n_wann * n_kpts` array.
+- `A`: length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix.
 """
 function read_amn(filename::AbstractString)
     @info "Reading $filename"
@@ -87,7 +87,8 @@ function read_amn(filename::AbstractString)
     else
         header, A = _read_amn_fmt(filename)
     end
-    n_bands, n_wann, n_kpts = size(A)
+    n_bands, n_wann = size(A[1])
+    n_kpts = length(A)
 
     println("  header  = ", header)
     println("  n_bands = ", n_bands)
@@ -101,10 +102,9 @@ end
 """
 Write A in plain text format.
 """
-function _write_amn_fmt(
-    filename::AbstractString, A::AbstractArray{<:Complex,3}, header::AbstractString
-)
-    n_bands, n_wann, n_kpts = size(A)
+function _write_amn_fmt(filename::AbstractString, A::AbstractVector, header::AbstractString)
+    n_bands, n_wann = size(A[1])
+    n_kpts = length(A)
 
     io = open(filename, "w")
 
@@ -116,7 +116,7 @@ function _write_amn_fmt(
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_bands
-                a = A[ib, iw, ik]
+                a = A[ik][ib, iw]
                 @printf(io, "%5d %4d %4d  %16.12f  %16.12f\n", ib, iw, ik, real(a), imag(a))
             end
         end
@@ -128,10 +128,9 @@ end
 """
 Write A as Fortran unformatted file.
 """
-function _write_amn_bin(
-    filename::AbstractString, A::AbstractArray{<:Complex,3}, header::AbstractString
-)
-    n_bands, n_wann, n_kpts = size(A)
+function _write_amn_bin(filename::AbstractString, A::AbstractVector, header::AbstractString)
+    n_bands, n_wann = size(A[1])
+    n_kpts = length(A)
 
     # I write in Fortran stream io format.
     io = open(filename, "w")
@@ -155,7 +154,7 @@ function _write_amn_bin(
                 write(io, Tint(ib))
                 write(io, Tint(iw))
                 write(io, Tint(ik))
-                a = A[ib, iw, ik]
+                a = A[ik][ib, iw]
                 write(io, Float64(real(a)))
                 write(io, Float64(imag(a)))
             end
@@ -166,23 +165,20 @@ function _write_amn_bin(
 end
 
 """
-    write_amn(filename, A::Array{Complex,3}, header; binary=false)
+    write_amn(filename, A, header; binary=false)
 
 Write `amn` file.
 
 # Arguments
 - `filename`: output filename
-- `A`: a `n_bands * n_wann * n_kpts` array
+- `A`: a length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix
 - `header`: 1st line of the file
 
 # Keyword arguments
 - `binary`: write as Fortran unformatted file
 """
 function write_amn(
-    filename::AbstractString,
-    A::AbstractArray{<:Complex,3},
-    header::AbstractString;
-    binary::Bool=false,
+    filename::AbstractString, A::AbstractVector, header::AbstractString; binary::Bool=false
 )
     if binary
         _write_amn_bin(filename, A, header)
@@ -197,22 +193,20 @@ function write_amn(
 end
 
 """
-    write_amn(filename, A::Array{Complex,3})
+    write_amn(filename, A)
 
 Write `amn` file.
 
-Default header is "Created by WannierIO.jl CURRENT_DATE".
+Default header is `Created by WannierIO.jl CURRENT_DATE`.
 
 # Arguments
 - `filename`: output filename
-- `A`: a `n_bands * n_wann * n_kpts` array
+- `A`: a length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix
 
 # Keyword arguments
 - `binary`: write as Fortran unformatted file
 """
-function write_amn(
-    filename::AbstractString, A::AbstractArray{<:Complex,3}; binary::Bool=false
-)
+function write_amn(filename::AbstractString, A::AbstractVector; binary::Bool=false)
     header = @sprintf "Created by WannierIO.jl %s" string(now())
     return write_amn(filename, A, header; binary=binary)
 end
