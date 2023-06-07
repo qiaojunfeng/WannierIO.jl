@@ -1,0 +1,16 @@
+# Need to add Probot App to the repo
+# https://github.com/apps/probot-autolabeler
+
+docs:
+  - "docs/"
+  - "*.md"
+chore:
+  - ".github/"
+  - ".JuliaFormatter.toml"
+  - ".pre-commit-config.yaml"
+feature:
+  - "src/"
+dependency:
+  - "Project.toml"
+# bug:
+# breaking:
