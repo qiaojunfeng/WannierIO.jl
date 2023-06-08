@@ -1,7 +1,7 @@
 
 @testset "isbinary file" begin
-    @test !WannierIO.isbinary(joinpath(FIXTURE_PATH, "formatted/UNK00001.1"))
-    @test WannierIO.isbinary(joinpath(FIXTURE_PATH, "unformatted/UNK00001.1"))
+    @test WannierIO.isbinary(artifacts"Si2/UNK/binary/UNK00001.1")
+    @test !WannierIO.isbinary(artifacts"Si2/UNK/textual/UNK00001.1")
 end
 
 @testset "parse_float" begin

@@ -1,11 +1,11 @@
 using WannierIO: Vec3
 @testset "read wsvec" begin
-    mdrs, wsvec = read_w90_wsvec(joinpath(FIXTURE_PATH, "ws/si2_wsvec.dat"))
+    mdrs, wsvec = read_w90_wsvec(artifact"Si2/reference/ws/si2_wsvec.dat")
     # just some simple tests
     @assert mdrs == false
     @test wsvec.R[1] == [-1, -1, 1]
 
-    mdrs, wsvec = read_w90_wsvec(joinpath(FIXTURE_PATH, "mdrs/si2_wsvec.dat"))
+    mdrs, wsvec = read_w90_wsvec(artifact"Si2/reference/mdrs/si2_wsvec.dat")
     @assert mdrs == true
     @test wsvec.R[1] == [-1, -1, 1]
     @test wsvec.T[1][1, 1] ==
@@ -14,7 +14,7 @@ using WannierIO: Vec3
 end
 
 @testset "read tb" begin
-    tbdat = read_w90_tbdat(joinpath(FIXTURE_PATH, "ws/si2_tb.dat"))
+    tbdat = read_w90_tbdat(artifact"Si2/reference/ws/si2_tb.dat")
     # just some simple tests
     R1 = [-1, -1, 1]
     @test tbdat.R[1] == R1
@@ -23,7 +23,7 @@ end
     r111end = 0.17347235E-17 + im * -0.92553612E-23
     @test tbdat.rx[end][1, 1] ≈ r111end
 
-    tbdat = read_w90_tbdat(joinpath(FIXTURE_PATH, "mdrs/si2_tb.dat"))
+    tbdat = read_w90_tbdat(artiface"Si2/reference/mdrs/si2_tb.dat")
     @test tbdat.R[1] == R1
     @test tbdat.H[1][1, 1] ≈ H111
     @test tbdat.rx[end][1, 1] ≈ r111end

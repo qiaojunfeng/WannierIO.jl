@@ -1,7 +1,7 @@
 using WannierIO: Vec3
 
 @testset "read qe xml" begin
-    qe = WannierIO.read_qe_xml(joinpath(FIXTURE_PATH, "qe/si2.xml"))
+    qe = WannierIO.read_qe_xml(artifact"Si2/reference/qe/si2.xml")
 
     lattice = [0.0 2.715265 2.715265; 2.715265 0.0 2.715265; 2.715265 2.715265 0.0]
     @test qe.lattice ≈ lattice
@@ -48,7 +48,7 @@ using WannierIO: Vec3
 end
 
 @testset "read qe xml spin-polarized" begin
-    qe = WannierIO.read_qe_xml(joinpath(FIXTURE_PATH, "qe/cri3.xml"))
+    qe = WannierIO.read_qe_xml(artifact"CrI3/qe/cri3.xml")
 
     lattice = [
         6.8171434485254725 -3.4085717242627362 0.0
