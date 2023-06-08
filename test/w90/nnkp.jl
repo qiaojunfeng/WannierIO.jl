@@ -1,7 +1,8 @@
 
 @testset "read nnkp" begin
-    toml_path = joinpath(@__DIR__, "test_data/nnkp.toml")
-    nnkp = read_nnkp(joinpath(FIXTURE_PATH, "si2.nnkp"))
+    toml_path = artifact"Si2_valence/reference/si2.nnkp.toml"
+
+    nnkp = read_nnkp(artifact"Si2_valence/reference/si2.nnkp")
 
     WRITE_TOML = false
     WRITE_TOML && write_nnkp(toml_path; toml=true, nnkp...)
@@ -12,8 +13,7 @@
 end
 
 @testset "read/write nnkp" begin
-    nnkp = read_nnkp(joinpath(FIXTURE_PATH, "si2.nnkp"))
-
+    nnkp = read_nnkp(artifact"Si2_valence/reference/si2.nnkp")
     tmpfile = tempname(; cleanup=true)
     n_wann = 8
     write_nnkp(tmpfile; nnkp..., n_wann)
@@ -23,8 +23,8 @@ end
 end
 
 @testset "read/write nnkp toml" begin
-    toml_path = joinpath(@__DIR__, "test_data/nnkp.toml")
-    nnkp = read_nnkp(toml_path)
+    toml_path = joinpath(artifact"Si2_valence/reference/si2.nnkp.toml")
+    nnkp = WannierIO._read_nnkp_toml(toml_path)
 
     tmpfile = tempname(; cleanup=true)
     write_nnkp(tmpfile; toml=true, nnkp...)

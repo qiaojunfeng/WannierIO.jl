@@ -1,6 +1,6 @@
 
 @testset "read/write bxsf" begin
-    bxsf = read_bxsf(joinpath(FIXTURE_PATH, "volume/copper.bxsf"))
+    bxsf = read_bxsf(artifact"Cu/reference/copper.bxsf")
 
     @test bxsf.fermi_energy ≈ 12.2102
     @test bxsf.origin ≈ [0.0, 0.0, 0.0]

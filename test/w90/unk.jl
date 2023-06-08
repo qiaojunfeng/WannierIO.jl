@@ -1,6 +1,6 @@
 
 @testset "read/write unk" begin
-    ik, Ψ = read_unk(joinpath(FIXTURE_PATH, "formatted/UNK00001.1"))
+    ik, Ψ = read_unk(artifact"Si2_valence/UNK/UNK00001.1")
 
     tmpfile = tempname(; cleanup=true)
     write_unk(tmpfile, ik, Ψ)
@@ -11,8 +11,8 @@
 end
 
 @testset "read/write unk binary" begin
-    ik, Ψ = read_unk(joinpath(FIXTURE_PATH, "formatted/UNK00001.1"))
-    ik1, Ψ1 = read_unk(joinpath(FIXTURE_PATH, "unformatted/UNK00001.1"))
+    ik, Ψ = read_unk(artifact"Si2_valence/UNK/UNK00001.1")
+    ik1, Ψ1 = read_unk(artifact"Si2_valence/reference/binary/UNK00001.1")
     @test ik == ik1
     @test Ψ ≈ Ψ1
 

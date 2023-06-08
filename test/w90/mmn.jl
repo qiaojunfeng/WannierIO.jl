@@ -1,6 +1,6 @@
 
 @testset "read/write mmn" begin
-    M, kpb_k, kpb_G = read_mmn(joinpath(FIXTURE_PATH, "formatted/si2.mmn"))
+    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/si2.mmn")
 
     tmpfile = tempname(; cleanup=true)
     write_mmn(tmpfile, M, kpb_k, kpb_G)
@@ -12,8 +12,8 @@
 end
 
 @testset "read/write mmn binary" begin
-    M, kpb_k, kpb_G = read_mmn(joinpath(FIXTURE_PATH, "formatted/si2.mmn"))
-    M1, kpb_k1, kpb_G1 = read_mmn(joinpath(FIXTURE_PATH, "unformatted/si2.mmn"))
+    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/si2.mmn")
+    M1, kpb_k1, kpb_G1 = read_mmn(artifact"Si2_valence/reference/si2.binary.mmn")
     @test M ≈ M1
     @test kpb_k ≈ kpb_k1
     @test kpb_G ≈ kpb_G1

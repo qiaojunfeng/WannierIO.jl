@@ -1,6 +1,6 @@
 
 @testset "read/write eig" begin
-    E = read_eig(joinpath(FIXTURE_PATH, "formatted/si2.eig"))
+    E = read_eig(artifact"Si2_valence/si2.eig")
 
     tmpfile = tempname(; cleanup=true)
     write_eig(tmpfile, E)
@@ -10,8 +10,8 @@
 end
 
 @testset "read/write eig binary" begin
-    E = read_eig(joinpath(FIXTURE_PATH, "formatted/si2.eig"))
-    E1 = read_eig(joinpath(FIXTURE_PATH, "unformatted/si2.eig"))
+    E = read_eig(artifact"Si2_valence/si2.eig")
+    E1 = read_eig(artifact"Si2_valence/reference/binary/si2.eig")
     @test E ≈ E1
 
     tmpfile = tempname(; cleanup=true)

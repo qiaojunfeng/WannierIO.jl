@@ -1,5 +1,5 @@
 @testset "read/write w90 band dat" begin
-    band = read_w90_band(joinpath(FIXTURE_PATH, "si2"))
+    band = read_w90_band(artifact"Si2/si2")
 
     outdir = mktempdir(; cleanup=true)
     outprefix = joinpath(outdir, "si2")

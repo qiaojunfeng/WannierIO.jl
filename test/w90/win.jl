@@ -1,6 +1,6 @@
 @testset "read win" begin
-    win = read_win(joinpath(FIXTURE_PATH, "si2.win"))
-    toml_path = joinpath(@__DIR__, "test_data/win.toml")
+    win = read_win(artifact"Si2_valence/si2.win")
+    toml_path = artifact"Si2_valence/reference/si2.win.toml"
 
     # how to generate reference data:
     WRITE_TOML = false
@@ -11,7 +11,7 @@
 end
 
 @testset "read/write win" begin
-    win = read_win(joinpath(FIXTURE_PATH, "si2.win"))
+    win = read_win(artifact"Si2_valence/si2.win")
 
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
@@ -20,8 +20,8 @@ end
 end
 
 @testset "read/write win toml" begin
-    toml_path = joinpath(@__DIR__, "test_data/win.toml")
-    win = read_win(toml_path)
+    toml_path = artifact"Si2_valence/reference/si2.win.toml"
+    win = WannierIO._read_win_toml(toml_path)
 
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)

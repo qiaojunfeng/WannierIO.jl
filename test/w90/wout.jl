@@ -1,6 +1,6 @@
 using WannierIO: Vec3
 @testset "read wout" begin
-    wout = read_wout(joinpath(FIXTURE_PATH, "si2.wout"))
+    wout = read_wout(artifact"Si2_valence/reference/si2.wout")
 
     ref_lattice =
         [
