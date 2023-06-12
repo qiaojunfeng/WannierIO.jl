@@ -32,3 +32,17 @@ Pages   = ["util/fortran.jl"]
 Modules = [WannierIO]
 Pages   = ["util/lattice.jl"]
 ```
+
+## Types
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["common/type.jl"]
+```
+
+## Misc
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["util/header.jl"]
+```
