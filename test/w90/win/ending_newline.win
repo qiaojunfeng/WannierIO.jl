@@ -1,0 +1,26 @@
+num_bands = 4
+num_wann = 4
+mp_grid = 1 1 1
+
+begin kpoints
+  0.0 0.0 0.0
+end kpoints
+
+begin atoms_frac
+Si         0.0000000000       0.0000000000       0.0000000000
+Si         0.2500000000       0.2500000000       0.2500000000
+end atoms_frac
+
+begin unit_cell_cart
+ang
+  0.0000000000       2.7152650000       2.7152650000
+  2.7152650000       0.0000000000       2.7152650000
+  2.7152650000       2.7152650000       0.0000000000
+end unit_cell_cart
+
+# Test: empty lines in the end
+
+
+
+
+

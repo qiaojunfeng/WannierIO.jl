@@ -19,8 +19,8 @@ Read atomic structure and band structure from QE's XML output.
 function read_qe_xml(filename::AbstractString)
     # from qe/Modules/constants.f90
     BOHR_RADIUS_ANGS = 0.529177210903  # Angstrom
-    HARTREE_SI = 4.3597447222071e-18 # J
-    ELECTRONVOLT_SI = 1.602176634e-19     # J
+    HARTREE_SI = 4.3597447222071e-18  # J
+    ELECTRONVOLT_SI = 1.602176634e-19  # J
     AUTOEV = HARTREE_SI / ELECTRONVOLT_SI
 
     doc = readxml(filename)
@@ -55,6 +55,8 @@ function read_qe_xml(filename::AbstractString)
     end
     # from bohr to angstrom
     lattice *= BOHR_RADIUS_ANGS
+    # to StaticArray
+    lattice = Mat3(lattice)
 
     # reciprocal lattice
     recip_lattice = zeros(3, 3)
@@ -64,6 +66,8 @@ function read_qe_xml(filename::AbstractString)
     end
     # to 1/angstrom
     recip_lattice *= 2π / alat
+    # to StaticArray
+    recip_lattice = Mat3(recip_lattice)
 
     band_structure = findfirst("band_structure", output)
     n_kpts = parse(Int, findfirst("nks", band_structure).content)

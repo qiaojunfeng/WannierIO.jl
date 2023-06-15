@@ -1,7 +1,7 @@
 
 @testset "isbinary file" begin
-    @test WannierIO.isbinary(artifacts"Si2/UNK/binary/UNK00001.1")
-    @test !WannierIO.isbinary(artifacts"Si2/UNK/textual/UNK00001.1")
+    @test WannierIO.isbinary(artifact"Si2_valence/reference/binary/UNK00001.1")
+    @test !WannierIO.isbinary(artifact"Si2_valence/UNK/UNK00001.1")
 end
 
 @testset "parse_float" begin
