@@ -587,21 +587,23 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
 
     write(io, Tint(chk.n_exclude_bands))
 
-    write(io, Tint.(chk.exclude_bands))
+    write(io, Vector{Tint}(chk.exclude_bands))
 
     # Each column is a lattice vector
     # but W90 writes x components first, then y, z. Not a1 first, then a2, a3.
-    write(io, Float64.(reshape(chk.lattice', 9)))
+    write(io, Vector{Float64}(reshape(chk.lattice', 9)))
 
     # Each column is a lattice vector
-    write(io, Float64.(reshape(chk.recip_lattice', 9)))
+    write(io, Vector{Float64}(reshape(chk.recip_lattice', 9)))
 
     write(io, Tint(n_kpts))
 
-    write(io, Tint.(chk.kgrid))
+    write(io, Vector{Tint}(chk.kgrid))
+
     # size = 3 * n_kpts
-    kpoints = hcat(chk.kpoints...)
-    write(io, Float64.(kpoints))
+    # Use `reduce(hcat, kpoints)`, which is much faster than `hcat(kpoints...)`
+    kpoints = reduce(hcat, chk.kpoints)
+    write(io, Matrix{Float64}(kpoints))
 
     write(io, Tint(n_bvecs))
 
@@ -613,21 +615,24 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
     # true -> 1, false -> 0
     write(io, Tint(chk.have_disentangled))
 
+    # concatenate along dims=3
+    cat3(A...) = cat(A...; dims=3)
+
     if chk.have_disentangled
         # omega_invariant
         write(io, Float64(chk.ΩI))
 
         # true -> 1, false -> 0
-        write(io, Tint.(hcat(chk.dis_bands)))
+        write(io, Matrix{Tint}(reduce(hcat, chk.dis_bands)))
 
-        write(io, Tint.(chk.n_dis))
+        write(io, Vector{Tint}(chk.n_dis))
 
         # u_matrix_opt
-        write(io, ComplexF64.(cat(chk.Udis...; dims=3)))
+        write(io, Array{ComplexF64}(reduce(cat3, chk.Uᵈ)))
     end
 
     # u_matrix
-    write(io, ComplexF64.(cat(chk.Uml...; dims=3)))
+    write(io, Array{ComplexF64}(reduce(cat3, chk.U)))
 
     #  m_matrix
     M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
@@ -639,13 +644,14 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
     write(io, M)
 
     # wannier_centres
-    r = hcat(chk.r...)
-    write(io, Float64.(r))
+    r = reduce(hcat, chk.r)
+    write(io, Matrix{Float64}(r))
 
     # wannier_spreads
-    write(io, Float64.(chk.ω))
+    write(io, Vector{Float64}(chk.ω))
 
-    return close(io)
+    close(io)
+    return nothing
 end
 
 function write_chk(filename::AbstractString, chk::Chk; binary=false)

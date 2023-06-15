@@ -45,11 +45,13 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
         keys_bool = [
             :use_ws_distance,
             :wannier_plot,
-            :wvfn_formatted,
-            :write_hr,
-            :spn_formatted,
-            :write_tb,
             :bands_plot,
+            :wvfn_formatted,
+            :spn_formatted,
+            :write_hr,
+            :write_tb,
+            :write_xyz,
+            :write_rmn,
         ]
 
         params = Dict{Symbol,Any}()
