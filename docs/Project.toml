@@ -1,8 +1,7 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
-WannierIO = "cb1bc77f-5443-4951-af9f-05b616a3e422"
+LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 
 [compat]
-Documenter = "0.27.22"
-JSServe = "1.2.8"
+Documenter = "0.27"
+LiveServer = "1.2"

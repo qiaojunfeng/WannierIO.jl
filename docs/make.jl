@@ -18,3 +18,7 @@ makedocs(;
         ],
     ],
 )
+
+# Documenter will auto dectect build environment; on local machine it will be
+# skipped, so it's safe to run this script
+deploydocs(; repo="github.com/qiaojunfeng/WannierIO.jl.git", devbranch="main")
