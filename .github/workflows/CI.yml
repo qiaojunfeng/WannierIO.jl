@@ -43,13 +43,3 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           annotate: true
-
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: julia-actions/setup-julia@v1
-      - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - name: Build
-        run: julia --project=docs/ docs/make.jl
