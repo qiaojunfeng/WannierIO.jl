@@ -6,228 +6,262 @@ export read_w90_band, write_w90_band
 """
     read_w90_band_kpt(filename)
 
-Read `seedname_band.kpt` file.
+Read a `prefix_band.kpt` file.
 
 # Return
 - `kpoints`: a vector of length `n_kpts`, fractional coordinates
-- `weights`: a vector of length `n_kpts`, weights of kpoints
+- `kweights`: a vector of length `n_kpts`, weights of kpoints
 """
 function read_w90_band_kpt(filename::AbstractString)
     # in fractional coordinates
     kpoints = readdlm(filename, Float64; skipstart=1)
-    weights = kpoints[:, 4]
+    kweights = kpoints[:, 4]
     # remove weights
     kpoints = map(1:size(kpoints, 1)) do i
         Vec3(kpoints[i, 1:3])
     end
-    return kpoints, weights
+    return (; kpoints, kweights)
 end
 
 """
     read_w90_band_dat(filename)
 
-Read `seedname_band.dat` file.
+Read `prefix_band.dat` file.
 
 # Return
-- `x`: `n_kpts`, x axis value, in cartesian length
-- `E`: length-`n_kpts` vector, each elemnt is a length-`n_bands` vector of band energies
+- `x`: `n_kpts`, x axis value of kpath, in cartesian length
+- `eigenvalues`: length-`n_kpts` vector, each elemnt is a length-`n_bands` vector of band energies
 """
 function read_w90_band_dat(filename::AbstractString)
-    # 1st read to get n_kpts
-    io = open(filename)
-    n_kpts = 0
-    while true
-        line = strip(readline(io))
-        isempty(line) && break
-        n_kpts += 1
+    res = open(filename) do io
+        # Unfortunately I need to read the whole file twice:
+        # 1st time to get n_kpts, 2nd time to get data
+        n_kpts = 0
+        while true
+            line = strip(readline(io))
+            isempty(line) && break
+            n_kpts += 1
+        end
+
+        seekstart(io)
+        dat = readdlm(io, Float64)
+
+        x = reshape(dat[:, 1], n_kpts, :)[:, 1]
+        eigenvalues = reshape(dat[:, 2], n_kpts, :)
+        eigenvalues = [Vector(e) for e in eachrow(eigenvalues)]
+        return (; x, eigenvalues)
     end
-
-    seekstart(io)
-    dat = readdlm(io, Float64)
-    close(io)
-
-    x = reshape(dat[:, 1], n_kpts, :)[:, 1]
-    E = reshape(dat[:, 2], n_kpts, :)
-    E = [Vector(e) for e in eachrow(E)]
-    return x, E
+    return res
 end
 
 """
-    read_w90_band_labelinfo(filename::AbstractString)
+    read_w90_band_labelinfo(filename)
 
-Read `seedname_band.labelinfo` file.
+Read `prefix_band.labelinfo` file.
 
 # Return
-- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
-- `symm_label`: name of high-symmetry points
+- `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
+- `symm_point_labels`: name of high-symmetry points
 """
 function read_w90_band_labelinfo(filename::AbstractString)
-    io = open(filename)
-    labels = readlines(io)
-    close(io)
-
-    n_symm = length(labels)
-    symm_idx = Vector{Int}(undef, n_symm)
-    symm_label = Vector{String}(undef, n_symm)
-    for (i, line) in enumerate(labels)
-        lab, idx = split(line)[1:2]
-        symm_idx[i] = parse(Int, idx)
-        symm_label[i] = lab
+    labels = open(filename) do io
+        readlines(io)
     end
 
-    return symm_idx, symm_label
+    n_symm = length(labels)
+    symm_point_indices = Vector{Int}(undef, n_symm)
+    symm_point_labels = Vector{String}(undef, n_symm)
+    for (i, line) in enumerate(labels)
+        lab, idx = split(line)[1:2]
+        symm_point_indices[i] = parse(Int, idx)
+        symm_point_labels[i] = lab
+    end
+
+    return (; symm_point_indices, symm_point_labels)
 end
 
 """
-    read_w90_band(seedname::AbstractString)
+    read_w90_band(prefix)
 
-Read `SEEDNAME_band.dat`, `SEEDNAME_band.kpt`, `SEEDNAME_band.labelinfo.dat`.
-
-# Return
-- `kpoints`: `3 * n_kpts`, fractional coordinates
-- `E`: length-`n_kpts` vector, each element is a length-`n_bands` vector of band energies
-- `x`: `n_kpts`, x axis value, in cartesian length
-- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
-- `symm_label`: name of high-symmetry points
-"""
-function read_w90_band(seedname::AbstractString)
-    kpoints, _ = read_w90_band_kpt("$(seedname)_band.kpt")
-    x, E = read_w90_band_dat("$(seedname)_band.dat")
-    symm_idx, symm_label = read_w90_band_labelinfo("$(seedname)_band.labelinfo.dat")
-    return (; kpoints, E, x, symm_idx, symm_label)
-end
-
-"""
-    write_w90_band_kpt(filename, kpoints, weights=nothing)
-
-Write `seedname_band.kpt` file.
+Read `prefix_band.dat`, `prefix_band.kpt`, `prefix_band.labelinfo.dat`.
 
 # Arguments
-- `filename`: filename of `seedname_band.kpt`
+- `prefix`: *prefix* of the filenames (or called seedname in wannier90), NOT the full filename.
+
+# Return
+- `x`: `n_kpts`, x axis value of kpath, in cartesian length
+- `eigenvalues`: length-`n_kpts` vector, each element is a length-`n_bands` vector of band energies
+- `kpoints`: a vector of length `n_kpts`, fractional coordinates
+- `kweights`: a vector of length `n_kpts`, weights of kpoints
+- `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
+- `symm_point_labels`: name of high-symmetry points
+"""
+function read_w90_band(prefix::AbstractString)
+    band_dat = prefix * "_band.dat"
+    band_kpt = prefix * "_band.kpt"
+    band_labelinfo = prefix * "_band.labelinfo.dat"
+
+    dat = read_w90_band_dat(band_dat)
+    kpt = read_w90_band_kpt(band_kpt)
+    labelinfo = read_w90_band_labelinfo(band_labelinfo)
+
+    n_kpts = length(kpt.kpoints)
+    n_symm = length(labelinfo.symm_point_indices)
+    @info "Reading Wannier90 band files" band_dat band_kpt band_labelinfo n_kpts n_symm
+
+    return (; dat..., kpt..., labelinfo...)
+end
+
+"""
+Wannier90 default kweights in `prefix_band.kpt` is all 1.0.
+"""
+default_band_kpt_kweights(kpoints::AbstractVector) = ones(length(kpoints))
+
+"""
+    write_w90_band_kpt(filename; kpoints, kweights=default_band_kpt_kweights(kpoints))
+
+Write `prefix_band.kpt` file.
+
+# Arguments
+- `filename`: filename of `prefix_band.kpt`
+
+# Keyword Arguments
 - `kpoints`: length-`n_kpts` vector, fractional coordinates
-- `weights`: `n_kpts`, optional, weights of kpoints
+- `kweights`: `n_kpts`, optional, weights of kpoints
 """
 function write_w90_band_kpt(
-    filename::AbstractString,
-    kpoints::AbstractVector{<:Vec3{<:Real}},
-    weights::Union{Nothing,AbstractVector{<:Real}}=nothing,
+    filename::AbstractString;
+    kpoints::AbstractVector,
+    kweights::AbstractVector=default_band_kpt_kweights(kpoints),
 )
     n_kpts = length(kpoints)
-
-    isnothing(weights) && (weights = ones(n_kpts))
-    length(weights) == n_kpts || error("weights must be n_kpts")
+    length(kweights) == n_kpts || error("kweights must have same length as kpoints")
 
     open(filename, "w") do io
         @printf(io, "       %5d\n", n_kpts)
-        for ik in 1:n_kpts
-            k = kpoints[ik]
-            w = weights[ik]
+        for (k, w) in zip(kpoints, kweights)
+            length(k) == 3 || error("kpoint must be 3-vector")
             @printf(io, "  %10.6f  %10.6f  %10.6f   %10.6f\n", k..., w)
         end
     end
-    @info "Written to $filename"
 end
 
 """
-    write_w90_band_dat(filename, x, E)
+    write_w90_band_dat(filename; x, eigenvalues)
 
-Write `seedname_band.dat` file.
+Write `prefix_band.dat` file.
 
 # Arguments
-- `filename`: filename of `seedname_band.dat`
+- `filename`: filename of `prefix_band.dat`
+
+# Keyword Arguments
 - `x`: `n_kpts`, x axis value, in cartesian length
-- `E`: length-`n_kpts` vector, each element is a length-`n_bands` vector of band energies
+- `eigenvalues`: length-`n_kpts` vector, each element is a length-`n_bands` vector of band energies
 """
 function write_w90_band_dat(
-    filename::AbstractString,
-    x::AbstractVector{<:Real},
-    E::AbstractVector{<:AbstractVector{<:Real}},
+    filename::AbstractString;
+    x::AbstractVector,
+    eigenvalues::AbstractVector{<:AbstractVector},
 )
-    n_bands = length(E[1])
-    n_kpts = length(E)
-    length(x) == n_kpts || error("x must be n_kpts")
+    n_kpts = length(eigenvalues)
+    @assert n_kpts > 0 "eigenvalues is empty"
+    n_bands = length(eigenvalues[1])
+    length(x) == n_kpts || error("x must has same length as eigenvalues")
 
     open(filename, "w") do io
         for ib in 1:n_bands
             for ik in 1:n_kpts
-                @printf(io, " %15.8E %15.8E\n", x[ik], E[ik][ib])
+                @printf(io, " %15.8E %15.8E\n", x[ik], eigenvalues[ik][ib])
             end
             @printf(io, "\n")
         end
     end
-    @info "Written to $filename"
 end
 
 """
-    write_w90_band_labelinfo(filename, symm_idx, symm_label, x, kpoints)
+    write_w90_band_labelinfo(filename; x, kpoints, symm_point_indices, symm_point_labels)
 
-Write `seedname_band.labelinfo` file.
+Write `prefix_band.labelinfo` file.
 
 # Arguments
-- `filename`: filename of `seedname_band.labelinfo`
-- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
-- `symm_label`: name of high-symmetry points
-- `x`: `n_kpts`, x axis value, in cartesian length
+- `filename`: filename of `prefix_band.labelinfo`
+
+# Keyword Arguments
+- `x`: `n_kpts`-vector, x axis value, in cartesian length
 - `kpoints`: length-`n_kpts` vector, fractional coordinates
+- `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
+- `symm_point_labels`: name of high-symmetry points
 """
 function write_w90_band_labelinfo(
-    filename::AbstractString,
-    symm_idx::AbstractVector{<:Integer},
-    symm_label::AbstractVector{<:AbstractString},
+    filename::AbstractString;
     x::AbstractVector{<:Real},
-    kpoints::AbstractVector{<:Vec3{<:Real}},
+    kpoints::AbstractVector,
+    symm_point_indices::AbstractVector{<:Integer},
+    symm_point_labels::AbstractVector,
 )
-    n_symm = length(symm_idx)
-    n_symm == length(symm_label) || error("symm_idx and symm_label must be same length")
+    n_symm = length(symm_point_indices)
+    n_symm == length(symm_point_labels) ||
+        error("symm_idx and symm_label must have same length")
 
     open(filename, "w") do io
         for i in 1:n_symm
-            idx = symm_idx[i]
+            idx = symm_point_indices[i]
+            kpt = kpoints[idx]
+            length(kpt) == 3 || error("kpoint must be 3-vector")
             @printf(
                 io,
                 "%2s %31d %20.10f %17.10f %17.10f %17.10f\n",
-                symm_label[i],
+                symm_point_labels[i],
                 idx,
                 x[idx],
-                kpoints[idx]...
+                kpt...
             )
         end
     end
-    @info "Written to $filename"
 end
 
 """
-    write_w90_band(seedname, kpoints, E, x, symm_idx, symm_label)
+    write_w90_band(prefix; x, eigenvalues, kpoints, kweights, symm_point_indices, symm_point_labels)
 
-Write `SEEDNAME_band.dat, SEEDNAME_band.kpt, SEEDNAME_band.labelinfo.dat`.
+Write `prefix_band.dat, prefix_band.kpt, prefix_band.labelinfo.dat`.
 
 # Arguments
-- `seedname`: seedname of `SEEDNAME_band.dat, SEEDNAME_band.kpt, SEEDNAME_band.labelinfo.dat`
-- `kpoints`: length-`n_kpts` vector, fractional coordinates
-- `E`: length-`n_kpts` vector, each element is a length-`n_bands` vector of band energies
+- `prefix`: prefix of `prefix_band.dat, prefix_band.kpt, prefix_band.labelinfo.dat`
+
+# Keyword Arguments
 - `x`: `n_kpts`, x axis value, in cartesian length
-- `symm_idx`: index of high-symmetry points in `seedname_band.dat`
-- `symm_label`: name of high-symmetry points
+- `eigenvalues`: length-`n_kpts` vector, each element is a length-`n_bands` vector of band energies
+- `kpoints`: length-`n_kpts` vector, fractional coordinates
+- `kweights`: a vector of length `n_kpts`, weights of kpoints
+- `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
+- `symm_point_labels`: name of high-symmetry points
 """
 function write_w90_band(
-    seedname::AbstractString,
-    kpoints::AbstractVector,
-    E::AbstractVector,
+    prefix::AbstractString;
     x::AbstractVector,
-    symm_idx::AbstractVector,
-    symm_label::AbstractVector,
+    eigenvalues::AbstractVector{<:AbstractVector},
+    kpoints::AbstractVector,
+    kweights::AbstractVector=default_band_kpt_kweights(kpoints),
+    symm_point_indices::AbstractVector,
+    symm_point_labels::AbstractVector,
 )
-    length(kpoints) == length(E) || error("kpoints and E have different n_kpts")
+    n_kpts = length(kpoints)
+    length(eigenvalues) == n_kpts || error("kpoints and eigenvalues have different n_kpts")
+    length(kweights) == n_kpts || error("kpoints and kweights have different n_kpts")
+    length(x) == n_kpts || error("kpoints and x have different n_kpts")
+    n_symm = length(symm_point_indices)
+    n_symm == length(symm_point_labels) ||
+        error("symm_idx and symm_label must have same length")
 
-    filename = "$(seedname)_band.kpt"
-    write_w90_band_kpt(filename, kpoints)
+    band_kpt = "$(prefix)_band.kpt"
+    band_dat = "$(prefix)_band.dat"
+    band_labelinfo = "$(prefix)_band.labelinfo.dat"
 
-    filename = "$(seedname)_band.dat"
-    write_w90_band_dat(filename, x, E)
+    @info "Writing Wannier90 band files" band_kpt band_dat band_labelinfo n_kpts n_symm
 
-    filename = "$(seedname)_band.labelinfo.dat"
-    write_w90_band_labelinfo(filename, symm_idx, symm_label, x, kpoints)
-
-    println()
-    return nothing
+    write_w90_band_dat(band_dat; x, eigenvalues)
+    write_w90_band_kpt(band_kpt; kpoints, kweights)
+    return write_w90_band_labelinfo(
+        band_labelinfo; x, kpoints, symm_point_indices, symm_point_labels
+    )
 end

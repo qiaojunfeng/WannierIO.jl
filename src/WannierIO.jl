@@ -1,10 +1,12 @@
 module WannierIO
+using DocStringExtensions
 
 include("common/const.jl")
 include("common/type.jl")
 include("util/fortran.jl")
 include("util/lattice.jl")
 include("util/header.jl")
+include("util/toml.jl")
 
 using FortranFiles: FortranFile, FString, trimstring, Record
 

@@ -2,96 +2,135 @@
 export read_spn, write_spn
 
 """
-    read_spn(filename::AbstractString)
+    read_spn(filename)
+    read_spn(filename, ::FortranText)
 
-Read the `spn` file.
+Read the wannier90 `spn` file.
 
-Return a `n_bands * n_bands * n_kpts * 3` array.
+# Return
+- `Sx`: spin x, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
+- `Sy`: spin y, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
+- `Sz`: spin z, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
+- `header`: 1st line of the file
 """
+function read_spn end
+
+function read_spn(filename::AbstractString, ::FortranText)
+    spn = open("$filename") do io
+        header = readline(io)
+
+        arr = split(readline(io))
+        n_bands, n_kpts = parse.(Int64, arr[1:2])
+
+        Sx = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+        Sy = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+        Sz = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+
+        for ik in 1:n_kpts
+            for m in 1:n_bands
+                for n in 1:m
+                    for Si in (Sx, Sy, Sz)
+                        line = split(readline(io))
+                        x, y = parse.(Float64, line)
+                        Si[ik][n, m] = x + im * y
+                        # although each diagonal element of `S` should be real,
+                        # actually it has a very small imaginary part,
+                        # so we skip the conjugation on the diagonal elements.
+                        m == n && continue
+                        Si[ik][m, n] = x - im * y
+                    end
+                end
+            end
+        end
+        @assert eof(io)
+
+        return (; Sx, Sy, Sz, header)
+    end
+    return spn
+end
+
 function read_spn(filename::AbstractString)
-    @info "Reading $filename"
-
-    io = open("$filename")
-
-    header = readline(io)
-
-    arr = split(readline(io))
-    n_bands, n_kpts = parse.(Int64, arr[1:2])
-
-    S = zeros(ComplexF64, n_bands, n_bands, n_kpts, 3)
-
-    for ik in 1:n_kpts
-        for m in 1:n_bands
-            for n in 1:m
-                for s in 1:3
-                    line = split(readline(io))
-                    x, y = parse.(Float64, line)
-                    S[n, m, ik, s] = x + im * y
-                    # although each diagonal element of `S` should be real,
-                    # actually it has a very small imaginary part,
-                    # so we skip the conjugation on the diagonal elements.
-                    m == n && continue
-                    S[m, n, ik, s] = x - im * y
-                end
-            end
-        end
+    if isbinary(filename)
+        format = FortranBinary()
+    else
+        format = FortranText()
     end
-    @assert eof(io)
-    close(io)
+    Sx, Sy, Sz, header = read_spn(filename, format)
 
-    println("  header  = ", header)
-    println("  n_bands = ", n_bands)
-    println("  n_kpts  = ", n_kpts)
-    println()
+    n_kpts = length(Sx)
+    @assert n_kpts > 0 "empty spn matrix"
+    n_bands = size(Sx[1], 1)
+    @info "Reading spn file" filename header n_kpts n_bands
 
-    return S
+    return Sx, Sy, Sz
 end
 
 """
-    write_spn(filename::String, S::Array{Complex,4}, header::String)
+    write_spn(filename, Sx, Sy, Sz; binary=false, header)
+    write_spn(filename, Sx, Sy, Sz, ::FortranText; header)
 
 Write the `spn` file.
 """
+function write_spn end
+
+@inline function _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
+    n_kpts = length(Sx)
+    @assert n_kpts > 0 "empty spn matrix"
+    @assert n_kpts == length(Sy) == length(Sz) "Sx, Sy, Sz must have the same length"
+    n_bands = size(Sx[1], 1)
+    @assert all(size.(Sx) .== Ref((n_bands, n_bands))) "Sx[ik] must be a square matrix"
+    @assert all(size.(Sy) .== Ref((n_bands, n_bands))) "Sy[ik] must be a square matrix"
+    @assert all(size.(Sz) .== Ref((n_bands, n_bands))) "Sz[ik] must be a square matrix"
+end
+
 function write_spn(
-    filename::AbstractString, S::AbstractArray{T,4}, header::AbstractString
-) where {T<:Complex}
-    n_bands, _, n_kpts, n_spin = size(S)
-    size(S, 2) == n_bands || error("S must be a square matrix")
-    n_spin == 3 || error("n_spin must be 3")
+    filename::AbstractString,
+    Sx::AbstractVector,
+    Sy::AbstractVector,
+    Sz::AbstractVector,
+    ::FortranText;
+    header=default_header(),
+)
+    _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
+    n_kpts = length(Sx)
+    n_bands = size(Sx[1], 1)
 
-    io = open(filename, "w")
+    open(filename, "w") do io
+        header = strip(header)
+        write(io, header, "\n")
 
-    header = strip(header)
-    write(io, header, "\n")
+        @printf(io, "%3d %4d\n", n_bands, n_kpts)
 
-    @printf(io, "%3d %4d\n", n_bands, n_kpts)
-
-    for ik in 1:n_kpts
-        for m in 1:n_bands
-            for n in 1:m
-                for s in 1:3
-                    a = S[n, m, ik, s]
-                    @printf(io, "%26.16e  %26.16e\n", real(a), imag(a))
+        for ik in 1:n_kpts
+            for m in 1:n_bands
+                for n in 1:m
+                    for Si in (Sx, Sy, Sz)
+                        s = Si[ik][n, m]
+                        @printf(io, "%26.16e  %26.16e\n", real(s), imag(s))
+                    end
                 end
             end
         end
     end
-    close(io)
-
-    @info "Written to file: $(filename)"
-    println()
-
-    return nothing
 end
 
-"""
-    write_spn(filename::String, S::Array{Complex,4})
+function write_spn(
+    filename::AbstractString,
+    Sx::AbstractVector,
+    Sy::AbstractVector,
+    Sz::AbstractVector;
+    binary=false,
+    header=default_header(),
+)
+    if binary
+        format = FortranBinary()
+    else
+        format = FortranText()
+    end
+    _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
+    n_kpts = length(Sx)
+    n_bands = size(Sx[1], 1)
+    @info "Writing spn file" filename header n_kpts n_bands
 
-Write the `spn` file.
-
-The header is "Created by WannierIO.jl CURRENT_DATE".
-"""
-function write_spn(filename::AbstractString, S::AbstractArray{T,4}) where {T<:Complex}
-    header = @sprintf "Created by WannierIO.jl %s" string(now())
-    return write_spn(filename, S, header)
+    return write_spn(filename, Sx, Sy, Sz; header)
 end

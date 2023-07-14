@@ -1,39 +1,34 @@
 
 @testset "read nnkp" begin
     toml_path = joinpath(@__DIR__, "test_data/nnkp.toml")
-
     nnkp = read_nnkp(joinpath(FIXTURE_PATH, "si2.nnkp"))
 
     WRITE_TOML = false
-    WRITE_TOML && WannierIO._write_nnkp_toml(toml_path; nnkp...)
+    WRITE_TOML && write_nnkp(toml_path; toml=true, nnkp...)
 
-    test_data = WannierIO._read_nnkp_toml(toml_path)
-
+    test_data = read_nnkp(toml_path)
     # make their keys unordered for comparison
     @test pairs(nnkp) == pairs(test_data)
 end
 
 @testset "read/write nnkp" begin
     nnkp = read_nnkp(joinpath(FIXTURE_PATH, "si2.nnkp"))
+
     tmpfile = tempname(; cleanup=true)
     n_wann = 8
-    write_nnkp(tmpfile, nnkp.recip_lattice, nnkp.kpoints, nnkp.kpb_k, nnkp.kpb_b, n_wann)
+    write_nnkp(tmpfile; nnkp..., n_wann)
 
     nnkp2 = read_nnkp(tmpfile)
-    @test nnkp.recip_lattice ≈ nnkp2.recip_lattice
-    @test nnkp.kpoints ≈ nnkp2.kpoints
-    @test nnkp.kpb_k ≈ nnkp2.kpb_k
-    @test nnkp.kpb_b ≈ nnkp2.kpb_b
+    @test nnkp == nnkp2
 end
 
 @testset "read/write nnkp toml" begin
     toml_path = joinpath(@__DIR__, "test_data/nnkp.toml")
-    nnkp = WannierIO._read_nnkp_toml(toml_path)
+    nnkp = read_nnkp(toml_path)
 
     tmpfile = tempname(; cleanup=true)
-    WannierIO._write_nnkp_toml(tmpfile; nnkp...)
+    write_nnkp(tmpfile; toml=true, nnkp...)
 
-    nnkp2 = WannierIO._read_nnkp_toml(tmpfile)
-
+    nnkp2 = read_nnkp(tmpfile)
     @test nnkp == nnkp2
 end

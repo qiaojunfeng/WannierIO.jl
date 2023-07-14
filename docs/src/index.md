@@ -1,6 +1,11 @@
 # WannierIO.jl
 
-A Julia package for reading/writing Wannier90 related files.
+A Julia package for reading/writing [Wannier90](https://github.com/wannier-developers/wannier90) files.
+
+The package is designed to be minimalistic to allow easy reuse in other packages.
+
+This package originates from the IO part of the
+[Wannier.jl](https://github.com/qiaojunfeng/Wannier.jl) package.
 
 ## Wannier90 files
 

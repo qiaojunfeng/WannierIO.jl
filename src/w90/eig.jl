@@ -5,10 +5,8 @@ export read_eig, write_eig
 """
 Reshape a vector of eigenvalues into a matrix of eigenvalues.
 """
-function _reshape_eig(
-    idx_b::AbstractVector{<:Integer},
-    idx_k::AbstractVector{<:Integer},
-    eig::AbstractVector{<:Real},
+@inline function _reshape_eig(
+    idx_b::AbstractVector, idx_k::AbstractVector, eig::AbstractVector
 )
     # find unique elements
     n_bands = length(Set(idx_b))
@@ -19,9 +17,32 @@ function _reshape_eig(
 end
 
 """
-Read plain text eig file.
+Check that eigenvalues are in order, some times there are small noises.
 """
-function _read_eig_fmt(filename::AbstractString)
+@inline function _check_eig_order(eigenvalues::AbstractVector; digits=7)
+    round_digits(x) = round(x; digits)
+    for (ik, eig) in enumerate(eigenvalues)
+        if !issorted(eig; by=round_digits)
+            @warn "Eigenvalues are not sorted at " ik eig
+        end
+    end
+end
+
+"""
+    read_eig(filename)
+    read_eig(filename, ::FortranText)
+    read_eig(filename, ::FortranBinaryStream)
+
+Read the wannier90 `eig` file.
+
+# Return
+- `eigenvalues`: a lenth-`n_kpts` vector, each element is a length-`n_bands` vector
+
+The 1st version is a convenience wrapper function for the 2nd and 3rd versions.
+"""
+function read_eig end
+
+function read_eig(filename::AbstractString, ::FortranText)
     lines = open(filename) do io
         readlines(io)
     end
@@ -38,14 +59,12 @@ function _read_eig_fmt(filename::AbstractString)
         eig[i] = parse(Float64, arr[3])
     end
 
-    E = _reshape_eig(idx_b, idx_k, eig)
-    return E
+    eigenvalues = _reshape_eig(idx_b, idx_k, eig)
+    _check_eig_order(eigenvalues)
+    return eigenvalues
 end
 
-"""
-Read binary eig file.
-"""
-function _read_eig_bin(filename::AbstractString)
+function read_eig(filename::AbstractString, ::FortranBinaryStream)
     idx_b = Vector{Int}()
     idx_k = Vector{Int}()
     eig = Vector{Float64}()
@@ -61,68 +80,62 @@ function _read_eig_bin(filename::AbstractString)
         end
     end
 
-    E = _reshape_eig(idx_b, idx_k, eig)
-    return E
+    eigenvalues = _reshape_eig(idx_b, idx_k, eig)
+    _check_eig_order(eigenvalues)
+    return eigenvalues
 end
 
-"""
-    read_eig(filename::AbstractString)
-
-Read the `eig` file.
-
-# Return
-- `E`: a lenth-`n_kpts` vector, each element is a length-`n_bands` vector
-"""
 function read_eig(filename::AbstractString)
-    @info "Reading $filename"
-
     if isbinary(filename)
-        E = _read_eig_bin(filename)
+        format = FortranBinaryStream()
     else
-        E = _read_eig_fmt(filename)
+        format = FortranText()
     end
+    eigenvalues = read_eig(filename, format)
 
-    n_bands = length(E[1])
-    n_kpts = length(E)
+    n_kpts = length(eigenvalues)
+    @assert n_kpts > 0 "Empty eig file"
+    n_bands = length(eigenvalues[1])
+    @info "Reading eig file" filename n_kpts n_bands
 
-    # check that eigenvalues are in order
-    # some times there are small noises
-    round_digits(x) = round(x; digits=7)
-    for ik in 1:n_kpts
-        if !issorted(E[ik]; by=round_digits)
-            @warn "Eigenvalues are not sorted at " ik E[ik]
-        end
-    end
-
-    println("  n_bands = ", n_bands)
-    println("  n_kpts  = ", n_kpts)
-    println()
-
-    return E
+    return eigenvalues
 end
 
 """
-Write plain text eig file.
+    write_eig(filename, eigenvalues; binary=false)
+    write_eig(filename, eigenvalues, ::FortranText)
+    write_eig(filename, eigenvalues, ::FortranBinaryStream)
+
+Write `eig` file.
+
+# Arguments
+- `eigenvalues`: a length-`n_kpts` vector, each element is a length-`n_bands` vector
+
+# Keyword arguments
+- `binary`: if true write in Fortran binary format.
 """
-function _write_eig_fmt(filename::AbstractString, E::AbstractVector)
-    n_bands = length(E[1])
-    n_kpts = length(E)
+function write_eig end
+
+function write_eig(filename::AbstractString, eigenvalues::AbstractVector, ::FortranText)
+    n_kpts = length(eigenvalues)
+    @assert n_kpts > 0 "Empty eigenvalues"
+    n_bands = length(eigenvalues[1])
 
     open(filename, "w") do io
         for ik in 1:n_kpts
             for ib in 1:n_bands
-                @printf(io, "%5d%5d%18.12f\n", ib, ik, E[ik][ib])
+                @printf(io, "%5d%5d%18.12f\n", ib, ik, eigenvalues[ik][ib])
             end
         end
     end
 end
 
-"""
-Write binary eig file.
-"""
-function _write_eig_bin(filename::AbstractString, E::AbstractVector)
-    n_bands = length(E[1])
-    n_kpts = length(E)
+function write_eig(
+    filename::AbstractString, eigenvalues::AbstractVector, ::FortranBinaryStream
+)
+    n_kpts = length(eigenvalues)
+    @assert n_kpts > 0 "Empty eigenvalues"
+    n_bands = length(eigenvalues[1])
 
     # gfortran integer is 4 bytes
     Tint = Int32
@@ -132,32 +145,22 @@ function _write_eig_bin(filename::AbstractString, E::AbstractVector)
             for ib in 1:n_bands
                 write(io, Tint(ib))
                 write(io, Tint(ik))
-                write(io, Float64(E[ik][ib]))
+                write(io, Float64(eigenvalues[ik][ib]))
             end
         end
     end
 end
 
-"""
-    write_eig(filename::AbstractString, E::AbstractArray; binary=false)
-
-Write `eig` file.
-
-# Arguments
-- `E`: a lenth-`n_kpts` vector, each element is a length-`n_bands` vector
-
-# Keyword arguments
-- `binary`: if true write in Fortran binary format
-"""
-function write_eig(filename::AbstractString, E::AbstractVector; binary::Bool=false)
+function write_eig(filename::AbstractString, eigenvalues::AbstractVector; binary=false)
     if binary
-        _write_eig_bin(filename, E)
+        format = FortranBinaryStream()
     else
-        _write_eig_fmt(filename, E)
+        format = FortranText()
     end
+    write_eig(filename, eigenvalues, format)
 
-    @info "Written to file: $(filename)"
-    println()
-
-    return nothing
+    n_kpts = length(eigenvalues)
+    @assert n_kpts > 0 "Empty eigenvalues"
+    n_bands = length(eigenvalues[1])
+    @info "Writing eig file" filename n_kpts n_bands
 end
