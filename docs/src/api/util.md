@@ -6,19 +6,6 @@ Some simple convenience functions for development.
 CurrentModule = WannierIO
 ```
 
-## Contents
-
-```@contents
-Pages = ["util.md"]
-Depth = 2
-```
-
-## Index
-
-```@index
-Pages = ["util.md"]
-```
-
 ## Fortran related
 
 ```@autodocs

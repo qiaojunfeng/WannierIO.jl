@@ -3,7 +3,7 @@ export read_w90_tbdat, read_w90_wsvec
 """
     read_w90_tbdat(filename)
 
-Read `seedname_tb.dat`.
+Read `prefix_tb.dat`.
 
 # Return
 - `lattice`: each column is a lattice vector
@@ -13,7 +13,7 @@ Read `seedname_tb.dat`.
 - `r`: position operator
 """
 function read_w90_tbdat(filename::AbstractString)
-    @info "Reading $filename"
+    @info "Reading Wannier90 tb file" filename
 
     io = open(filename)
     header = strip(readline(io))
@@ -88,7 +88,7 @@ end
 """
     read_w90_wsvec(filename::AbstractString)
 
-Read `seedname_wsvec.dat`.
+Read `prefix_wsvec.dat`.
 """
 function read_w90_wsvec(filename::AbstractString)
     @info "Reading $filename"

@@ -1,12 +1,14 @@
 using Dates: now
 
+# TODO update this file, use consistent variable names
+
 """
     write_HH_R(filename, H, R; N=nothing, header=nothing)
 
-Write the real space Hamiltonian to a `seedname_HH_R.dat` file.
+Write the real space Hamiltonian to a `prefix_HH_R.dat` file.
 
 # Arguments
-- `filename`: usually `seedname_HH_R.dat`
+- `filename`: usually `prefix_HH_R.dat`
 - `H`: a `n_wann * n_wann * n_rvecs` array of Hamiltonian
 - `R`: a `n_rvecs * 3` array of integers
 
@@ -23,7 +25,7 @@ Write the real space Hamiltonian to a `seedname_HH_R.dat` file.
     account the degeneracy of R vectors, and also does not use MDRS
     interpolation. I have modified the `postw90.x` code to use MDRS, and also
     changed a bit the number of digits for the Hamiltonian in `HH_R.dat`, so
-    that it is the same as the `seedname_tb.dat` file, i.e., from Fortran
+    that it is the same as the `prefix_tb.dat` file, i.e., from Fortran
     `F12.6` to `E15.8`.
 
 """

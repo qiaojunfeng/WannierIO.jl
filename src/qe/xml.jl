@@ -7,12 +7,13 @@ Read atomic structure and band structure from QE's XML output.
 
 # Return
 - `lattice`: `3 * 3`, Å, each column is a lattice vector
-- `atom_positions`: `3 * n_atoms`, fractional, each column is a position
-- `atom_labels`: `n_atoms`, each element is the label of the corresponding atom
+- `atom_positions`: length-`n_atoms` vector, each element is a fractional position
+- `atom_labels`: length-`n_atoms` vector, each element is the label of the corresponding atom
 - `recip_lattice`: `3 * 3`, Å⁻¹, each column is a reciprocal lattice vector
-- `kpoints`: `3 * n_kpts`, fractional, each column is a kpoint
-- `E`: `n_bands * n_kpts`, eV. For spin-polarized but without SOC calculations,
-    return two arries of `E_up` and `E_dn` for the two spin channels.
+- `kpoints`: length-`n_kpts` vector, each element is a fractional kpoint
+- `eigenvalues`: length-`n_kpts` vector, each element is a length-`n_bands` vector of
+    eigenvalue in eV. For spin-polarized but without SOC calculations,
+    return two arries of `eigenvalues_up` and `eigenvalues_dn` for the two spin channels.
 - `fermi_energy`: eV
 """
 function read_qe_xml(filename::AbstractString)
@@ -33,12 +34,13 @@ function read_qe_xml(filename::AbstractString)
     n_atoms = parse(Int, atomic_structure["nat"])
 
     # structure info, each column is a vector for position or lattice vector
-    atom_positions = zeros(3, n_atoms)
+    atom_positions = Vec3{Float64}[]
     atom_labels = Vector{String}(undef, n_atoms)
     lattice = zeros(3, 3)
 
     for (i, atom) in enumerate(eachelement(findfirst("atomic_positions", atomic_structure)))
-        atom_positions[:, i] = parse.(Float64, split(atom.content))
+        pos = parse.(Float64, split(atom.content))
+        push!(atom_positions, pos)
         atom_labels[i] = atom["name"]
     end
     # lattice
@@ -47,7 +49,10 @@ function read_qe_xml(filename::AbstractString)
         lattice[:, i] = parse.(Float64, split(a.content))
     end
     # from cartesian to fractional
-    atom_positions = inv(lattice) * atom_positions
+    inv_lattice = inv(lattice)
+    atom_positions = map(atom_positions) do pos
+        Vec3(inv_lattice * pos)
+    end
     # from bohr to angstrom
     lattice *= BOHR_RADIUS_ANGS
 
@@ -72,42 +77,46 @@ function read_qe_xml(filename::AbstractString)
         # they should be the same in QE
         @assert nbnd_up == nbnd_dn
         n_bands = nbnd_up
-        E_up = zeros(n_bands, n_kpts)
-        E_dn = zeros(n_bands, n_kpts)
+        eigenvalues_up = Vector{Float64}[]
+        eigenvalues_dn = Vector{Float64}[]
     else
         n_bands = parse(Int, findfirst("nbnd", band_structure).content)
-        E = zeros(n_bands, n_kpts)
+        eigenvalues = Vector{Float64}[]
     end
-    kpoints = zeros(3, n_kpts)
+    kpoints = Vec3{Float64}[]
 
     fermi_energy = parse(Float64, findfirst("fermi_energy", band_structure).content)
     # Hartree to eV
     fermi_energy *= AUTOEV
 
+    inv_recip = inv(recip_lattice)
     ks_energies = findall("ks_energies", band_structure)
-    for (ik, ks_energy) in enumerate(ks_energies)
+    for ks_energy in ks_energies
         k_point = findfirst("k_point", ks_energy)
-        kpoints[:, ik] = parse.(Float64, split(k_point.content))
-        eigenvalues = findfirst("eigenvalues", ks_energy)
+        kpt = parse.(Float64, split(k_point.content))
+        # to 1/angstrom
+        kpt *= 2π / alat
+        # from cartesian to fractional
+        kpt = inv_recip * kpt
+        push!(kpoints, kpt)
+
+        qe_eigenvalues = findfirst("eigenvalues", ks_energy)
         if lsda && !spinorbit
-            e = parse.(Float64, split(eigenvalues.content))
-            E_up[:, ik] = e[1:n_bands]
-            E_dn[:, ik] = e[(n_bands + 1):end]
+            e = parse.(Float64, split(qe_eigenvalues.content))
+            # Hartree to eV
+            e .*= AUTOEV
+            push!(eigenvalues_up, e[1:n_bands])
+            push!(eigenvalues_dn, e[(n_bands + 1):end])
         else
-            E[:, ik] = parse.(Float64, split(eigenvalues.content))
+            e = parse.(Float64, split(qe_eigenvalues.content))
+            # Hartree to eV
+            e .*= AUTOEV
+            push!(eigenvalues, e)
         end
     end
-    # to 1/angstrom
-    kpoints *= 2π / alat
-    # from cartesian to fractional
-    kpoints = inv(recip_lattice) * kpoints
-    # Hartree to eV
-    if lsda && !spinorbit
-        E_up *= AUTOEV
-        E_dn *= AUTOEV
-    else
-        E *= AUTOEV
-    end
+
+    lattice = Mat3(lattice)
+    recip_lattice = Mat3(recip_lattice)
 
     if lsda && !spinorbit
         return (;
@@ -116,10 +125,18 @@ function read_qe_xml(filename::AbstractString)
             atom_labels,
             recip_lattice,
             kpoints,
-            E_up,
-            E_dn,
+            eigenvalues_up,
+            eigenvalues_dn,
             fermi_energy,
         )
     end
-    return (; lattice, atom_positions, atom_labels, recip_lattice, kpoints, E, fermi_energy)
+    return (;
+        lattice,
+        atom_positions,
+        atom_labels,
+        recip_lattice,
+        kpoints,
+        eigenvalues,
+        fermi_energy,
+    )
 end
