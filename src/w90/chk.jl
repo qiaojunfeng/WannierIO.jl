@@ -29,10 +29,10 @@ struct Chk{T<:Real}
     Vector of integers, size: `n_exclude_bands`"""
     exclude_bands::Vector{Int}
 
-    "Matrix of size 3 x 3, each column is a lattice vector"
+    "Matrix of size 3 x 3, each column is a lattice vector in Å unit"
     lattice::Mat3{T}
 
-    "Matrix of size 3 x 3, each column is a reciprocal lattice vector"
+    "Matrix of size 3 x 3, each column is a reciprocal lattice vector in Å⁻¹ unit"
     recip_lattice::Mat3{T}
 
     "number of kpoints, can be auto set in constructor"
@@ -57,7 +57,7 @@ struct Chk{T<:Real}
     """Have finished disentanglement or not"""
     have_disentangled::Bool
 
-    "Omega invariant part of MV spreads"
+    "Omega invariant part of MV spreads, in Å² unit"
     ΩI::T
 
     """
@@ -83,8 +83,10 @@ struct Chk{T<:Real}
 
     """Unitary matrix for maximal localization,
     length-`n_kpts` vector, each element has size: `n_wann` x `n_wann`,
-    i.e., the `u_matrix` in wannier90"""
-    U::Vector{Matrix{Complex{T}}}
+    i.e., the `u_matrix` in wannier90.
+    The abbreviation `ml` stands for maximal localization, so as to
+    differentiate from the (combined) unitary matrix `U = Udis * Uml`."""
+    Uml::Vector{Matrix{Complex{T}}}
 
     """Wannier-gauge overlap matrix,
     length-`n_kpts` vector of length-`n_bvecs` vector, each element is
@@ -92,12 +94,12 @@ struct Chk{T<:Real}
     i.e., the `m_matrix` in wannier90"""
     M::Vector{Vector{Matrix{Complex{T}}}}
 
-    """Wannier function centers, length-`n_wann` vector,
-    i.e., the `wannier_centres` in wannier90"""
+    """Wannier function centers, length-`n_wann` vector, Cartesian coordinates
+    in Å unit, i.e., the `wannier_centres` variable in wannier90"""
     r::Vector{Vec3{T}}
 
-    """Wannier function spreads, length-`n_wann` vector,
-    i.e., the `wannier_spreads` in wannier90"""
+    """Wannier function spreads, length-`n_wann` vector, Å² unit,
+    i.e., the `wannier_spreads` variable in wannier90"""
     ω::Vector{T}
 end
 
@@ -116,7 +118,7 @@ function Chk(
     ΩI::Real,
     dis_bands::AbstractVector{BitVector},
     Udis::AbstractVector,
-    U::AbstractVector,
+    Uml::AbstractVector,
     M::AbstractVector,
     r::AbstractVector,
     ω::AbstractVector,
@@ -125,16 +127,16 @@ function Chk(
         @assert length(Udis) > 0 "empty Udis"
         n_bands = size(Udis[1], 1)
     else
-        @assert length(U) > 0 "empty U"
-        n_bands = size(U[1], 1)
+        @assert length(Uml) > 0 "empty Uml"
+        n_bands = size(Uml[1], 1)
     end
 
     n_exclude_bands = length(exclude_bands)
     n_kpts = length(M)
     @assert n_kpts > 0 "empty M"
     n_bvecs = length(M[1])
-    @assert length(U) > 0 "empty U"
-    n_wann = size(U[1], 1)
+    @assert length(Uml) > 0 "empty Uml"
+    n_wann = size(Uml[1], 1)
 
     if have_disentangled
         n_dis = zeros(Int, n_kpts)
@@ -163,7 +165,7 @@ function Chk(
         dis_bands,
         n_dis,
         collect.(Udis),
-        collect.(U),
+        collect.(Uml),
         M,
         r,
         ω,
@@ -264,12 +266,12 @@ function read_chk(filename::AbstractString, ::FortranText)
         end
 
         # u_matrix
-        U = [zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_kpts]
+        Uml = [zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_kpts]
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_wann
                     vals = parse.(Float64, split(srline()))
-                    U[ik][ib, iw] = vals[1] + im * vals[2]
+                    Uml[ik][ib, iw] = vals[1] + im * vals[2]
                 end
             end
         end
@@ -311,7 +313,7 @@ function read_chk(filename::AbstractString, ::FortranText)
             ΩI,
             dis_bands,
             Udis,
-            U,
+            Uml,
             M,
             r,
             ω,
@@ -390,8 +392,8 @@ function read_chk(filename::AbstractString, ::FortranBinary)
     end
 
     # u_matrix
-    U = zeros(ComplexF64, n_wann, n_wann, n_kpts)
-    read(io, U)
+    Uml = zeros(ComplexF64, n_wann, n_wann, n_kpts)
+    read(io, Uml)
 
     #  m_matrix
     M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
@@ -419,7 +421,7 @@ function read_chk(filename::AbstractString, ::FortranBinary)
         ΩI,
         dis_bands,
         Udis,
-        [U[:, :, ik] for ik in 1:n_kpts],
+        [Uml[:, :, ik] for ik in 1:n_kpts],
         [[M[:, :, ib, ik] for ib in 1:n_bvecs] for ik in 1:n_kpts],
         [Vec3(r[:, iw]) for iw in 1:n_wann],
         ω,
@@ -539,7 +541,7 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranText)
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_wann
-                    v = chk.U[ik][ib, iw]
+                    v = chk.Uml[ik][ib, iw]
                     @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
@@ -625,7 +627,7 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
     end
 
     # u_matrix
-    write(io, ComplexF64.(cat(chk.U...; dims=3)))
+    write(io, ComplexF64.(cat(chk.Uml...; dims=3)))
 
     #  m_matrix
     M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
@@ -667,14 +669,13 @@ Extract `U` matrices from `Chk`.
 """
 function get_U(chk::Chk)
     if !chk.have_disentangled
-        # Return deepcopy for safety, so that chk.U is not modified
-        return deepcopy(chk.U)
+        # Return deepcopy for safety, so that chk.Uml is not modified
+        return deepcopy(chk.Uml)
     end
 
     Udis = get_Udis(chk)
-
-    return map(zip(Udis, chk.U)) do (U1, U2)
-        U1 * U2
+    return map(zip(Udis, chk.Uml)) do (d, m)
+        d * m
     end
 end
 
@@ -688,7 +689,7 @@ function get_Udis(chk::Chk)
     n_bands = chk.n_bands
     n_wann = chk.n_wann
 
-    T = eltype(chk.U[1])
+    T = eltype(chk.Uml[1])
     if !chk.have_disentangled
         return [diagm(0 => ones(T, n_wann)) for _ in 1:n_kpts]
     end
@@ -713,7 +714,7 @@ function get_Udis(chk::Chk)
         #    the last rows of Udis
         # so we need to permute the Bloch states before multiplying Udis
         # chk.Udis: semi-unitary matrices from disentanglement
-        # chk.U: unitary matrices from maximal localization
+        # chk.Uml: unitary matrices from maximal localization
         Iᵏ[:, p] * chk.Udis[ik]
     end
 end
