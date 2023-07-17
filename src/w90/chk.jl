@@ -628,11 +628,11 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
         write(io, Vector{Tint}(chk.n_dis))
 
         # u_matrix_opt
-        write(io, Array{ComplexF64}(reduce(cat3, chk.Uᵈ)))
+        write(io, Array{ComplexF64}(reduce(cat3, chk.Udis)))
     end
 
     # u_matrix
-    write(io, Array{ComplexF64}(reduce(cat3, chk.U)))
+    write(io, Array{ComplexF64}(reduce(cat3, chk.Uml)))
 
     #  m_matrix
     M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)

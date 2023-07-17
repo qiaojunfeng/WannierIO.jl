@@ -106,22 +106,27 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
     # I can just reuse the read_win function, without fix win inputs
     nnkp = read_win(filename, Wannier90Toml(); fix_inputs=false)
 
+    # Need to set value to Any, otherwise it is Dict{Symbol,Vector},
+    # then I cannot assign Mat3 to it.
+    nnkp = Dict{Symbol,Any}(pairs(nnkp))
+
     # Some following cleanups
     # Convert to Mat3
-    if haskey(nnkp, :recip_lattice) || haskey(nnkp, :lattice)
-        # Need to set value to Any, otherwise it is Dict{Symbol,Vector},
-        # then I cannot assign Mat3 to it.
-        nnkp = Dict{Symbol,Any}(pairs(nnkp))
-        for k in (:recip_lattice, :lattice)
+    if haskey(nnkp, :lattice) || haskey(nnkp, :recip_lattice)
+        for k in (:lattice, :recip_lattice)
             if haskey(nnkp, k)
                 nnkp[k] = Mat3(nnkp[k])
             end
         end
-        # back to NamedTuple
-        nnkp = NamedTuple(nnkp)
     end
 
-    return nnkp
+    # Convert to Vec3
+    if haskey(nnkp, :kpb_G)
+        nnkp[:kpb_G] = [[Vec3{Int}(G) for G in Gk] for Gk in nnkp[:kpb_G]]
+    end
+
+    # back to NamedTuple
+    return NamedTuple(nnkp)
 end
 
 function read_nnkp(filename::AbstractString)

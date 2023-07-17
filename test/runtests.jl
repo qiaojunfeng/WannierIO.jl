@@ -1,4 +1,5 @@
 using WannierIO
+using WannierIO: Vec3
 using Test
 using LazyArtifacts
 
