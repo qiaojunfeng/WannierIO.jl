@@ -1,6 +1,6 @@
 
 @testset "read/write mmn" begin
-    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/si2.mmn")
+    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/Si2_valence.mmn")
 
     @test length(M) == 216
     @test length(M[1]) == 8
@@ -40,8 +40,8 @@
 end
 
 @testset "read/write mmn binary" begin
-    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/si2.mmn")
-    M1, kpb_k1, kpb_G1 = read_mmn(artifact"Si2_valence/reference/binary/si2.mmn")
+    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/Si2_valence.mmn")
+    M1, kpb_k1, kpb_G1 = read_mmn(artifact"Si2_valence/reference/binary/Si2_valence.mmn")
     @test M ≈ M1
     @test kpb_k ≈ kpb_k1
     @test kpb_G ≈ kpb_G1

@@ -1,6 +1,6 @@
 using WannierIO: Vec3
 @testset "read wsvec ws" begin
-    mdrs, wsvec = read_w90_wsvec(artifact"Si2_valence/reference/ws/si2_wsvec.dat")
+    mdrs, wsvec = read_w90_wsvec(artifact"Si2_valence/reference/ws/Si2_valence_wsvec.dat")
 
     @assert mdrs == false
     @test length(wsvec.R) == 279
@@ -8,7 +8,7 @@ using WannierIO: Vec3
 end
 
 @testset "read wsvec mdrs" begin
-    mdrs, wsvec = read_w90_wsvec(artifact"Si2_valence/reference/mdrs/si2_wsvec.dat")
+    mdrs, wsvec = read_w90_wsvec(artifact"Si2_valence/reference/mdrs/Si2_valence_wsvec.dat")
     @assert mdrs == true
     @test length(wsvec.R) == 279
     @test wsvec.R[1] == [-4, 0, 2]
@@ -19,7 +19,7 @@ end
 end
 
 @testset "read tb ws" begin
-    tbdat = read_w90_tbdat(artifact"Si2_valence/reference/ws/si2_tb.dat")
+    tbdat = read_w90_tbdat(artifact"Si2_valence/reference/ws/Si2_valence_tb.dat")
 
     @test length(tbdat.R) == 279
     @test tbdat.R[1] == [-4, 0, 2]
@@ -61,8 +61,8 @@ end
 
 @testset "read tb mdrs" begin
     # The two files are identical
-    tbdat = read_w90_tbdat(artifact"Si2_valence/reference/mdrs/si2_tb.dat")
-    tbdat_ws = read_w90_tbdat(artifact"Si2_valence/reference/ws/si2_tb.dat")
+    tbdat = read_w90_tbdat(artifact"Si2_valence/reference/mdrs/Si2_valence_tb.dat")
+    tbdat_ws = read_w90_tbdat(artifact"Si2_valence/reference/ws/Si2_valence_tb.dat")
 
     for p in propertynames(tbdat)
         @test tbdat_ws[p] ≈ tbdat[p]

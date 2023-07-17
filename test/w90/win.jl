@@ -1,17 +1,16 @@
 @testset "read win" begin
-    win = read_win(artifact"Si2_valence/si2.win")
+    win = read_win(artifact"Si2_valence/Si2_valence.win")
 
     # how to generate reference data:
     WRITE_TOML = false
-    WRITE_TOML && WannierIO._write_win_toml("/tmp/si2.win.toml"; win...)
+    WRITE_TOML && write_win("/tmp/Si2_valence.win.toml"; toml=true, win...)
 
-    test_data = WannierIO._read_win_toml(artifact"Si2_valence/reference/si2.win.toml")
-
+    test_data = read_win(artifact"Si2_valence/reference/Si2_valence.win.toml")
     @test win == test_data
 end
 
 @testset "read/write win" begin
-    win = read_win(artifact"Si2_valence/si2.win")
+    win = read_win(artifact"Si2_valence/Si2_valence.win")
 
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
@@ -20,8 +19,8 @@ end
 end
 
 @testset "read/write win toml" begin
-    toml_path = artifact"Si2_valence/reference/si2.win.toml"
-    win = WannierIO._read_win_toml(toml_path)
+    toml_path = artifact"Si2_valence/reference/Si2_valence.win.toml"
+    win = read_win(toml_path)
 
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
@@ -30,7 +29,7 @@ end
 end
 
 @testset "read win: special cases" begin
-    windir = joinpath(@__DIR__, "win/")
+    windir = joinpath(@__DIR__, "win_testfiles")
     for win in readdir(windir)
         if endswith(win, ".win")
             # If it doesn't throw exceptions, it's good enough

@@ -1,5 +1,5 @@
 @testset "read chk" begin
-    chk = read_chk(artifact"Si2_valence/reference/si2.chk.fmt")
+    chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
 
     @test chk.n_wann == 4
     @test chk.n_bands == 4
@@ -16,17 +16,17 @@
     ]
     @test chk.M[1][2] ≈ ref_M12
 
-    @test length(chk.U) == 216
-    @test size(chk.U[1]) == (4, 4)
+    @test length(chk.Uml) == 216
+    @test size(chk.Uml[1]) == (4, 4)
     ref_U2 = ComplexF64[
         -0.16235109810009157+0.47353334937462366im -0.3755805652160198+0.32735938468233533im -0.16235110057874652+0.4735333026272855im -0.16235112363576365+0.47353331917208363im
         0.16956618931090092-0.23235535713863867im -0.7928314959724974+0.35098901875473565im 0.16956603006099888-0.23235524733459334im 0.16956607268060825-0.232355268156885im
         -0.3123360136432703+0.025184486826638694im -3.782746554514418e-8+1.6862208020401383e-8im -0.10111009556353681-0.6127313622218364im 0.41344612298635436+0.587546837211439im
         -0.6776552858574172-0.33054780770943226im -8.7307707370288e-8-6.01196661668837e-8im 0.30384128248067205+0.43437798438065095im 0.3738141419013159-0.10383009885606777im
     ]
-    @test chk.U[2] ≈ ref_U2
+    @test chk.Uml[2] ≈ ref_U2
 
-    @test chk.Uᵈ == Matrix{ComplexF64}[]
+    @test chk.Udis == Matrix{ComplexF64}[]
     @test chk.checkpoint == "postwann"
     @test chk.dis_bands == BitVector[]
     @test chk.n_dis == Int64[]
@@ -35,7 +35,7 @@
     @test chk.have_disentangled == false
     @test chk.header == "written on 15Jun2023 at 10:39:45"
 
-    win = read_win(artifact"Si2_valence/si2.win")
+    win = read_win(artifact"Si2_valence/Si2_valence.win")
     @test chk.kgrid == win.mp_grid
     @test chk.kpoints == win.kpoints
 
@@ -57,7 +57,7 @@
 end
 
 @testset "read/write chk" begin
-    chk = read_chk(artifact"Si2_valence/reference/si2.chk.fmt")
+    chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
 
     tmpfile = tempname(; cleanup=true)
     write_chk(tmpfile, chk)
@@ -66,8 +66,8 @@ end
 end
 
 @testset "read/write chk binary" begin
-    chk = read_chk(artifact"Si2_valence/reference/si2.chk.fmt")
-    chk1 = read_chk(artifact"Si2_valence/reference/binary/si2.chk")
+    chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
+    chk1 = read_chk(artifact"Si2_valence/reference/binary/Si2_valence.chk")
     @test chk ≈ chk1
 
     tmpfile = tempname(; cleanup=true)
@@ -77,7 +77,7 @@ end
 end
 
 @testset "read chk disentanglement" begin
-    chk = read_chk(artifact"Si2/reference/si2.chk.fmt")
+    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
 
     @test chk.n_wann == 8
     @test chk.n_bands == 16
@@ -92,7 +92,7 @@ end
 end
 
 @testset "read/write chk disentanglement" begin
-    chk = read_chk(artifact"Si2/reference/si2.chk.fmt")
+    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
 
     tmpfile = tempname(; cleanup=true)
     write_chk(tmpfile, chk)
@@ -101,8 +101,8 @@ end
 end
 
 @testset "read/write chk disentanglement binary" begin
-    chk = read_chk(artifact"Si2/reference/si2.chk.fmt")
-    chk1 = read_chk(artifact"Si2/reference/si2.chk")
+    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
+    chk1 = read_chk(artifact"Si2/reference/Si2.chk")
     @test chk ≈ chk1
 
     tmpfile = tempname(; cleanup=true)
@@ -112,16 +112,16 @@ end
 end
 
 @testset "get_Udis" begin
-    chk = read_chk(artifact"Si2/reference/si2.chk")
+    chk = read_chk(artifact"Si2/reference/Si2.chk")
     Udis = get_Udis(chk)
-    Udis_ref = read_amn(artifact"Si2/reference/si2.chk_Udis.amn")
+    Udis_ref = read_amn(artifact"Si2/reference/Si2.chk_Udis.amn")
     @test Udis ≈ Udis_ref
 end
 
 @testset "get_U" begin
-    chk = read_chk(artifact"Si2/reference/si2.chk")
+    chk = read_chk(artifact"Si2/reference/Si2.chk")
     U = get_U(chk)
-    U_ref = read_amn(artifact"Si2/reference/si2.chk_U.amn")
+    U_ref = read_amn(artifact"Si2/reference/Si2.chk_U.amn")
     @test U ≈ U_ref
 end
 

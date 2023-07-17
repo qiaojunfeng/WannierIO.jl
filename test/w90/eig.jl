@@ -1,6 +1,6 @@
 
 @testset "read/write eig" begin
-    E = read_eig(artifact"Si2_valence/si2.eig")
+    E = read_eig(artifact"Si2_valence/Si2_valence.eig")
     @test length(E) == 216
     @test length(E[1]) == 4
 
@@ -15,8 +15,8 @@
 end
 
 @testset "read/write eig binary" begin
-    E = read_eig(artifact"Si2_valence/si2.eig")
-    E1 = read_eig(artifact"Si2_valence/reference/binary/si2.eig")
+    E = read_eig(artifact"Si2_valence/Si2_valence.eig")
+    E1 = read_eig(artifact"Si2_valence/reference/binary/Si2_valence.eig")
     @test E ≈ E1
 
     tmpfile = tempname(; cleanup=true)

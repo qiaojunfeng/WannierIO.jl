@@ -260,8 +260,8 @@ function write_mmn(
     filename::AbstractString,
     M::AbstractVector,
     kpb_k::AbstractVector,
-    kpb_G::AbstractVector,
-    header::AbstractString=default_header();
+    kpb_G::AbstractVector;
+    header::AbstractString=default_header(),
     binary::Bool=false,
 )
     _check_dimensions_M_kpb(M, kpb_k, kpb_G)

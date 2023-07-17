@@ -55,8 +55,6 @@ function read_qe_xml(filename::AbstractString)
     end
     # from bohr to angstrom
     lattice *= BOHR_RADIUS_ANGS
-    # to StaticArray
-    lattice = Mat3(lattice)
 
     # reciprocal lattice
     recip_lattice = zeros(3, 3)
@@ -66,8 +64,6 @@ function read_qe_xml(filename::AbstractString)
     end
     # to 1/angstrom
     recip_lattice *= 2π / alat
-    # to StaticArray
-    recip_lattice = Mat3(recip_lattice)
 
     band_structure = findfirst("band_structure", output)
     n_kpts = parse(Int, findfirst("nks", band_structure).content)

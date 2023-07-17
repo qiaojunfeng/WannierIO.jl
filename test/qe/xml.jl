@@ -21,8 +21,8 @@
     @test qe.kpoints[1] ≈ [0.0, 0.0, 0.0]
     @test qe.kpoints[end] ≈ [0.5, 0.0, 0.5]
 
-    @test length(qe.E) == 511
-    E1 = [
+    @test length(qe.eigenvalues) == 511
+    eigenvalues1 = [
         -5.826225550687528,
         6.165602316381265,
         6.165602316381265,
@@ -40,7 +40,7 @@
         21.254697588478756,
         29.07002686142792,
     ]
-    E511 = [
+    eigenvalues511 = [
         -1.6666776531834973,
         -1.6666776531834973,
         3.2884932258593533,
@@ -58,8 +58,8 @@
         24.841843066432848,
         24.841843066563083,
     ]
-    @test qe.E[1] ≈ E1
-    @test qe.E[end] ≈ E511
+    @test qe.eigenvalues[1] ≈ eigenvalues1
+    @test qe.eigenvalues[end] ≈ eigenvalues511
 
     @test qe.fermi_energy ≈ 6.528341904366175
 end
@@ -100,13 +100,13 @@ end
     kpoint2 = Vec3(0.0, 0.0049999999999999975, 0.0)
     @test qe.kpoints[2] ≈ kpoint2
 
-    @test length(qe.E_up) == 274
-    E_up2 = [-77.99192823029188, -77.99169805183234, -49.45736655071318]
-    @test qe.E_up[2][1:3] ≈ E_up2
+    @test length(qe.eigenvalues_up) == 274
+    eigenvalues_up2 = [-77.99192823029188, -77.99169805183234, -49.45736655071318]
+    @test qe.eigenvalues_up[2][1:3] ≈ eigenvalues_up2
 
-    @test length(qe.E_dn) == 274
-    E_dn2 = [-74.843061971795, -74.84277910814951, -46.38172392618895]
-    @test qe.E_dn[2][1:3] ≈ E_dn2
+    @test length(qe.eigenvalues_dn) == 274
+    eigenvalues_dn2 = [-74.843061971795, -74.84277910814951, -46.38172392618895]
+    @test qe.eigenvalues_dn[2][1:3] ≈ eigenvalues_dn2
 
     @test qe.fermi_energy ≈ -4.819375066024118
 end

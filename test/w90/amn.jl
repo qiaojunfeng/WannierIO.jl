@@ -1,5 +1,5 @@
 @testset "read/write amn" begin
-    A = read_amn(artifact"Si2_valence/si2.amn")
+    A = read_amn(artifact"Si2_valence/Si2_valence.amn")
 
     ref_A215 = ComplexF64[
         0.602605803842+0.466458612517im 0.709819979644+0.096505743176im 0.602605806825+0.466458612235im 0.271333571639+0.662974997524im
@@ -20,8 +20,8 @@
 end
 
 @testset "read/write amn binary" begin
-    A = read_amn(artifact"Si2_valence/si2.amn")
-    A1 = read_amn(artifact"Si2_valence/reference/binary/si2.amn")
+    A = read_amn(artifact"Si2_valence/Si2_valence.amn")
+    A1 = read_amn(artifact"Si2_valence/reference/binary/Si2_valence.amn")
     @test A ≈ A1
 
     tmpfile = tempname(; cleanup=true)

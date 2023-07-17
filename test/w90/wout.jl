@@ -1,6 +1,5 @@
-using WannierIO: Vec3
 @testset "read wout" begin
-    wout = read_wout(artifact"Si2_valence/reference/si2.wout")
+    wout = read_wout(artifact"Si2_valence/reference/Si2_valence.wout")
 
     ref_lattice = [
         0.000000 2.715265 2.715265

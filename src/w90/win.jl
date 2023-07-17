@@ -65,7 +65,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             return line
         end
         # handle case insensitive win files (relic of Fortran)
-        function read_line_until_nonempty(; lower=true)
+        function read_line_until_nonempty(; lower=true, block_name=nothing)
             while !eof(io)
                 line = read_line()
                 lower && (line = lowercase(line))
@@ -74,7 +74,13 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     return line
                 end
             end
-            return error("Unexpected end of file")
+            # end of line reached
+            if block_name !== nothing
+                # in the middle of a block, raise error
+                error("end of file reached while parsing block `$block_name`")
+            end
+            # else, outside of blocks, should be fine reaching end of file
+            return nothing
         end
         function parse_array(line::AbstractString; T=Float64)
             return map(x -> parse(T, x), split(line))
@@ -83,23 +89,25 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
 
         while !eof(io)
             line = read_line_until_nonempty()
+            line === nothing && break
 
             # first handle special cases, e.g., blocks
             if occursin(r"begin\s+unit_cell_cart", line)
+                block_name = "unit_cell_cart"
                 unit_cell = zeros(Float64, 3, 3)
-                unit = read_line_until_nonempty()
+                unit = read_line_until_nonempty(; block_name)
                 if !startswith(unit, "b") && !startswith(unit, "a")
                     line = unit
                     unit = "ang"
                 else
-                    line = read_line_until_nonempty()
+                    line = read_line_until_nonempty(; block_name)
                 end
                 for i in 1:3
                     # in win file, each line is a lattice vector, here it is stored as column vec
                     unit_cell[:, i] = parse_array(line)
-                    line = read_line_until_nonempty()
+                    line = read_line_until_nonempty(; block_name)
                 end
-                @assert occursin(r"end\s+unit_cell_cart", line)
+                @assert occursin(r"end\s+unit_cell_cart", line) "error parsing $block_name: `end $block_name` not found"
                 if startswith(unit, "b")
                     # convert to angstrom
                     unit_cell .*= Bohr
@@ -108,8 +116,9 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                 push!(params, :unit_cell_cart => unit_cell)
             elseif occursin(r"begin\s+atoms_(frac|cart)", line)
                 iscart = occursin(r"cart", line)
+                block_name = "atoms_$(iscart ? "cart" : "frac")"
                 # do not lowercase due to atomic label
-                line = read_line_until_nonempty(; lower=false)
+                line = read_line_until_nonempty(; lower=false, block_name)
 
                 if iscart
                     unit = lowercase(line)
@@ -117,18 +126,18 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                         unit = "ang"
                     else
                         # do not lowercase due to atomic label
-                        line = read_line_until_nonempty(; lower=false)
+                        line = read_line_until_nonempty(; lower=false, block_name)
                     end
                 end
 
                 # I need to read all lines and get n_atoms
                 lines = Vector{String}()
-                while !occursin(r"end\s+atoms_(frac|cart)", lowercase(line))
+                while !occursin(Regex("end\\s+" * block_name), lowercase(line))
                     push!(lines, line)
-                    line = read_line_until_nonempty(; lower=false)
+                    line = read_line_until_nonempty(; lower=false, block_name)
                 end
                 n_atoms = length(lines)
-                atoms_frac = SymbolVec3[]
+                atoms_frac = SymbolVec3{Float64}[]
                 for i in 1:n_atoms
                     l = split(lines[i])
                     symbol = Symbol(l[1])
@@ -146,20 +155,22 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     push!(params, :atoms_frac => atoms_frac)
                 end
             elseif occursin(r"begin\s+projections", line)
+                block_name = "projections"
                 projections = Vector{String}()
-                line = read_line_until_nonempty(; lower=false)
+                line = read_line_until_nonempty(; lower=false, block_name)
                 while !occursin(r"end\s+projections", lowercase(line))
                     push!(projections, line)
-                    line = read_line_until_nonempty(; lower=false)
+                    line = read_line_until_nonempty(; lower=false, block_name)
                 end
                 push!(params, :projections => projections)
             elseif occursin(r"begin\s+kpoints", line)
-                line = read_line_until_nonempty()
+                block_name = "kpoints"
+                line = read_line_until_nonempty(; block_name)
                 # I need to read all lines and get n_kpts
                 lines = Vector{String}()
                 while !occursin(r"end\s+kpoints", line)
                     push!(lines, line)
-                    line = read_line_until_nonempty()
+                    line = read_line_until_nonempty(; block_name)
                 end
 
                 n_kpts = length(lines)
@@ -170,10 +181,11 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                 end
                 push!(params, :kpoints => kpoints)
             elseif occursin(r"begin\skpoint_path", line)
-                kpoint_path = Vector{Vector{SymbolVec3}}()
+                block_name = "kpoint_path"
+                kpoint_path = Vector{Vector{SymbolVec3{Float64}}}()
 
                 # allow uppercase
-                line = read_line_until_nonempty(; lower=false)
+                line = read_line_until_nonempty(; lower=false, block_name)
                 while !occursin(r"end\s+kpoint_path", lowercase(line))
                     l = split(line)
                     length(l) == 8 || error("Invalid kpoint_path line: $line")
@@ -186,13 +198,14 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     # push to kpath
                     push!(kpoint_path, [start_label => start_kpt, end_label => end_kpt])
 
-                    line = read_line_until_nonempty(; lower=false)
+                    line = read_line_until_nonempty(; lower=false, block_name)
                 end
                 push!(params, :kpoint_path => kpoint_path)
             else
                 # now treat remaining lines as key-value pairs
                 line = strip(replace(line, "=" => " ", ":" => " ", "," => " "))
                 key, value = split(line; limit=2)
+                value = strip(value)  # remove leading whitespaces
                 key = Symbol(key)
                 if key in keys_int
                     value = parse(Int, value)
@@ -255,6 +268,11 @@ function read_win(filename::AbstractString, ::Wannier90Toml; fix_inputs::Bool=tr
     # Vector{Vector} -> Mat3
     if haskey(win, :unit_cell_cart)
         win[:unit_cell_cart] = Mat3(win[:unit_cell_cart])
+    end
+
+    # Vector{Vector} -> Vector{Vec3}
+    if haskey(win, :kpoints)
+        win[:kpoints] = [Vec3(k) for k in win[:kpoints]]
     end
 
     return NamedTuple(win)
@@ -327,7 +345,7 @@ function fix_win!(params::Dict)
         atoms_cart = pop!(params, :atoms_cart)
         inv_cell = inv(params[:unit_cell_cart])
         atoms_frac = map(atoms_cart) do (symbol, cart)
-            SymbolVec3(symbol, inv_cell * cart)
+            SymbolVec3{Float64}(symbol, inv_cell * cart)
         end
         push!(params, :atoms_frac => atoms_frac)
     end
