@@ -1,13 +1,10 @@
-using Printf: @printf
-using Dates: now
-
 # Cube format
 # Specification from http://paulbourke.net/dataformats/cube/
 
 export read_cube, write_cube
 
 """
-    read_cube(filename::AbstractString)
+    $(SIGNATURES)
 
 Read `cube` file.
 
@@ -91,7 +88,7 @@ function read_cube(filename::AbstractString)
 end
 
 """
-    write_cube(filename, filename, atom_positions, atom_numbers, origin, span_vectors, W)
+    $(SIGNATURES)
 
 Write `cube` file.
 
@@ -119,7 +116,7 @@ function write_cube(
     io = open(filename, "w")
 
     # header
-    @printf(io, "Created by WannierIO.jl %s\n", string(now()))
+    @printf(io, "%s\n", default_header())
     @printf(io, "outer loop: x, middle loop: y, inner loop: z\n")
 
     # to Bohr

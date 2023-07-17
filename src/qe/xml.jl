@@ -1,7 +1,7 @@
 using EzXML
 
 """
-    read_qe_xml(filename)
+    $(SIGNATURES)
 
 Read atomic structure and band structure from QE's XML output.
 

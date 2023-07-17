@@ -1,4 +1,3 @@
-using Printf: @printf, @sprintf
 using TOML
 
 export read_win, write_win
@@ -305,7 +304,7 @@ function read_win(filename::AbstractString; fix_inputs=true)
 end
 
 """
-    fix_win!(params)
+    $(SIGNATURES)
 
 Sanity check and add missing input parameters from a `win` file.
 
@@ -410,6 +409,9 @@ write_win(
 """
 function write_win end
 
+"""
+    $(SIGNATURES)
+"""
 @inline function _check_win_required_params(kwargs)
     required_keys = [:num_wann, :unit_cell_cart, :atoms_frac, :mp_grid, :kpoints]
     for k in required_keys

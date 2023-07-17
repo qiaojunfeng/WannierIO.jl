@@ -1,10 +1,9 @@
-using Printf: @printf, @sprintf
 using DelimitedFiles: readdlm
 
 export read_w90_band, write_w90_band
 
 """
-    read_w90_band_kpt(filename)
+    $(SIGNATURES)
 
 Read a `prefix_band.kpt` file.
 
@@ -24,7 +23,7 @@ function read_w90_band_kpt(filename::AbstractString)
 end
 
 """
-    read_w90_band_dat(filename)
+    $(SIGNATURES)
 
 Read `prefix_band.dat` file.
 
@@ -55,7 +54,7 @@ function read_w90_band_dat(filename::AbstractString)
 end
 
 """
-    read_w90_band_labelinfo(filename)
+    $(SIGNATURES)
 
 Read `prefix_band.labelinfo` file.
 
@@ -81,7 +80,7 @@ function read_w90_band_labelinfo(filename::AbstractString)
 end
 
 """
-    read_w90_band(prefix)
+    $(SIGNATURES)
 
 Read `prefix_band.dat`, `prefix_band.kpt`, `prefix_band.labelinfo.dat`.
 
@@ -113,12 +112,14 @@ function read_w90_band(prefix::AbstractString)
 end
 
 """
+    $(SIGNATURES)
+
 Wannier90 default kweights in `prefix_band.kpt` is all 1.0.
 """
 default_band_kpt_kweights(kpoints::AbstractVector) = ones(length(kpoints))
 
 """
-    write_w90_band_kpt(filename; kpoints, kweights=default_band_kpt_kweights(kpoints))
+    $(SIGNATURES)
 
 Write `prefix_band.kpt` file.
 
@@ -127,7 +128,7 @@ Write `prefix_band.kpt` file.
 
 # Keyword Arguments
 - `kpoints`: length-`n_kpts` vector, fractional coordinates
-- `kweights`: `n_kpts`, optional, weights of kpoints
+- `kweights`: `n_kpts`, optional, weights of kpoints, default to 1.0.
 """
 function write_w90_band_kpt(
     filename::AbstractString;
@@ -147,7 +148,7 @@ function write_w90_band_kpt(
 end
 
 """
-    write_w90_band_dat(filename; x, eigenvalues)
+    $(SIGNATURES)
 
 Write `prefix_band.dat` file.
 
@@ -179,7 +180,7 @@ function write_w90_band_dat(
 end
 
 """
-    write_w90_band_labelinfo(filename; x, kpoints, symm_point_indices, symm_point_labels)
+    $(SIGNATURES)
 
 Write `prefix_band.labelinfo` file.
 
@@ -221,7 +222,7 @@ function write_w90_band_labelinfo(
 end
 
 """
-    write_w90_band(prefix; x, eigenvalues, kpoints, kweights, symm_point_indices, symm_point_labels)
+    $(SIGNATURES)
 
 Write `prefix_band.dat, prefix_band.kpt, prefix_band.labelinfo.dat`.
 

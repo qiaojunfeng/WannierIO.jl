@@ -1,13 +1,10 @@
-using Printf: @printf
-using Dates: now
-
 # XSF format
 # Specification from http://www.xcrysden.org/doc/XSF.html
 
 export read_xsf, write_xsf
 
 """
-    read_xsf(filename::AbstractString)
+    $(SIGNATURES)
 
 Read `xsf` file.
 
@@ -112,7 +109,7 @@ function read_xsf(filename::AbstractString)
 end
 
 """
-    write_xsf(filename, lattice, atom_positions, atom_numbers, origin, span_vectors, W)
+    $(SIGNATURES)
 
 Write `xsf` file.
 
@@ -142,7 +139,7 @@ function write_xsf(
     io = open(filename, "w")
 
     # header
-    @printf(io, "# Created by WannierIO.jl %s\n", string(now()))
+    @printf(io, "%s\n", default_header())
 
     @printf(io, "CRYSTAL\n")
     @printf(io, "PRIMVEC\n")

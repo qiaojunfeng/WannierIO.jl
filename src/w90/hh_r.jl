@@ -1,9 +1,7 @@
-using Dates: now
-
 # TODO update this file, use consistent variable names
 
 """
-    write_HH_R(filename, H, R; N=nothing, header=nothing)
+    $(SIGNATURES)
 
 Write the real space Hamiltonian to a `prefix_HH_R.dat` file.
 
@@ -34,7 +32,7 @@ function write_HH_R(
     H::AbstractArray{T,3},
     R::AbstractMatrix{IT};
     N::Union{AbstractVector{IT},Nothing}=nothing,
-    header::Union{AbstractString,Nothing}=nothing,
+    header=default_header(),
 ) where {T<:Complex,IT<:Integer}
     n_wann, _, n_rvecs = size(H)
     size(H, 2) == n_wann || error("H must be a n_wann * n_wann * n_rvecs matrix")
@@ -43,10 +41,6 @@ function write_HH_R(
 
     io = open(filename, "w")
 
-    if header === nothing
-        header = @sprintf "Created by WannierIO.jl %s" string(now())
-    end
-    header = strip(header)
     write(io, header, "\n")
 
     @printf(io, "%d\n", n_wann)

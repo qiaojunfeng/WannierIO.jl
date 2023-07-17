@@ -1,5 +1,3 @@
-using Printf: @printf
-
 export read_chk, write_chk, get_U, get_Udis
 
 """
@@ -104,6 +102,8 @@ struct Chk{T<:Real}
 end
 
 """
+    $(SIGNATURES)
+
 Convenience constructor of [`Chk`](@ref) struct that auto set some fields.
 """
 function Chk(
@@ -669,9 +669,9 @@ function write_chk(filename::AbstractString, chk::Chk; binary=false)
 end
 
 """
-    get_U(chk)
+    $(SIGNATURES)
 
-Extract `U` matrices from `Chk`.
+Extract the combined `U = Udis * Uml` matrices from `Chk`.
 """
 function get_U(chk::Chk)
     if !chk.have_disentangled
@@ -686,9 +686,9 @@ function get_U(chk::Chk)
 end
 
 """
-    get_Udis(chk)
+    $(SIGNATURES)
 
-Extract `U` matrices for disentanglement from `Chk`.
+Extract disentanglement `Udis` matrices from `Chk`.
 """
 function get_Udis(chk::Chk)
     n_kpts = chk.n_kpts
@@ -726,9 +726,9 @@ function get_Udis(chk::Chk)
 end
 
 """
-Compare two `Chk` objects.
+    $(SIGNATURES)
 
-Used in tests.
+Compare two `Chk` objects.
 """
 function Base.isapprox(a::Chk, b::Chk)
     for f in propertynames(a)

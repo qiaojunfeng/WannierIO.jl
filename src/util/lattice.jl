@@ -1,12 +1,12 @@
 """
-    get_recip_lattice(lattice)
+    $(SIGNATURES)
 
 Compute reciprocal lattice from lattice.
 """
 get_recip_lattice(lattice::Mat3) = 2π * inv(lattice)'
 
 """
-    get_lattice(recip_lattice)
+    $(SIGNATURES)
 
 Compute lattice from reciprocal lattice.
 """

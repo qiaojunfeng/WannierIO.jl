@@ -1,9 +1,9 @@
 using LinearAlgebra
 
 """
-    read_qe_band(filename)
+    $(SIGNATURES)
 
-read Quantum ESPRESSO `bands.x` output data file.
+Read Quantum ESPRESSO `bands.x` output data file.
 
 The data file has format
 ```
@@ -59,7 +59,7 @@ function read_qe_band(filename::AbstractString)
 end
 
 """
-    guess_kpath(kpoints)
+    $(SIGNATURES)
 
 Guess high symmetry points from kpoint coordinates.
 
@@ -67,7 +67,7 @@ If there is angle between two consecutive kpoints, then
 it is labeled as a high-symmetry point.
 
 # Arguments
-- `kpoints`: Vector of `Vec3`, in Cartesian coordinates
+- `kpoints`: Vector of `Vector` or `Vec3`, in Cartesian coordinates
 
 # Keyword Arguments
 - `atol`: Absolute tolerance for checking cross product of two vectors
@@ -77,7 +77,7 @@ it is labeled as a high-symmetry point.
 - `symm_point_labels`: Vector of labels of high-symmetry points, for the moment
   it is empty
 """
-function guess_kpath(kpoints::AbstractVector{Vec3}; atol=2e-6)
+function guess_kpath(kpoints::AbstractVector{<:AbstractVector}; atol=2e-6)
     # of course index starts from 1
     symm_point_indices = Vector{Int}()
     symm_point_labels = Vector{String}()

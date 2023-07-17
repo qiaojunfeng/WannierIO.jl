@@ -27,9 +27,16 @@ Modules = [WannierIO]
 Pages   = ["common/type.jl"]
 ```
 
+## Constants
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["common/const.jl"]
+```
+
 ## Misc
 
 ```@autodocs
 Modules = [WannierIO]
-Pages   = ["util/header.jl", "util/toml.jl", "util/parser.jl"]
+Pages   = ["util/header.jl", "util/toml.jl", "util/parser.jl", "WannierIO.jl"]
 ```

@@ -1,5 +1,3 @@
-using Printf: @printf, @sprintf
-
 export read_unk, write_unk
 
 """

@@ -17,7 +17,10 @@ if [[ $USE_PYTHON == false ]]; then
     # 1. Use [`LiveServer.jl`](https://docs.juliahub.com/LiveServer) to track
     # changes and rebuild docs automatically
     cd "$SCRIPT_DIR/.."
-    julia --project=docs -e 'using WannierIO, Documenter, LiveServer; servedocs()'
+    # use `0.0.0.0` to listen on all interfaces, so that port forward works
+    julia_code="using WannierIO, Documenter, LiveServer; \
+                servedocs(host=\"0.0.0.0\")"
+    julia --project=docs -e "$julia_code"
 else
     # 2. use python's http.server to set up a local server
     cd "$SCRIPT_DIR"

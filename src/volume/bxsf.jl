@@ -1,13 +1,10 @@
-using Printf: @printf
-using Dates: now
-
 # BXSF format
 # Specification from http://www.xcrysden.org/doc/XSF.html#__toc__14
 
 export read_bxsf, write_bxsf
 
 """
-    read_bxsf(filename::AbstractString)
+    $(SIGNATURES)
 
 Read `bxsf` file.
 
@@ -95,13 +92,7 @@ function read_bxsf(filename::AbstractString)
 end
 
 """
-    write_bxsf(
-        filename::AbstractString,
-        fermi_energy::T,
-        origin::AbstractVector{T},
-        span_vectors::AbstractMatrix{T},
-        E::AbstractArray{T,4},
-    ) where {T<:Real}
+    $(SIGNATURES)
 
 Write `bxsf` file.
 
@@ -126,7 +117,7 @@ function write_bxsf(
 
     # header
     @printf(io, "BEGIN_INFO\n")
-    @printf(io, "  # Created by WannierIO.jl %s\n", string(now()))
+    @printf(io, "  %s\n", default_header())
     @printf(io, "  Fermi Energy: %21.16f\n", fermi_energy)
     @printf(io, "END_INFO\n\n")
 
