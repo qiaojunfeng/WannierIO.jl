@@ -1,4 +1,5 @@
-@testset "read nnkp" begin
+@testitem "read nnkp" begin
+    using LazyArtifacts
     nnkp = read_nnkp(artifact"Si2_valence/reference/Si2_valence.nnkp")
 
     WRITE_TOML = false
@@ -9,7 +10,8 @@
     @test pairs(nnkp) == pairs(test_data)
 end
 
-@testset "read/write nnkp" begin
+@testitem "read/write nnkp" begin
+    using LazyArtifacts
     nnkp = read_nnkp(artifact"Si2_valence/reference/Si2_valence.nnkp")
     tmpfile = tempname(; cleanup=true)
     n_wann = 4
@@ -19,7 +21,8 @@ end
     @test pairs(nnkp) == pairs(nnkp2)
 end
 
-@testset "read/write nnkp toml" begin
+@testitem "read/write nnkp toml" begin
+    using LazyArtifacts
     nnkp = read_nnkp(artifact"Si2_valence/reference/Si2_valence.nnkp.toml")
 
     tmpfile = tempname(; cleanup=true)

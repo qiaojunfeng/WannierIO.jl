@@ -1,5 +1,6 @@
 
-@testset "read/write eig" begin
+@testitem "read/write eig" begin
+    using LazyArtifacts
     E = read_eig(artifact"Si2_valence/Si2_valence.eig")
     @test length(E) == 216
     @test length(E[1]) == 4
@@ -14,7 +15,8 @@
     @test E ≈ E1
 end
 
-@testset "read/write eig binary" begin
+@testitem "read/write eig binary" begin
+    using LazyArtifacts
     E = read_eig(artifact"Si2_valence/Si2_valence.eig")
     E1 = read_eig(artifact"Si2_valence/reference/binary/Si2_valence.eig")
     @test E ≈ E1

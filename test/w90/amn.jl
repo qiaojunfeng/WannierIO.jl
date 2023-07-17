@@ -1,4 +1,5 @@
-@testset "read/write amn" begin
+@testitem "read/write amn" begin
+    using LazyArtifacts
     A = read_amn(artifact"Si2_valence/Si2_valence.amn")
 
     ref_A215 = ComplexF64[
@@ -19,7 +20,8 @@
     @test A ≈ A1
 end
 
-@testset "read/write amn binary" begin
+@testitem "read/write amn binary" begin
+    using LazyArtifacts
     A = read_amn(artifact"Si2_valence/Si2_valence.amn")
     A1 = read_amn(artifact"Si2_valence/reference/binary/Si2_valence.amn")
     @test A ≈ A1
