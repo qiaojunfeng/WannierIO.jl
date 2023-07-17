@@ -1,5 +1,6 @@
 
-@testset "read/write unk" begin
+@testitem "read/write unk" begin
+    using LazyArtifacts
     ik, ψ = read_unk(artifact"Si2_valence/UNK/UNK00001.1")
     @test ik == 1
     @test size(ψ) == (13, 13, 13, 4, 1)
@@ -16,7 +17,8 @@
     @test ψ ≈ ψ2
 end
 
-@testset "read/write unk binary" begin
+@testitem "read/write unk binary" begin
+    using LazyArtifacts
     ik, ψ = read_unk(artifact"Si2_valence/UNK/UNK00001.1")
     ik1, ψ1 = read_unk(artifact"Si2_valence/reference/binary/UNK00001.1")
     @test ik == ik1

@@ -1,4 +1,5 @@
-@testset "read chk" begin
+@testitem "read chk" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
 
     @test chk.n_wann == 4
@@ -56,7 +57,8 @@
     @test chk.ω ≈ ref_ω
 end
 
-@testset "read/write chk" begin
+@testitem "read/write chk" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
 
     tmpfile = tempname(; cleanup=true)
@@ -65,7 +67,8 @@ end
     @test chk ≈ chk2
 end
 
-@testset "read/write chk binary" begin
+@testitem "read/write chk binary" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
     chk1 = read_chk(artifact"Si2_valence/reference/binary/Si2_valence.chk")
     @test chk ≈ chk1
@@ -76,7 +79,8 @@ end
     @test chk ≈ chk2
 end
 
-@testset "read chk disentanglement" begin
+@testitem "read chk disentanglement" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
 
     @test chk.n_wann == 8
@@ -91,7 +95,8 @@ end
     @test chk.have_disentangled == true
 end
 
-@testset "read/write chk disentanglement" begin
+@testitem "read/write chk disentanglement" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
 
     tmpfile = tempname(; cleanup=true)
@@ -100,7 +105,8 @@ end
     @test chk ≈ chk2
 end
 
-@testset "read/write chk disentanglement binary" begin
+@testitem "read/write chk disentanglement binary" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
     chk1 = read_chk(artifact"Si2/reference/Si2.chk")
     @test chk ≈ chk1
@@ -111,14 +117,16 @@ end
     @test chk ≈ chk2
 end
 
-@testset "get_Udis" begin
+@testitem "get_Udis" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2/reference/Si2.chk")
     Udis = get_Udis(chk)
     Udis_ref = read_amn(artifact"Si2/reference/Si2.chk_Udis.amn")
     @test Udis ≈ Udis_ref
 end
 
-@testset "get_U" begin
+@testitem "get_U" begin
+    using LazyArtifacts
     chk = read_chk(artifact"Si2/reference/Si2.chk")
     U = get_U(chk)
     U_ref = read_amn(artifact"Si2/reference/Si2.chk_U.amn")

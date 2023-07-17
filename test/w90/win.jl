@@ -1,4 +1,5 @@
-@testset "read win" begin
+@testitem "read win" begin
+    using LazyArtifacts
     win = read_win(artifact"Si2_valence/Si2_valence.win")
 
     # how to generate reference data:
@@ -9,7 +10,8 @@
     @test win == test_data
 end
 
-@testset "read/write win" begin
+@testitem "read/write win" begin
+    using LazyArtifacts
     win = read_win(artifact"Si2_valence/Si2_valence.win")
 
     tmpfile = tempname(; cleanup=true)
@@ -18,7 +20,8 @@ end
     @test win == win2
 end
 
-@testset "read/write win toml" begin
+@testitem "read/write win toml" begin
+    using LazyArtifacts
     toml_path = artifact"Si2_valence/reference/Si2_valence.win.toml"
     win = read_win(toml_path)
 
@@ -28,7 +31,7 @@ end
     @test win == win2
 end
 
-@testset "read win: special cases" begin
+@testitem "read win: special cases" begin
     windir = joinpath(@__DIR__, "win_testfiles")
     for win in readdir(windir)
         if endswith(win, ".win")

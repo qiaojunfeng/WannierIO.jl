@@ -1,4 +1,6 @@
-@testset "read wout" begin
+@testitem "read wout" begin
+    using WannierIO: Vec3
+    using LazyArtifacts
     wout = read_wout(artifact"Si2_valence/reference/Si2_valence.wout")
 
     ref_lattice = [

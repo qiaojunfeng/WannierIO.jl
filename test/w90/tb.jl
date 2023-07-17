@@ -1,5 +1,6 @@
 using WannierIO: Vec3
-@testset "read wsvec ws" begin
+@testitem "read wsvec ws" begin
+    using LazyArtifacts
     mdrs, wsvec = read_w90_wsvec(artifact"Si2_valence/reference/ws/Si2_valence_wsvec.dat")
 
     @assert mdrs == false
@@ -7,7 +8,9 @@ using WannierIO: Vec3
     @test wsvec.R[1] == [-4, 0, 2]
 end
 
-@testset "read wsvec mdrs" begin
+@testitem "read wsvec mdrs" begin
+    using WannierIO: Vec3
+    using LazyArtifacts
     mdrs, wsvec = read_w90_wsvec(artifact"Si2_valence/reference/mdrs/Si2_valence_wsvec.dat")
     @assert mdrs == true
     @test length(wsvec.R) == 279
@@ -18,7 +21,8 @@ end
     @test wsvec.Nᵀ[1] == [3 1 1 1; 1 3 1 1; 2 2 3 2; 1 1 1 3]
 end
 
-@testset "read tb ws" begin
+@testitem "read tb ws" begin
+    using LazyArtifacts
     tbdat = read_w90_tbdat(artifact"Si2_valence/reference/ws/Si2_valence_tb.dat")
 
     @test length(tbdat.R) == 279
@@ -59,7 +63,8 @@ end
     @test tbdat.rz[3] ≈ rz3
 end
 
-@testset "read tb mdrs" begin
+@testitem "read tb mdrs" begin
+    using LazyArtifacts
     # The two files are identical
     tbdat = read_w90_tbdat(artifact"Si2_valence/reference/mdrs/Si2_valence_tb.dat")
     tbdat_ws = read_w90_tbdat(artifact"Si2_valence/reference/ws/Si2_valence_tb.dat")
