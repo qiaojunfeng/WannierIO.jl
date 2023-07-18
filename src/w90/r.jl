@@ -29,9 +29,15 @@ function read_w90_rdat(filename::AbstractString)
                     Rvectors[iR] = parse.(Int, line[1:3])
                     @assert m == parse(Int, line[4]) line
                     @assert n == parse(Int, line[5]) line
-                    r_x[iR][m, n] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
-                    r_y[iR][m, n] = complex(parse(Float64, line[8]), parse(Float64, line[9]))
-                    r_z[iR][m, n] = complex(parse(Float64, line[10]), parse(Float64, line[11]))
+                    r_x[iR][m, n] = complex(
+                        parse(Float64, line[6]), parse(Float64, line[7])
+                    )
+                    r_y[iR][m, n] = complex(
+                        parse(Float64, line[8]), parse(Float64, line[9])
+                    )
+                    r_z[iR][m, n] = complex(
+                        parse(Float64, line[10]), parse(Float64, line[11])
+                    )
                 end
             end
         end

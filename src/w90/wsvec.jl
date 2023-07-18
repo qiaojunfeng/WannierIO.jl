@@ -21,7 +21,7 @@ function read_w90_wsvec(filename::AbstractString)
         # check `use_ws_distance`
         mdrs = false
         mdrs_str = split(header)[end]
-        if occursin("use_ws_distance=", mdrs_str )
+        if occursin("use_ws_distance=", mdrs_str)
             mdrs_str = lowercase(split(header, "use_ws_distance=")[2])
             mdrs = parse_bool(mdrs_str)
         end
