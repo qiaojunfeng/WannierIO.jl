@@ -1,9 +1,7 @@
-using Printf: @printf
-
 export read_wout
 
 """
-    read_wout(filename)
+    $(SIGNATURES)
 
 Parse wannire90 `wout` file.
 

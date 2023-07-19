@@ -1,6 +1,3 @@
-using Printf: @printf, @sprintf
-using Dates: now
-
 export read_amn, write_amn
 
 """

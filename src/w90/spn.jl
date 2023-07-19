@@ -73,6 +73,9 @@ Write the `spn` file.
 """
 function write_spn end
 
+"""
+    $(SIGNATURES)
+"""
 @inline function _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
     n_kpts = length(Sx)
     @assert n_kpts > 0 "empty spn matrix"

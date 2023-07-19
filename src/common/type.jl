@@ -14,10 +14,14 @@ For atom posistions, kpoints, etc.
 """
 const Vec3{T} = SVector{3,T} where {T}
 
-# Vector{Vector} -> Mat3
+"""
+`Vector{Vector}` -> `Mat3`
+"""
 Mat3(A::AbstractVector) = Mat3(reduce(hcat, A))
 
-# Mat3 -> Vec3{Vec3}
+"""
+`Mat3` -> `Vec3{Vec3}`
+"""
 Vec3(A::Mat3) = Vec3(eachcol(A))
 
 """

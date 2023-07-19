@@ -1,5 +1,3 @@
-using Printf: @printf
-
 export read_mmn, write_mmn
 
 """
@@ -163,6 +161,9 @@ Check the dimensions between the quantities are consistent.
     @assert all(all(length.(Gk) .== 3) for Gk in kpb_G) "kpb_G[ib][ib] are not 3-vectors"
 end
 
+"""
+    $(SIGNATURES)
+"""
 @inline function _check_dimensions_M_kpb(M, kpb_k, kpb_G)
     _check_dimensions_kpb(kpb_k, kpb_G)
 

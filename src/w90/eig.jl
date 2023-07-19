@@ -1,9 +1,11 @@
-using Printf: @printf
-
 export read_eig, write_eig
 
 """
+    $(SIGNATURES)
+
 Reshape a vector of eigenvalues into a matrix of eigenvalues.
+
+Auto detect the number of bands and kpoints.
 """
 @inline function _reshape_eig(
     idx_b::AbstractVector, idx_k::AbstractVector, eig::AbstractVector
@@ -17,7 +19,11 @@ Reshape a vector of eigenvalues into a matrix of eigenvalues.
 end
 
 """
-Check that eigenvalues are in order, some times there are small noises.
+    $(SIGNATURES)
+
+Check that eigenvalues are in order.
+
+Some times there are small noises, use `digits` to set the number of digits for comparisons.
 """
 @inline function _check_eig_order(eigenvalues::AbstractVector; digits=7)
     round_digits(x) = round(x; digits)

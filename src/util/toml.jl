@@ -1,4 +1,6 @@
 """
+    $(SIGNATURES)
+
 Write `kwargs` into `io` as a TOML file.
 
 Do some type conversion before writing.

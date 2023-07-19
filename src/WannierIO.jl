@@ -1,4 +1,20 @@
+"""
+`WannierIO.jl`: a package for reading and writing Wannier90 file formats.
+
+---
+
+$(README)
+
+---
+
+Exported functions:
+
+$(EXPORTS)
+
+"""
 module WannierIO
+
+using Printf: @printf, @sprintf
 using DocStringExtensions
 
 include("common/const.jl")

@@ -15,6 +15,7 @@ makedocs(;
             "Wannier90" => "api/w90.md",
             "Volumetric data" => "api/volumetric.md",
             "Quantum ESPRESSO" => "api/qe.md",
+            "Index" => "api/index.md",
         ],
     ],
 )
