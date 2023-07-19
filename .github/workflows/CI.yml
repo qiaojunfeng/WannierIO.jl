@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
+    tags: [v*]
   pull_request:
     branches:
       - main
@@ -12,12 +15,17 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
       - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/cache@v1
       - name: Install JuliaFormatter
         # This will use the latest version by default but you can set the version like so:
         # julia  -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter", version="0.13.0"))'
         run: |
-          julia  -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter"))'
+          using Pkg
+          Pkg.add("JuliaFormatter")
+        shell: julia --color=yes {0}
       - uses: pre-commit/action@v3.0.0
+        with:
+          extra_args: ""  # do not run on all files
 
   test:
     runs-on: ${{ matrix.os }}
@@ -25,19 +33,18 @@ jobs:
       matrix:
         julia-version:
           - 1
-        julia-arch:
+        arch:
           - x64
         os:
           - ubuntu-latest
           - windows-latest
           - macOS-latest
-
     steps:
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia-version }}
-          arch: ${{ matrix.julia-arch }}
+          arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
