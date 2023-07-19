@@ -1,169 +1,83 @@
-export read_w90_tbdat, read_w90_wsvec
+export read_w90_tbdat
 
 """
-    read_w90_tbdat(filename)
+    $(SIGNATURES)
 
 Read `prefix_tb.dat`.
 
 # Return
-- `lattice`: each column is a lattice vector
-- `R`: ``\\bm{R}`` vectors on which operators are defined
-- `N`: degeneracies of ``\\bm{R}`` vectors
-- `H`: Hamiltonian ``\\bm{H}(\\bm{R})``
-- `r`: position operator
+- `lattice`: each column is a lattice vector in Å
+- `Rvectors`: ``\\mathbf{R}``-vectors on which operators are defined
+- `Rdegens`: degeneracies of each ``\\mathbf{R}``-vector
+- `H`: Hamiltonian ``\\mathbf{H}(\\mathbf{R})``
+- `r_x`: ``x``-component of position operator
+- `r_x`: ``y``-component of position operator
+- `r_x`: ``z``-component of position operator
+- `header`: the first line of the file
 """
 function read_w90_tbdat(filename::AbstractString)
-    @info "Reading Wannier90 tb file" filename
+    # convenice function
+    ssrline(io) = split(strip(readline(io)))
 
-    io = open(filename)
-    header = strip(readline(io))
-    println(header)
+    return open(filename) do io
+        header = strip(readline(io))
 
-    # Å unit
-    a1 = parse.(Float64, split(strip(readline(io))))
-    a2 = parse.(Float64, split(strip(readline(io))))
-    a3 = parse.(Float64, split(strip(readline(io))))
-    lattice = Mat3{Float64}(hcat(a1, a2, a3))
+        # Å unit
+        a1 = parse.(Float64, ssrline(io))
+        a2 = parse.(Float64, ssrline(io))
+        a3 = parse.(Float64, ssrline(io))
+        # column-major
+        lattice = Mat3{Float64}(hcat(a1, a2, a3))
 
-    n_wann = parse.(Int, strip(readline(io)))
-    n_rvecs = parse.(Int, strip(readline(io)))
-    # degeneracies of R vecs
-    N = zeros(Int, n_rvecs)
-    n_col = 15  # 15 numbers per row
-    for i in 0:(n_rvecs ÷ n_col - 1)
-        s = i * n_col + 1  # start
-        e = (i + 1) * n_col  # end
-        N[s:e] = parse.(Int, split(strip(readline(io))))
-    end
-    if (n_rvecs % n_col) > 0
-        s = n_rvecs - n_rvecs % n_col + 1 # start
-        e = n_rvecs  # end
-        N[s:e] = parse.(Int, split(strip(readline(io))))
-    end
+        n_wann = parse(Int, strip(readline(io)))
+        n_Rvecs = parse(Int, strip(readline(io)))
 
-    R = zeros(Vec3{Int}, n_rvecs)
-    H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+        Rdegens = parse_vector(io, Int, n_Rvecs)
+        Rvectors = zeros(Vec3{Int}, n_Rvecs)
+        H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
 
-    for ir in 1:n_rvecs
-        readline(io)  # empty line
-        R[ir] = Vec3(parse.(Int, split(strip(readline(io))))...)
+        # Hamiltonian
+        for iR in 1:n_Rvecs
+            line = strip(readline(io))  # empty line
+            @assert line == ""
+            Rvectors[iR] = Vec3(parse.(Int, ssrline(io))...)
 
-        for n in 1:n_wann
-            for m in 1:n_wann
-                line = split(strip(readline(io)))
-                @assert m == parse(Int, line[1]) line
-                @assert n == parse(Int, line[2]) line
+            for n in 1:n_wann
+                for m in 1:n_wann
+                    line = ssrline(io)
+                    @assert m == parse(Int, line[1]) line
+                    @assert n == parse(Int, line[2]) line
 
-                H[ir][m, n] = parse(Float64, line[3]) + 1im * parse(Float64, line[4])
+                    reH, imH = parse.(Float64, line[3:4])
+                    H[iR][m, n] = reH + im * imH
+                end
             end
         end
-    end
 
-    # WF position operator
-    rx = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
-    ry = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
-    rz = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
+        # WF position operator
+        r_x = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+        r_y = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+        r_z = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
 
-    for ir in 1:n_rvecs
-        readline(io)  # empty line
-        @assert R[ir] == Vec3(parse.(Int, split(strip(readline(io))))...)
-        for n in 1:n_wann
-            for m in 1:n_wann
-                line = split(strip(readline(io)))
-                @assert m == parse(Int, line[1])
-                @assert n == parse(Int, line[2])
+        for iR in 1:n_Rvecs
+            line = strip(readline(io))  # empty line
+            @assert line == ""
+            @assert Rvectors[iR] == Vec3(parse.(Int, ssrline(io))...)
+            for n in 1:n_wann
+                for m in 1:n_wann
+                    line = ssrline(io)
+                    @assert m == parse(Int, line[1])
+                    @assert n == parse(Int, line[2])
 
-                f = parse.(Float64, line[3:8])
-                rx[ir][m, n] = f[1] + 1im * f[2]
-                ry[ir][m, n] = f[3] + 1im * f[4]
-                rz[ir][m, n] = f[5] + 1im * f[6]
+                    f = parse.(Float64, line[3:8])
+                    r_x[iR][m, n] = f[1] + im * f[2]
+                    r_y[iR][m, n] = f[3] + im * f[4]
+                    r_z[iR][m, n] = f[5] + im * f[6]
+                end
             end
         end
+
+        @info "Reading tb.dat file" filename header n_wann n_Rvecs
+        return (; lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, header)
     end
-    close(io)
-
-    return (; lattice, R, N, H, rx, ry, rz)
-end
-
-"""
-    read_w90_wsvec(filename::AbstractString)
-
-Read `prefix_wsvec.dat`.
-"""
-function read_w90_wsvec(filename::AbstractString)
-    @info "Reading $filename"
-
-    io = open(filename)
-    header = strip(readline(io))
-    println(header)
-    # check `use_ws_distance`
-    mdrs = false
-    header = split(header)[end]
-    if occursin("use_ws_distance", header)
-        header = lowercase(split(header, "=")[2])
-        if 't' in header
-            mdrs = true
-        end
-    end
-
-    Rmn = Vector{Vector{Int}}()
-    Nᵀ = Vector{Int}()
-    # T[iR][iT] is Vec3 for Tvector, where iR and iT are the indices
-    # of Rvector and Tvector degeneracy, respectively.
-    T = Vector{Vector{Vec3{Int}}}()
-
-    while !eof(io)
-        line = strip(readline(io))
-        if length(line) == 0
-            continue
-        end
-        Rx, Ry, Rz, m, n = parse.(Int, split(line))
-        push!(Rmn, [Rx, Ry, Rz, m, n])
-        n = parse(Int, strip(readline(io)))
-        push!(Nᵀ, n)
-        t = zeros(Vec3{Int}, n)
-        for it in 1:n
-            line = strip(readline(io))
-            t[it] = Vec3(parse.(Int, split(line))...)
-        end
-        push!(T, t)
-    end
-    close(io)
-
-    n = [i[end] for i in Rmn]
-    n_wann = length(unique(n))
-    n_rvecs = Int(length(Rmn)//n_wann^2)
-
-    R = zeros(Vec3{Int}, n_rvecs)
-    N = zeros(Int, n_rvecs)
-    ir = 1
-    for rmn in Rmn
-        m, n = rmn[4:5]
-        if m == 1 && n == 1
-            R[ir] = Vec3(rmn[1:3])
-            N[ir] = -1  # degeneracy is stored in tb.dat
-            ir += 1
-        end
-    end
-
-    if !mdrs
-        return mdrs, (; R)
-    end
-
-    # reorder T, Nᵀ
-    # Ti[iR][m,n][iT] is Vec3 for Tvector
-    T1 = [Matrix{Vector{Vec3{Int}}}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
-    # N1[iR][m,n] is Int for Tvector degeneracy
-    N1 = [Matrix{Int}(undef, n_wann, n_wann) for _ in 1:n_rvecs]
-    ir = 1
-    for (i, rmn) in enumerate(Rmn)
-        m, n = rmn[(end - 1):end]
-        T1[ir][m, n] = T[i]
-        N1[ir][m, n] = Nᵀ[i]
-        if m == n_wann && n == n_wann
-            ir += 1
-        end
-    end
-
-    return mdrs, (; R, T=T1, Nᵀ=N1)
 end

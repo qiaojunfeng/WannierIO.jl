@@ -26,6 +26,9 @@ Output files:
 
 - `*_band.dat`
 - `*_tb.dat`
+- `*_wsvec.dat`
+- `*_hr.dat`
+- `*_r.dat`
 - `xsf`
 - `cube`
 - ...
