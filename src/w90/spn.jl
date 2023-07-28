@@ -4,6 +4,7 @@ export read_spn, write_spn
 """
     read_spn(filename)
     read_spn(filename, ::FortranText)
+    read_spn(filename, ::FortranBinary)
 
 Read the wannier90 `spn` file.
 
@@ -49,6 +50,47 @@ function read_spn(filename::AbstractString, ::FortranText)
     return spn
 end
 
+function read_spn(filename::AbstractString, ::FortranBinary)
+    io = FortranFile(filename)
+
+    # strip and read line
+    header_len = 60
+    header = trimstring(read(io, FString{header_len}))
+
+    # gfortran default integer is 4 bytes
+    Tint = Int32
+    n_bands, n_kpts = read(io, (Tint, 2))
+
+    Sx = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+    Sy = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+    Sz = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+
+    # upper triangle part, at each kpoint
+    spn_tmp = zeros(ComplexF64, 3, n_bands * (n_bands + 1) ÷ 2)
+
+    for ik in 1:n_kpts
+        read(io, spn_tmp)
+        counter = 0
+        for m in 1:n_bands
+            for n in 1:m
+                counter += 1
+                for (i, Si) in enumerate((Sx, Sy, Sz))
+                    Si[ik][n, m] = spn_tmp[i, counter]
+                    # although each diagonal element of `S` should be real,
+                    # actually it has a very small imaginary part,
+                    # so we skip the conjugation on the diagonal elements.
+                    m == n && continue
+                    Si[ik][m, n] = conj(Si[ik][n, m])
+                end
+            end
+        end
+    end
+    @assert eof(io)
+    close(io)
+
+    return (; Sx, Sy, Sz, header)
+end
+
 function read_spn(filename::AbstractString)
     if isbinary(filename)
         format = FortranBinary()
@@ -68,6 +110,7 @@ end
 """
     write_spn(filename, Sx, Sy, Sz; binary=false, header)
     write_spn(filename, Sx, Sy, Sz, ::FortranText; header)
+    write_spn(filename, Sx, Sy, Sz, ::FortranBinary; header)
 
 Write the `spn` file.
 """
@@ -121,6 +164,46 @@ function write_spn(
     filename::AbstractString,
     Sx::AbstractVector,
     Sy::AbstractVector,
+    Sz::AbstractVector,
+    ::FortranBinary;
+    header=default_header(),
+)
+    _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
+    n_kpts = length(Sx)
+    n_bands = size(Sx[1], 1)
+
+    io = FortranFile(filename, "w")
+
+    header_len = 60
+    write(io, FString(header_len, string(strip(header))))
+
+    # gfortran default integer is 4 bytes
+    Tint = Int32
+    write(io, Tint(n_bands), Tint(n_kpts))
+
+    # upper triangle part, at each kpoint
+    spn_tmp = zeros(ComplexF64, 3, n_bands * (n_bands + 1) ÷ 2)
+
+    for ik in 1:n_kpts
+        counter = 0
+        for m in 1:n_bands
+            for n in 1:m
+                counter += 1
+                for (i, Si) in enumerate((Sx, Sy, Sz))
+                    spn_tmp[i, counter] = Si[ik][n, m]
+                end
+            end
+        end
+        write(io, spn_tmp)
+    end
+    close(io)
+    return nothing
+end
+
+function write_spn(
+    filename::AbstractString,
+    Sx::AbstractVector,
+    Sy::AbstractVector,
     Sz::AbstractVector;
     binary=false,
     header=default_header(),
@@ -135,5 +218,5 @@ function write_spn(
     n_bands = size(Sx[1], 1)
     @info "Writing spn file" filename header n_kpts n_bands
 
-    return write_spn(filename, Sx, Sy, Sz; header)
+    return write_spn(filename, Sx, Sy, Sz, format; header)
 end
