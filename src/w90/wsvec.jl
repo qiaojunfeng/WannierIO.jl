@@ -1,4 +1,4 @@
-export read_w90_wsvec
+export read_w90_wsvec, write_w90_wsvec
 
 """
     $(SIGNATURES)
@@ -12,6 +12,7 @@ Read `prefix_wsvec.dat`.
     Returned only `mdrs = true`.
 - `Tdegens`: the degeneracies of ``\\mathbf{T}_{m n \\mathbf{R}}``-vectors.
     Returned only `mdrs = true`.
+- `n_wann`: number of WFs
 - `header`: the first line of the file
 """
 function read_w90_wsvec(filename::AbstractString)
@@ -73,7 +74,7 @@ function read_w90_wsvec(filename::AbstractString)
     end
 
     if !mdrs
-        return (; mdrs, Rvectors, header)
+        return (; mdrs, Rvectors, n_wann, header)
     end
 
     # Objective: reorder Tvectors_flat -> Tvectors, Tdegens_flat -> Tdegens
@@ -94,5 +95,71 @@ function read_w90_wsvec(filename::AbstractString)
     end
 
     @info "Reading wsvec.dat file" filename header mdrs n_wann n_Rvecs
-    return (; mdrs, Rvectors, Tvectors, Tdegens, header)
+    return (; mdrs, Rvectors, Tvectors, Tdegens, n_wann, header)
+end
+
+"""
+    $(SIGNATURES)
+
+Write `prefix_wsvec.dat`.
+
+# Keyword Arguments
+- `n_wann`: for Wigner-Seitz Rvectors, needs to provide a `n_wann` for number of
+    Wannier functions; for MDRS Rvectors, the `n_wann` is optional and can be
+    automatically determined from the `Tvectors`
+- `Tvectors` and `Tdegens`: if provided, write in MDRS format; otherwise, write in
+    Wigner-Seitz format
+Also see the return values of [`read_w90_wsvec`](@ref).
+"""
+function write_w90_wsvec(
+    filename::AbstractString;
+    Rvectors::AbstractVector,
+    n_wann::Union{Integer,Nothing}=nothing,
+    Tvectors::Union{AbstractVector,Nothing}=nothing,
+    Tdegens::Union{AbstractVector,Nothing}=nothing,
+    header=default_header(),
+)
+    @assert (Tvectors !== nothing && Tdegens !== nothing) ||
+        (Tvectors === nothing && Tdegens === nothing) "Tvectors and Tdegens must be both nothing or both not nothing"
+    mdrs = Tvectors !== nothing
+    n_Rvecs = length(Rvectors)
+    @assert n_Rvecs > 0 "empty Rvectors"
+    if mdrs
+        @assert length(Tvectors) == length(Tdegens) == n_Rvecs "different n_Rvecs in Rvectors, Tvectors, and Tdegens"
+        if n_wann === nothing
+            n_wann = size(Tvectors[1], 1)
+        else
+            @assert n_wann == size(Tvectors[1], 1) "different n_wann in Tvectors and n_wann"
+        end
+    else
+        @assert n_wann !== nothing "n_wann must be provided for Wigner-Seitz format"
+    end
+    @info "Writing wsvec.dat file" filename header mdrs n_wann n_Rvecs
+
+    open(filename, "w") do io
+        if mdrs
+            println(io, header * "  with use_ws_distance=.true.")
+        else
+            println(io, header * "  with use_ws_distance=.false.")
+        end
+
+        for iR in 1:n_Rvecs
+            R = Rvectors[iR]
+            for m in 1:n_wann
+                for n in 1:n_wann
+                    @printf(io, "%5d %5d %5d %5d %5d\n", R..., m, n)
+
+                    if mdrs
+                        @printf(io, "%5d\n", Tdegens[iR][m, n])
+                        for T in Tvectors[iR][m, n]
+                            @printf(io, "%5d %5d %5d\n", T...)
+                        end
+                    else
+                        @printf(io, "%5d\n", 1)
+                        @printf(io, "%5d %5d %5d\n", 0, 0, 0)
+                    end
+                end
+            end
+        end
+    end
 end
