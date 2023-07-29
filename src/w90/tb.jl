@@ -1,4 +1,4 @@
-export read_w90_tbdat
+export read_w90_tbdat, write_w90_tbdat
 
 """
     $(SIGNATURES)
@@ -79,5 +79,91 @@ function read_w90_tbdat(filename::AbstractString)
 
         @info "Reading tb.dat file" filename header n_wann n_Rvecs
         return (; lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, header)
+    end
+end
+
+"""
+    $(SIGNATURES)
+
+Write `prefix_tb.dat`.
+
+# Keyword arguments
+See the return values of [`read_w90_tbdat`](@ref).
+"""
+function write_w90_tbdat(
+    filename::AbstractString;
+    lattice::AbstractMatrix,
+    Rvectors::AbstractVector,
+    Rdegens::AbstractVector,
+    H::AbstractVector,
+    r_x::AbstractVector,
+    r_y::AbstractVector,
+    r_z::AbstractVector,
+    header=default_header(),
+)
+    n_Rvecs = length(H)
+    @assert n_Rvecs > 0 "empty H"
+    n_wann = size(H[1], 1)
+    @info "Writing tb.dat file" filename header n_wann n_Rvecs
+
+    open(filename, "w") do io
+        println(io, strip(header))
+
+        # Å unit
+        @printf(io, "%21.16f    %21.16f    %21.16f\n", lattice[:, 1]...)
+        @printf(io, "%21.16f    %21.16f    %21.16f\n", lattice[:, 2]...)
+        @printf(io, "%21.16f    %21.16f    %21.16f\n", lattice[:, 3]...)
+
+        @printf(io, "%d\n", n_wann)
+        @printf(io, "%d\n", n_Rvecs)
+
+        n_columns = 15
+        for (iR, degen) in enumerate(Rdegens)
+            @printf(io, "%5d", degen)
+            if mod(iR, n_columns) == 0
+                println(io)
+            end
+        end
+        if mod(n_Rvecs, n_columns) != 0
+            println(io)
+        end
+
+        # Hamiltonian
+        for iR in 1:n_Rvecs
+            @printf(io, "\n%5d %5d %5d\n", Rvectors[iR]...)
+
+            for n in 1:n_wann
+                for m in 1:n_wann
+                    reH = real(H[iR][m, n])
+                    imH = imag(H[iR][m, n])
+                    @printf(io, "%5d %5d   %15.8e %15.8e\n", m, n, reH, imH)
+                end
+            end
+        end
+
+        # WF position operator
+        for iR in 1:n_Rvecs
+            @printf(io, "\n%5d %5d %5d\n", Rvectors[iR]...)
+
+            for n in 1:n_wann
+                for m in 1:n_wann
+                    x = r_x[iR][m, n]
+                    y = r_y[iR][m, n]
+                    z = r_z[iR][m, n]
+                    @printf(
+                        io,
+                        "%5d %5d   %15.8e %15.8e %15.8e %15.8e %15.8e %15.8e\n",
+                        m,
+                        n,
+                        real(x),
+                        imag(x),
+                        real(y),
+                        imag(y),
+                        real(z),
+                        imag(z)
+                    )
+                end
+            end
+        end
     end
 end

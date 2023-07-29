@@ -1,6 +1,6 @@
 @testitem "read/write w90 band dat" begin
     using LazyArtifacts
-    band = read_w90_band(artifact"Si2_valence/reference/mdrs/Si2_valence")
+    band = read_w90_band(artifact"Si2_valence/reference/MDRS/Si2_valence")
 
     @test length(band.kpoints) == 511
     @test length(band.kpoints[1]) == 3
