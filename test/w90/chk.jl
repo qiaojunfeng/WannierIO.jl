@@ -133,4 +133,16 @@ end
     @test U ≈ U_ref
 end
 
-# TODO: test chk recip lattice column-major
+# test chk lattice/recip_lattice are column-major
+@testitem "read/write chk lattice" begin
+    using LazyArtifacts
+    chk = read_chk(artifact"Fe/reference/Fe.chk")
+    wout = read_wout(artifact"Fe/reference/Fe.wout")
+    @test all(isapprox.(chk.lattice, wout.lattice; atol=3e-7))
+    @test all(isapprox.(chk.recip_lattice, wout.recip_lattice; atol=3e-7))
+
+    tmpfile = tempname(; cleanup=true)
+    write_chk(tmpfile, chk; binary=true)
+    chk2 = read_chk(tmpfile)
+    @test chk ≈ chk2
+end
