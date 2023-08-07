@@ -136,8 +136,8 @@ end
 # test chk lattice/recip_lattice are column-major
 @testitem "read/write chk lattice" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Fe/reference/Fe.chk")
-    wout = read_wout(artifact"Fe/reference/Fe.wout")
+    chk = read_chk(artifact"Fe_soc/reference/Fe.chk")
+    wout = read_wout(artifact"Fe_soc/reference/Fe.wout")
     @test all(isapprox.(chk.lattice, wout.lattice; atol=3e-7))
     @test all(isapprox.(chk.recip_lattice, wout.recip_lattice; atol=3e-7))
 
