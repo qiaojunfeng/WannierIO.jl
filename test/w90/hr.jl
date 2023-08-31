@@ -25,3 +25,18 @@ end
         @test hrdat_ws[p] ≈ hrdat[p]
     end
 end
+
+@testitem "write hr" begin
+    using LazyArtifacts
+    hrdat = read_w90_hrdat(artifact"Si2_valence/reference/WS/Si2_valence_hr.dat")
+
+    tmpfile = tempname(; cleanup=true)
+    write_w90_hrdat(tmpfile; hrdat...)
+    hrdat2 = read_w90_hrdat(tmpfile)
+
+    @test keys(hrdat) == keys(hrdat2)
+    for (k, v) in pairs(hrdat)
+        k == :header && continue
+        @test hrdat2[k] == v
+    end
+end
