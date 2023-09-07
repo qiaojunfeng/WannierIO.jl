@@ -91,7 +91,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             line === nothing && break
 
             # first handle special cases, e.g., blocks
-            if occursin(r"begin\s+unit_cell_cart", line)
+            if occursin(r"^begin\s+unit_cell_cart", line)
                 block_name = "unit_cell_cart"
                 unit_cell = zeros(Float64, 3, 3)
                 unit = read_line_until_nonempty(; block_name)
@@ -106,15 +106,15 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     unit_cell[:, i] = parse_array(line)
                     line = read_line_until_nonempty(; block_name)
                 end
-                @assert occursin(r"end\s+unit_cell_cart", line) "error parsing $block_name: `end $block_name` not found"
+                @assert occursin(r"^end\s+unit_cell_cart", line) "error parsing $block_name: `end $block_name` not found"
                 if startswith(unit, "b")
                     # convert to angstrom
                     unit_cell .*= Bohr
                 end
                 unit_cell = Mat3{Float64}(unit_cell)
                 push!(params, :unit_cell_cart => unit_cell)
-            elseif occursin(r"begin\s+atoms_(frac|cart)", line)
-                iscart = occursin(r"cart", line)
+            elseif occursin(r"^begin\s+atoms_(frac|cart)", line)
+                iscart = occursin("cart", line)
                 block_name = "atoms_$(iscart ? "cart" : "frac")"
                 # do not lowercase due to atomic label
                 line = read_line_until_nonempty(; lower=false, block_name)
@@ -131,7 +131,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
 
                 # I need to read all lines and get n_atoms
                 lines = Vector{String}()
-                while !occursin(Regex("end\\s+" * block_name), lowercase(line))
+                while !occursin(Regex("^end\\s+" * block_name), lowercase(line))
                     push!(lines, line)
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
@@ -153,21 +153,21 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                 else
                     push!(params, :atoms_frac => atoms_frac)
                 end
-            elseif occursin(r"begin\s+projections", line)
+            elseif occursin(r"^begin\s+projections", line)
                 block_name = "projections"
                 projections = Vector{String}()
                 line = read_line_until_nonempty(; lower=false, block_name)
-                while !occursin(r"end\s+projections", lowercase(line))
+                while !occursin(r"^end\s+projections", lowercase(line))
                     push!(projections, line)
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
                 push!(params, :projections => projections)
-            elseif occursin(r"begin\s+kpoints", line)
+            elseif occursin(r"^begin\s+kpoints", line)
                 block_name = "kpoints"
                 line = read_line_until_nonempty(; block_name)
                 # I need to read all lines and get n_kpts
                 lines = Vector{String}()
-                while !occursin(r"end\s+kpoints", line)
+                while !occursin(r"^end\s+kpoints", line)
                     push!(lines, line)
                     line = read_line_until_nonempty(; block_name)
                 end
@@ -179,13 +179,13 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     kpoints[i] = Vec3(parse_array(lines[i])[1:3])
                 end
                 push!(params, :kpoints => kpoints)
-            elseif occursin(r"begin\skpoint_path", line)
+            elseif occursin(r"^begin\s+kpoint_path", line)
                 block_name = "kpoint_path"
                 kpoint_path = Vector{Vector{SymbolVec3{Float64}}}()
 
                 # allow uppercase
                 line = read_line_until_nonempty(; lower=false, block_name)
-                while !occursin(r"end\s+kpoint_path", lowercase(line))
+                while !occursin(r"^end\s+kpoint_path", lowercase(line))
                     l = split(line)
                     length(l) == 8 || error("Invalid kpoint_path line: $line")
                     # start kpoint
@@ -200,6 +200,17 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
                 push!(params, :kpoint_path => kpoint_path)
+            elseif occursin(r"^begin\s+(.+)", line)
+                # treat all remaining unknown blocks as Vector of String
+                block_name = match(r"^begin\s+(.+)", line).captures[1]
+                block_content = Vector{String}()
+                # allow uppercase
+                line = read_line_until_nonempty(; lower=false, block_name)
+                while !occursin(Regex("^end\\s+" * block_name), lowercase(line))
+                    push!(block_content, line)
+                    line = read_line_until_nonempty(; lower=false, block_name)
+                end
+                push!(params, Symbol(block_name) => block_content)
             else
                 # now treat remaining lines as key-value pairs
                 line = strip(replace(line, "=" => " ", ":" => " ", "," => " "))

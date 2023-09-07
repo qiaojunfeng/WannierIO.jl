@@ -40,3 +40,11 @@ end
         end
     end
 end
+
+@testitem "read win: unknown blocks" begin
+    windir = joinpath(@__DIR__, "win_testfiles")
+    win = read_win(joinpath(windir, "unknown_blocks.win"))
+
+    @test win.unknown_a == ["A1", "A2"]
+    @test win.unknown_b == ["B1 B2"]
+end
