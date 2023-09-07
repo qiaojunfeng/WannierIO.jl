@@ -1,0 +1,29 @@
+mp_grid = 1 1 2
+num_wann = 8
+
+begin atoms_cart
+ang
+Ga         0.0000000000       0.0000000000       0.0000000000 
+As         1.4200470448       1.4200470448       4.2601411346 
+end atoms_cart
+
+begin unknown_A
+      A1
+      A2
+end unknown_A
+
+begin unknown_b
+B1 B2
+end unknown_b
+
+begin kpoints
+      0.0000000000       0.0000000000       0.0000000000
+      0.0000000000       0.0000000000       0.1000000000
+end kpoints
+
+begin unit_cell_cart
+ang
+      0.0000000000       2.8400940897       2.8400940897
+      2.8400940897       0.0000000000       2.8400940897
+      2.8400940897       2.8400940897       0.0000000000
+end unit_cell_cart
