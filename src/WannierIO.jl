@@ -52,4 +52,6 @@ include("volume/bxsf.jl")
 include("qe/band.jl")
 include("qe/xml.jl")
 
+include("misc/epw.jl")
+
 end
