@@ -85,6 +85,112 @@ end
 """
     $(SIGNATURES)
 
+Read the EPW `.ukk` file.
+
+# Arguments
+- `filename`: the output file name
+
+# Return
+- `ukk`: the [`Ukk`](@ref) struct
+"""
+function read_epw_ukk(filename::AbstractString)
+    # Need to 1st read the last part to get the number of WFs
+    centers = open(filename) do io
+        centers = Vec3{Float64}[]
+        # note Julia 1.8 is required for reverse(eachline(io))
+        for line in Iterators.reverse(eachline(io))
+            r = split(strip(line))
+            if length(r) == 3
+                push!(centers, Vec3(parse.(Float64, r)))
+            else
+                break
+            end
+        end
+        return reverse(centers)
+    end
+    n_wann = length(centers)
+    @assert n_wann > 0 "n_wann = $n_wann ≤ 0"
+
+    ibndstart, ibndend, Uflat, flags = open(filename) do io
+        ibndstart, ibndend = parse.(Int, split(readline(io)))
+
+        # the unitary matrices
+        # now we don't know n_kpts and n_bands yet, so we can only read the
+        # complex numbers into a flat vector
+        Uflat = ComplexF64[]
+        # both the frozen_bands and excluded_bands, still flat vector
+        flags = Bool[]
+
+        for line in eachline(io)
+            line = replace(strip(line), "(" => "", ")" => "", "," => " ")
+            line = split(line)
+            if length(line) == 2
+                push!(Uflat, parse(Float64, line[1]) + parse(Float64, line[2]) * im)
+            elseif length(line) == 1
+                push!(flags, parse_bool(line[1]))
+                break
+            else
+                error("Wrong number of elements in line: $line")
+            end
+        end
+
+        for line in eachline(io)
+            line = strip(line)
+            if length(split(line)) == 1
+                push!(flags, parse_bool(line))
+            else
+                break
+            end
+        end
+
+        return ibndstart, ibndend, Uflat, flags
+    end
+
+    n_kpts_bands_wann = length(Uflat)
+    n_kpts_bands = n_kpts_bands_wann ÷ n_wann
+    # the kept bands are false in the last part of flags
+    excluded_bands = BitVector(flags[(n_kpts_bands + 1):end])
+    n_bands = count(!, excluded_bands)
+    n_kpts = n_kpts_bands ÷ n_bands
+    @assert n_kpts > 0 "n_kpts = $n_kpts ≤ 0"
+    @assert n_bands > 0 "n_bands = $n_bands ≤ 0"
+    @info "Reading ukk file" filename n_kpts n_bands n_wann
+
+    U = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+    counter = 1
+    for ik in 1:n_kpts
+        for ib in 1:n_bands
+            for iw in 1:n_wann
+                U[ik][ib, iw] = Uflat[counter]
+                counter += 1
+            end
+        end
+    end
+
+    frozen_bands = [trues(n_bands) for _ in 1:n_kpts]
+    counter = 1
+    for ik in 1:n_kpts
+        for ib in 1:n_bands
+            frozen_bands[ik][ib] = flags[counter]
+        end
+    end
+
+    return Ukk(
+        ibndstart,
+        ibndend,
+        n_kpts,
+        n_bands,
+        n_wann,
+        U,
+        frozen_bands,
+        excluded_bands,
+        centers,
+    )
+end
+
+"""
+    $(SIGNATURES)
+
 Write the EPW `.ukk` file.
 
 # Arguments
