@@ -78,8 +78,18 @@ struct Ukk{T<:Real}
     `n_excl_bands` is the number of excluded bands"""
     excluded_bands::BitVector
 
-    """centers of WFs, length-`n_wann` vector of `Vec3`"""
+    """centers of WFs, length-`n_wann` vector of `Vec3`.
+    Note that EPW uses Cartesian coordinates w.r.t the QE `alat`, so it is dimensionless."""
     centers::Vector{Vec3{T}}
+end
+
+"""
+    $(SIGNATURES)
+
+Compare two `Ukk` structs.
+"""
+function Base.isapprox(a::Ukk, b::Ukk)
+    return _isapprox(a, b)
 end
 
 """
@@ -196,6 +206,10 @@ Write the EPW `.ukk` file.
 # Arguments
 - `filename`: the output file name
 - `ukk`: the [`Ukk`](@ref) struct
+
+# Examples
+
+See [`Ukk`](@ref) for how to construct a `Ukk` from a [`Chk`](@ref).
 """
 function write_epw_ukk(filename::AbstractString, ukk::Ukk)
     open(filename, "w") do io
@@ -243,8 +257,33 @@ end
     $(SIGNATURES)
 
 Construct a EPW [`Ukk`](@ref) from a W90 [`Chk`](@ref).
+
+# Arguments
+- `chk`: the [`Chk`](@ref) struct
+- `alat`: the QE `alat` in Å unit. Note that the `alat` from QE stdout file is
+    in Bohr unit, you need to do the conversion by multiplying it with
+    [`Bohr_QE`](@ref).
+
+# Examples
+
+Convert a W90 `.chk` file to a EPW `.ukk` file:
+```julia
+using WannierIO
+chk = read_chk("graphene.chk")
+# Note we need QE `alat` for ukk. You can either get it by
+# - inspecting the QE stdout file, from line like
+#       lattice parameter (alat)  =       6.8330  a.u.
+#   where the 6.8330 is the alat in Bohr unit. However, the Bohr constant
+#   in W90 and QE are slightly different, to be exact we need to do the unit
+#   conversion using QE constant:
+alat = 6.8330 * WannierIO.Bohr_QE
+# - or better by parsing the QE xml file, and the unit conversion is done automatically
+alat = read_qe_xml("graphene.xml").alat
+ukk = Ukk(chk, alat)
+WannierIO.write_epw_ukk("graphene.ukk", ukk)
+```
 """
-function Ukk(chk::Chk)
+function Ukk(chk::Chk, alat::Real)
     n_bands = chk.n_bands
     exclude_band_indices = chk.exclude_bands
     n_kpts = chk.n_kpts
@@ -264,7 +303,10 @@ function Ukk(chk::Chk)
         ibndend = n_bands_tot
     end
 
-    centers = chk.r
+    # the centers in ukk file is dimensionless: Cartesian coordinates w.r.t alat
+    # the centers in chk file is Cartesian coordinates in Å
+    # the input arg `alat` should be in Å unit
+    centers = chk.r / alat
     Uchk = get_U(chk)
 
     return Ukk(
@@ -278,14 +320,4 @@ function Ukk(chk::Chk)
         excluded_bands,
         centers,
     )
-end
-
-"""
-    $(SIGNATURES)
-
-Write a EPW `.ukk` file from a W90 [`Chk`](@ref).
-"""
-function write_epw_ukk(filename::AbstractString, chk::Chk)
-    ukk = Ukk(chk)
-    return write_epw_ukk(filename, ukk)
 end

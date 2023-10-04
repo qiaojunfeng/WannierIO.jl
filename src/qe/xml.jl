@@ -11,14 +11,15 @@ Read atomic structure and band structure from QE's XML output.
 - `atom_labels`: length-`n_atoms` vector, each element is the label of the corresponding atom
 - `recip_lattice`: `3 * 3`, Å⁻¹, each column is a reciprocal lattice vector
 - `kpoints`: length-`n_kpts` vector, each element is a fractional kpoint
+- `fermi_energy`: eV
+- `alat`: the `alat` of QE in Å
 - `eigenvalues`: length-`n_kpts` vector, each element is a length-`n_bands` vector of
     eigenvalue in eV. For spin-polarized but without SOC calculations,
     return two arries of `eigenvalues_up` and `eigenvalues_dn` for the two spin channels.
-- `fermi_energy`: eV
 """
 function read_qe_xml(filename::AbstractString)
     # from qe/Modules/constants.f90
-    BOHR_RADIUS_ANGS = 0.529177210903  # Angstrom
+    BOHR_RADIUS_ANGS = Bohr_QE  # Angstrom
     HARTREE_SI = 4.3597447222071e-18  # J
     ELECTRONVOLT_SI = 1.602176634e-19  # J
     AUTOEV = HARTREE_SI / ELECTRONVOLT_SI
@@ -118,25 +119,11 @@ function read_qe_xml(filename::AbstractString)
     lattice = Mat3(lattice)
     recip_lattice = Mat3(recip_lattice)
 
-    if lsda && !spinorbit
-        return (;
-            lattice,
-            atom_positions,
-            atom_labels,
-            recip_lattice,
-            kpoints,
-            eigenvalues_up,
-            eigenvalues_dn,
-            fermi_energy,
-        )
-    end
-    return (;
-        lattice,
-        atom_positions,
-        atom_labels,
-        recip_lattice,
-        kpoints,
-        eigenvalues,
-        fermi_energy,
+    result = (;
+        lattice, atom_positions, atom_labels, recip_lattice, kpoints, fermi_energy, alat
     )
+    if lsda && !spinorbit
+        return (; results..., eigenvalues_up, eigenvalues_dn)
+    end
+    return (; result..., eigenvalues)
 end
