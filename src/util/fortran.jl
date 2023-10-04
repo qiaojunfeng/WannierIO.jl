@@ -41,7 +41,13 @@ Parse a string as `Float64`.
 
 The is capable of parsing Fortran outputs, e.g. `1.0D-10`, to the ordinary `1e-10`.
 """
-parse_float(s::AbstractString) = parse(Float64, replace(lowercase(strip(s)), "d" => "e"))
+function parse_float(s::AbstractString)
+    if occursin("*", s)
+        return NaN
+    else
+        return parse(Float64, replace(lowercase(strip(s)), "d" => "e"))
+    end
+end
 
 """
     $(SIGNATURES)

@@ -104,3 +104,18 @@ end
     @test wout.ΩOD ≈ ref_ΩOD
     @test wout.Ωtotal ≈ ref_Ωtotal
 end
+
+@testitem "read wout fortran stars" begin
+    woutdir = joinpath(@__DIR__, "wout_testfiles")
+    wout = read_wout(joinpath(woutdir, "stars.wout"))
+
+    ref_centers = [
+        [-0.866253, 1.973841, 1.973841],
+        [-0.866253, 0.866253, 0.866253],
+        [-99.973841, 1.973841, 0.866253],
+        [NaN, 0.866253, 1.973841],
+    ]
+    @test wout.centers[1:3] ≈ ref_centers[1:3]
+    @test isnan(wout.centers[end][1])
+    @test wout.centers[end][2:end] ≈ ref_centers[end][2:end]
+end
