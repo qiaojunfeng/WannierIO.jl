@@ -9,7 +9,7 @@ Parse a vector of `n_elements` elements of type `T` from `io`.
 - `T`: type of elements
 - `n_elements::Int`: total number of elements
 
-# Example
+# Examples
 
 Suppose a file `demo.txt` has the following content:
 ```

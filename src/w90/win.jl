@@ -27,9 +27,12 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             :num_wann,
             :num_bands,
             :num_iter,
+            :dis_num_iter,
             :conv_window,
             :num_cg_steps,
             :wannier_plot_supercell,
+            :num_print_cycles,
+            :iprint,
         ]
         keys_int3 = [:mp_grid]
         keys_float = [
@@ -40,6 +43,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             :dis_win_max,
             :fermi_energy,
             :conv_tol,
+            :dis_mix_ratio,
         ]
         keys_bool = [
             :use_ws_distance,
@@ -51,6 +55,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             :write_tb,
             :write_xyz,
             :write_rmn,
+            :guiding_centres,
         ]
 
         params = Dict{Symbol,Any}()

@@ -38,5 +38,5 @@ Pages   = ["common/const.jl"]
 
 ```@autodocs
 Modules = [WannierIO]
-Pages   = ["util/header.jl", "util/toml.jl", "util/parser.jl", "WannierIO.jl"]
+Pages   = ["util/header.jl", "util/toml.jl", "util/parser.jl", "util/compare.jl", "WannierIO.jl"]
 ```

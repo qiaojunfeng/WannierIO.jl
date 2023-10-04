@@ -24,6 +24,7 @@ include("util/lattice.jl")
 include("util/header.jl")
 include("util/toml.jl")
 include("util/parser.jl")
+include("util/compare.jl")
 
 using FortranFiles: FortranFile, FString, trimstring, Record
 
@@ -51,5 +52,7 @@ include("volume/bxsf.jl")
 
 include("qe/band.jl")
 include("qe/xml.jl")
+
+include("misc/epw.jl")
 
 end
