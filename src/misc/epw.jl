@@ -209,7 +209,7 @@ Write the EPW `.ukk` file.
 
 # Examples
 
-See [`Ukk`](@ref) for how to construct a `Ukk` from a [`Chk`](@ref).
+See [`Ukk(chk::Chk, alat::Real)`](@ref) for how to construct a `Ukk` from a [`Chk`](@ref).
 """
 function write_epw_ukk(filename::AbstractString, ukk::Ukk)
     open(filename, "w") do io
@@ -269,18 +269,18 @@ Construct a EPW [`Ukk`](@ref) from a W90 [`Chk`](@ref).
 Convert a W90 `.chk` file to a EPW `.ukk` file:
 ```julia
 using WannierIO
-chk = read_chk("graphene.chk")
-# Note we need QE `alat` for ukk. You can either get it by
-# - inspecting the QE stdout file, from line like
+chk = read_chk("BN.chk")
+# Note we need QE `alat` for ukk. You can get it
+# - either by inspecting the QE stdout file, from line like
 #       lattice parameter (alat)  =       6.8330  a.u.
 #   where the 6.8330 is the alat in Bohr unit. However, the Bohr constant
 #   in W90 and QE are slightly different, to be exact we need to do the unit
 #   conversion using QE constant:
 alat = 6.8330 * WannierIO.Bohr_QE
 # - or better by parsing the QE xml file, and the unit conversion is done automatically
-alat = read_qe_xml("graphene.xml").alat
+alat = read_qe_xml("BN.xml").alat
 ukk = Ukk(chk, alat)
-WannierIO.write_epw_ukk("graphene.ukk", ukk)
+WannierIO.write_epw_ukk("BN.ukk", ukk)
 ```
 """
 function Ukk(chk::Chk, alat::Real)

@@ -119,11 +119,11 @@ function read_qe_xml(filename::AbstractString)
     lattice = Mat3(lattice)
     recip_lattice = Mat3(recip_lattice)
 
-    result = (;
+    results = (;
         lattice, atom_positions, atom_labels, recip_lattice, kpoints, fermi_energy, alat
     )
     if lsda && !spinorbit
         return (; results..., eigenvalues_up, eigenvalues_dn)
     end
-    return (; result..., eigenvalues)
+    return (; results..., eigenvalues)
 end

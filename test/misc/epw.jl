@@ -11,7 +11,8 @@ end
 @testitem "read/write EPW ukk" begin
     using LazyArtifacts
     chk = read_chk(artifact"BN/reference/bn.chk")
-    ukk_ref = WannierIO.Ukk(chk)
+    alat = WannierIO.read_qe_xml(artifact"BN/reference/bn.xml").alat
+    ukk_ref = WannierIO.Ukk(chk, alat)
 
     ukk = WannierIO.read_epw_ukk(artifact"BN/reference/bn.ukk")
     @test ukk ≈ ukk_ref
