@@ -48,3 +48,20 @@ end
     @test win.unknown_a == ["A1", "A2"]
     @test win.unknown_b == ["B1 B2"]
 end
+
+@testitem "read win: atoms_cart bohr" begin
+    windir = joinpath(@__DIR__, "win_testfiles")
+    ref_win = read_win(joinpath(windir, "unknown_blocks.win"))
+    win = read_win(joinpath(windir, "atoms_cart_bohr.win"))
+
+    for ((atom1, pos1), (atom2, pos2)) in zip(win.atoms_frac, ref_win.atoms_frac)
+        @test atom1 == atom2
+        @test pos1 ≈ pos2
+    end
+end
+
+@testitem "read win: exclude_bands" begin
+    windir = joinpath(@__DIR__, "win_testfiles")
+    win = read_win(joinpath(windir, "exclude_bands.win"))
+    @test win.exclude_bands == [1, 3, 4, 5, 6]
+end

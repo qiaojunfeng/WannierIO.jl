@@ -2,6 +2,45 @@
 """
     $(SIGNATURES)
 
+Parse a string as `Float64`.
+
+The is capable of parsing Fortran outputs, e.g. `1.0D-10`, to the ordinary `1e-10`.
+"""
+function parse_float(s::AbstractString)
+    if occursin("*", s)
+        return NaN
+    else
+        return parse(Float64, replace(lowercase(strip(s)), "d" => "e"))
+    end
+end
+
+"""
+    $(SIGNATURES)
+
+Parse a string as `bool`.
+
+This is capable of parsing Fortran outputs, e.g., `.true.`, `.false.`, `true`, `T`.
+"""
+function parse_bool(s::AbstractString)
+    s = replace(lowercase(strip(s)), "." => "")[1]  # only 1st char
+    return s == 't' || s == '1'
+end
+
+"""
+    $(SIGNATURES)
+
+Parse an integer as `bool`.
+
+- `0`: `false`
+- `1` or `-1`: `true`
+"""
+function parse_bool(i::Integer)
+    return i != 0
+end
+
+"""
+    $(SIGNATURES)
+
 Parse a vector of `n_elements` elements of type `T` from `io`.
 
 # Arguments
@@ -41,4 +80,42 @@ function parse_vector(io::IO, T::Type, n_elements::Integer)
     end
 
     return vec
+end
+
+"""
+    $(SIGNATURES)
+
+Parse a string of comma-separated indices or range into a vector of integers.
+
+E.g., the `exclude_bands` tag of `win` file.
+
+# Examples
+
+```julia-repl
+julia> parse_indices("1-2, 5,8 -10")
+6-element Vector{Int64}:
+  1
+  2
+  5
+  8
+  9
+ 10
+```
+"""
+function parse_indices(str::AbstractString)
+    segments = split(replace(strip(str), r"\s+" => ""), ",")
+    indices = Vector{Int}()
+    for s in segments
+        if isempty(s)
+            continue
+        elseif occursin(r"^\d+-\d+$", s)
+            start, stop = parse.(Int, split(s, "-"))
+            push!(indices, start:stop...)
+        elseif occursin(r"^\d+$", s)
+            push!(indices, parse(Int, s))
+        else
+            throw(ArgumentError("invalid index: $s while parsing $str"))
+        end
+    end
+    return indices
 end
