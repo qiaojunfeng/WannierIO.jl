@@ -28,22 +28,33 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             :num_bands,
             :num_iter,
             :dis_num_iter,
+            :dis_conv_window,
             :conv_window,
             :num_cg_steps,
             :wannier_plot_supercell,
             :num_print_cycles,
             :iprint,
+            :search_shells,
+            :bands_num_points,
+            :ws_search_size,
+            :num_guide_cycles,
+            :num_no_guide_iter,
         ]
         keys_int3 = [:mp_grid]
         keys_float = [
             :kmesh_tol,
+            :conv_tol,
             :dis_froz_min,
             :dis_froz_max,
             :dis_win_min,
             :dis_win_max,
-            :fermi_energy,
-            :conv_tol,
             :dis_mix_ratio,
+            :dis_conv_tol,
+            :fermi_energy,
+            :fermi_energy_min,
+            :fermi_energy_max,
+            :fermi_energy_step,
+            :ws_distance_tol,
         ]
         keys_bool = [
             :use_ws_distance,
@@ -56,7 +67,13 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             :write_xyz,
             :write_rmn,
             :guiding_centres,
+            :gamma_only,
+            :spinors,
+            :postproc_setup,
+            :auto_projections,
+            :restart,
         ]
+        keys_indices = [:exclude_bands, :select_projections]
 
         params = Dict{Symbol,Any}()
 
@@ -152,7 +169,9 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                 if iscart
                     if startswith(unit, "b")
                         # convert to angstrom
-                        atoms_frac .*= Bohr
+                        atoms_frac = map(atoms_frac) do (symbol, pos)
+                            SymbolVec3(symbol, pos .* Bohr)
+                        end
                     end
                     push!(params, :atoms_cart => atoms_frac)
                 else
@@ -218,18 +237,21 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                 push!(params, Symbol(block_name) => block_content)
             else
                 # now treat remaining lines as key-value pairs
-                line = strip(replace(line, "=" => " ", ":" => " ", "," => " "))
+                line = strip(replace(line, "=" => " ", ":" => " "))
                 key, value = split(line; limit=2)
                 value = strip(value)  # remove leading whitespaces
                 key = Symbol(key)
                 if key in keys_int
                     value = parse(Int, value)
                 elseif key in keys_int3
+                    value = strip(replace(value, "," => " "))
                     value = parse_array(value; T=Int)
                 elseif key in keys_float
                     value = parse_float(value)
                 elseif key in keys_bool
                     value = parse_bool(value)
+                elseif key in keys_indices
+                    value = parse_indices(value)
                 end
                 push!(params, key => value)
             end
