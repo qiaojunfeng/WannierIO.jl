@@ -63,6 +63,7 @@
     @test qe.eigenvalues[1] ≈ eigenvalues1
     @test qe.eigenvalues[end] ≈ eigenvalues511
 
+    @test qe.n_electrons ≈ 8.0
     @test qe.fermi_energy ≈ 6.528341904366175
     @test qe.alat ≈ 3.8399645884368714
 end
