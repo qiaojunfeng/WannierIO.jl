@@ -86,6 +86,7 @@ function read_qe_xml(filename::AbstractString)
     end
     kpoints = Vec3{Float64}[]
 
+    n_electrons = parse(Float64, findfirst("nelec", band_structure).content)
     fermi_energy = parse(Float64, findfirst("fermi_energy", band_structure).content)
     # Hartree to eV
     fermi_energy *= AUTOEV
@@ -120,7 +121,14 @@ function read_qe_xml(filename::AbstractString)
     recip_lattice = Mat3(recip_lattice)
 
     results = (;
-        lattice, atom_positions, atom_labels, recip_lattice, kpoints, fermi_energy, alat
+        lattice,
+        atom_positions,
+        atom_labels,
+        recip_lattice,
+        kpoints,
+        n_electrons,
+        fermi_energy,
+        alat,
     )
     if lsda && !spinorbit
         return (; results..., eigenvalues_up, eigenvalues_dn)
