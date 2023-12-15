@@ -1,6 +1,6 @@
 @testitem "read/write cube" begin
     using LazyArtifacts
-    const Bohr::Float64 = 0.52917721092 
+    using WannierIO: Bohr
     cube = read_cube(artifact"Si2_valence/reference/Si2_valence_00001.cube")
     @test cube.origin ≈ [-7.10461, -9.47281, -9.47281]*Bohr 
     @test cube.voxel_vectors ≈
@@ -10,7 +10,6 @@
     @test cube.Z ≈ cube.X
     @test size(cube.W) == (20,20,20)
     @test size(cube.atom_positions) == (3,8)
-    print(cube.atom_positions[:,1])
     @test cube.atom_positions[:,1] ≈ transpose([0.00000 -5.13111 -5.13111])*Bohr
 
     tmpfile = tempname(; cleanup=true)
