@@ -127,14 +127,11 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
 end
 
 function read_nnkp(filename::AbstractString)
+    format = Wannier90Text()
     try
         TOML.parsefile(filename)
     catch err
-        if err isa TOML.ParserError
-            format = Wannier90Text()
-        else
-            rethrow()
-        end
+        err isa TOML.ParserError || rethrow()
     else
         format = Wannier90Toml()
     end
