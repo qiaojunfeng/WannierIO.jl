@@ -316,14 +316,11 @@ function read_win(filename::AbstractString, ::Wannier90Toml; fix_inputs::Bool=tr
 end
 
 function read_win(filename::AbstractString; fix_inputs=true)
+    format = Wannier90Text()
     try
         TOML.parsefile(filename)
     catch err
-        if err isa TOML.ParserError
-            format = Wannier90Text()
-        else
-            rethrow()
-        end
+        err isa TOML.ParserError || rethrow()
     else
         format = Wannier90Toml()
     end
