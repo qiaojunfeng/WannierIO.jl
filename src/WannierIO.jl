@@ -44,6 +44,7 @@ include("w90/wsvec.jl")
 include("w90/hr.jl")
 include("w90/r.jl")
 include("w90/hh_r.jl")
+include("w90/u_mat.jl")
 
 # volumetric files
 include("volume/xsf.jl")
