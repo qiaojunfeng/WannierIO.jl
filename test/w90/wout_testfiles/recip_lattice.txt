@@ -1,0 +1,4 @@
+Reciprocal-Space Vectors (Ang^-1)
+b_1     0.1   0.2  0.3
+b_2     1.1   0.2  0.3
+b_3     2.1   0.2  0.3

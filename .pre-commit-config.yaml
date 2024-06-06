@@ -30,7 +30,8 @@ repos:
               test/.*_wsvec.dat|
               test/.*\.xsf|
               test/.*\.cube|
-              test/.*\.bxsf
+              test/.*\.bxsf|
+              test/.*\.txt
           )$
       - id: mixed-line-ending
         exclude: *exclude_txtfiles
