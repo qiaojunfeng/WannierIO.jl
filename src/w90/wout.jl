@@ -14,9 +14,14 @@ Parse wannire90 `wout` file.
 - `recip_lattice`: each column is a reciprocal lattice vector in Å⁻¹
 - `atom_labels`: atomic symbols
 - `atom_positions`: in fractional coordinates
-- `centers`: final each WF centers in Å
-- `spreads`: final each WF spreads in Å²
+- `kgrid`: kpoint grid used in Wannierization
+- `centers`: center of each final WF, in Å
+- `spreads`: spread of each final WF, in Å²
+- `sum_centers`: sum of final WF centers, in Å
+- `sum_spreads`: sum of final WF spreads, in Å²
 - `ΩI`, `ΩD`, `ΩOD`, `Ωtotal`: final spread (components) in Å²
+- `iterations`: disentanglement and max localization convergence history,
+    only parsed when kwarg `iterations=true`
 """
 function read_wout(filename::AbstractString; iterations::Bool=false)
     return open(filename) do io
