@@ -39,3 +39,18 @@ end
         @test rdat_ws[p] ≈ rdat[p]
     end
 end
+
+@testitem "write r" begin
+    using LazyArtifacts
+    rdat = read_w90_rdat(artifact"Si2_valence/reference/WS/Si2_valence_r.dat")
+
+    tmpfile = tempname(; cleanup=true)
+    write_w90_rdat(tmpfile; rdat...)
+    rdat2 = read_w90_rdat(tmpfile)
+
+    @test keys(rdat) == keys(rdat2)
+    for (k, v) in pairs(rdat)
+        k == :header && continue
+        @test rdat2[k] == v
+    end
+end
