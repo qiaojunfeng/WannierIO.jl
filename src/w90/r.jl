@@ -1,4 +1,4 @@
-export read_w90_rdat
+export read_w90_rdat, write_w90_rdat
 
 """
     $(SIGNATURES)
@@ -44,5 +44,54 @@ function read_w90_rdat(filename::AbstractString)
 
         @info "Reading r.dat file" filename header n_wann n_Rvecs
         return (; Rvectors, r_x, r_y, r_z, header)
+    end
+end
+
+"""
+    $(SIGNATURES)
+
+Write `prefix_r.dat`.
+
+# Keyword arguments
+See the return values of [`read_w90_rdat`](@ref).
+"""
+function write_w90_rdat(
+    filename::AbstractString;
+    Rvectors::AbstractVector,
+    r_x::AbstractVector,
+    r_y::AbstractVector,
+    r_z::AbstractVector,
+    header=default_header(),
+)
+    n_Rvecs = length(Rvectors)
+    @assert n_Rvecs > 0 "empty Rvectors"
+    @assert n_Rvecs == length(r_x) == length(r_y) == length(r_z) "inconsistent length"
+    n_wann = size(r_x[1], 1)
+    @info "Writing r.dat file" filename header n_wann n_Rvecs
+
+    return open(filename, "w") do io
+        println(io, strip(header))
+        @printf(io, "%d\n", n_wann)
+        @printf(io, "%d\n", n_Rvecs)
+
+        for iR in 1:n_Rvecs
+            for n in 1:n_wann
+                for m in 1:n_wann
+                    @printf(
+                        io,
+                        " %4d %4d %4d %4d %4d %11.6f %11.6f %11.6f %11.6f %11.6f %11.6f\n",
+                        Rvectors[iR]...,
+                        m,
+                        n,
+                        real(r_x[iR][m, n]),
+                        imag(r_x[iR][m, n]),
+                        real(r_y[iR][m, n]),
+                        imag(r_y[iR][m, n]),
+                        real(r_z[iR][m, n]),
+                        imag(r_z[iR][m, n]),
+                    )
+                end
+            end
+        end
     end
 end
