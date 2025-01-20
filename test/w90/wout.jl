@@ -117,6 +117,16 @@ end
     @test wout.ΩD ≈ ref_ΩD
     @test wout.ΩOD ≈ ref_ΩOD
     @test wout.Ωtotal ≈ ref_Ωtotal
+
+    ref_phases = [
+        0.996157 + 0.087588im,
+        0.996157 + 0.087588im,
+        0.996157 + 0.087588im,
+        0.998869 + 0.047543im,
+    ]
+    ref_imre = [4.566451, 4.566481, 4.566335, 2.154381]
+    @test wout.phase_factors ≈ ref_phases
+    @test wout.im_re_ratios ≈ ref_imre
 end
 
 # test for non-symmetric lattice, with disentanglement

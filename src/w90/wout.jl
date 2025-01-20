@@ -3,7 +3,7 @@ export read_wout
 """
     $(SIGNATURES)
 
-Parse wannire90 `wout` file.
+Parse wannier90 `wout` file.
 
 # Keyword Arguments
 - `iterations`: if `true`, parse all the iterations of disentanglement and
@@ -20,6 +20,9 @@ Parse wannire90 `wout` file.
 - `sum_centers`: sum of final WF centers, in Å
 - `sum_spreads`: sum of final WF spreads, in Å²
 - `ΩI`, `ΩD`, `ΩOD`, `Ωtotal`: final spread (components) in Å²
+- `phase_factors`: optional, global (multiplicative) phase factor for obtaining
+    real-valued (or close to real) MLWFs
+- `im_re_ratios`: optional, maximum Im/Re ratio
 - `iterations`: disentanglement and max localization convergence history,
     only parsed when kwarg `iterations=true`
 """
@@ -36,6 +39,8 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
         mark_ΩD = "Omega D      ="
         mark_ΩOD = "Omega OD     ="
         mark_Ωtotal = "Omega Total  ="
+        mark_phase = "Phase Factor ="
+        mark_imre = "Maximum Im/Re Ratio ="
         # convergence history
         mark_dis_start = "Extraction of optimally-connected subspace"
         mark_dis_end = "Time to disentangle bands"
@@ -127,6 +132,28 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
                 push!(results, :ΩOD => parse_float(split(line, mark_ΩOD)[2]))
                 line = srline()
                 push!(results, :Ωtotal => parse_float(split(line, mark_Ωtotal)[2]))
+                continue
+            end
+            if occursin(mark_phase, line)
+                phases = ComplexF64[]
+                while occursin(mark_phase, line)
+                    s = split(line, "=")
+                    v = parse(ComplexF64, s[end])
+                    push!(phases, v)
+                    line = srline()  # there is an empty line after phase block
+                end
+                push!(results, :phase_factors => phases)
+                continue
+            end
+            if occursin(mark_imre, line)
+                imre = Float64[]
+                while occursin(mark_imre, line)
+                    s = split(line, "=")
+                    v = parse(Float64, s[end])
+                    push!(imre, v)
+                    line = srline()  # there is an empty line after im/re block
+                end
+                push!(results, :im_re_ratios => imre)
                 continue
             end
         end
