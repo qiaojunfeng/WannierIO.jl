@@ -31,7 +31,6 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             :dis_conv_window,
             :conv_window,
             :num_cg_steps,
-            :wannier_plot_supercell,
             :num_print_cycles,
             :iprint,
             :search_shells,
@@ -40,7 +39,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
             :num_guide_cycles,
             :num_no_guide_iter,
         ]
-        keys_int3 = [:mp_grid]
+        keys_int3 = [:mp_grid, :wannier_plot_supercell]
         keys_float = [
             :kmesh_tol,
             :conv_tol,
@@ -246,6 +245,9 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                 elseif key in keys_int3
                     value = strip(replace(value, "," => " "))
                     value = parse_array(value; T=Int)
+                    if length(value) == 1
+                        value = value[1]
+                    end
                 elseif key in keys_float
                     value = parse_float(value)
                 elseif key in keys_bool
