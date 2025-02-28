@@ -31,3 +31,14 @@ end
     nnkp2 = read_nnkp(tmpfile)
     @test pairs(nnkp) == pairs(nnkp2)
 end
+
+@testitem "read auto_projections" begin
+    using LazyArtifacts
+    nnkp = read_nnkp(artifact"SnSe2/reference/SnSe2.nnkp")
+    @test nnkp.auto_projections == 12
+
+    tmpfile = tempname(; cleanup=true)
+    write_nnkp(tmpfile; toml=true, nnkp...)
+    nnkp2 = read_nnkp(tmpfile)
+    @test nnkp.auto_projections == nnkp2.auto_projections
+end

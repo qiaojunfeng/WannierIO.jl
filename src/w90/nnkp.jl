@@ -1,5 +1,42 @@
 export read_nnkp, write_nnkp
 
+abstract type Orbital end
+
+"""
+Hydrogen-like analytic orbitals.
+
+Follows the definition in Wannier90, see
+<https://wannier90.readthedocs.io/en/latest/user_guide/wannier90/postproc/#projections-block>
+<https://wannier90.readthedocs.io/en/latest/user_guide/wannier90/projections/>
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+@kwdef struct HydrogenOrbital <: Orbital
+    """3 real numbers of the projection center, in fractional coordinates"""
+    center::Vec3{Float64}
+    """positive integer, principle quantum number ``n > 0`` for the radial function"""
+    n::Int
+    """non-negative integer, angular momentum ``l \\ge 0`` of real spherical
+    harmonics ``Y_{lm}(\\theta, \\phi)``"""
+    l::Int
+    """integer, magnetic quantum number ``m``, ``-l \\leq m \\leq l``"""
+    m::Int
+    """positive real number, controlling the spread of the radial function"""
+    α::Float64
+    """3 real numbers, the z-axis from which the polar angle ``\\theta``
+    is measured, default is `[0, 0, 1]`"""
+    zaxis::Vec3{Float64}
+    """3 real numbers, the x-axis from which the azimuthal angle ``\\phi``
+    is measured, must be orthogonal to `zaxis`, default is `[1, 0, 0]`"""
+    xaxis::Vec3{Float64}
+end
+
+Base.NamedTuple(o::HydrogenOrbital) = (; o.center, o.n, o.l, o.m, o.α, o.zaxis, o.xaxis)
+
 """
     read_nnkp(filename)
     read_nnkp(filename, ::Wannier90Text)
@@ -11,6 +48,9 @@ Read wannier90 `nnkp` file.
 - `lattice`: each column is a lattice vector
 - `recip_lattice`: each column is a reciprocal lattice vector
 - `kpoints`: length-`n_kpts` vector, each element is `Vec3`, in fractional coordinates
+- `projections`: length-`n_projs` vector of `HydrogenOrbital`
+- `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
+    initial projections
 - `kpb_k`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
     integers, index of kpoints
 - `kpb_G`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector,
@@ -24,7 +64,7 @@ The 1st version auto detects the format and parse it.
 function read_nnkp end
 
 function read_nnkp(filename::AbstractString, ::Wannier90Text)
-    res = open(filename) do io
+    return open(filename) do io
         read_array(type::Type) = map(x -> parse(type, x), split(readline(io)))
 
         lattice = zeros(Float64, 3, 3)
@@ -32,6 +72,8 @@ function read_nnkp(filename::AbstractString, ::Wannier90Text)
 
         n_kpts = nothing
         kpoints = nothing
+        projections = nothing
+        auto_projections = nothing
         kpb_k = nothing
         kpb_G = nothing
 
@@ -65,6 +107,32 @@ function read_nnkp(filename::AbstractString, ::Wannier90Text)
                 line = strip(readline(io))
                 @assert line == "end kpoints" "`end kpoints` not found"
 
+            elseif occursin("begin projections", line)
+                n_projs = parse(Int, readline(io))
+                projections = Vector{HydrogenOrbital}(undef, n_projs)
+                for i in 1:n_projs
+                    sline = split(readline(io))
+                    center = Vec3(parse.(Float64, sline[1:3]))
+                    l, m, n = parse.(Int, sline[4:6])
+                    sline = split(readline(io))
+                    zaxis = Vec3(parse.(Float64, sline[1:3]))
+                    xaxis = Vec3(parse.(Float64, sline[4:6]))
+                    α = parse(Float64, sline[7])
+                    projections[i] = HydrogenOrbital(center, n, l, m, α, zaxis, xaxis)
+                end
+
+                line = strip(readline(io))
+                @assert line == "end projections" "`end projections` not found"
+
+            elseif occursin("begin auto_projections", line)
+                # number of WFs
+                auto_projections = parse(Int, readline(io))
+                # magic number, useless
+                i = parse(Int, readline(io))
+                i == 0 || error("in `auto_projections`, expected 0, got $i")
+                line = strip(readline(io))
+                @assert line == "end auto_projections" "`end auto_projections` not found"
+
             elseif occursin("begin nnkpts", line)
                 @assert n_kpts !== nothing "no `kpoints` block before `nnkpts` block?"
 
@@ -94,9 +162,12 @@ function read_nnkp(filename::AbstractString, ::Wannier90Text)
 
         lattice = Mat3(lattice)
         recip_lattice = Mat3(recip_lattice)
-        return (; lattice, recip_lattice, kpoints, kpb_k, kpb_G)
+        # note I keep the order here: projections frist, then auto_projections, ...
+        res = (;)
+        isnothing(projections) || (res = (; res..., projections))
+        isnothing(auto_projections) || (res = (; res..., auto_projections))
+        return (; res..., lattice, recip_lattice, kpoints, kpb_k, kpb_G)
     end
-    return res
 end
 
 function read_nnkp(filename::AbstractString, ::Wannier90Toml)
@@ -115,6 +186,11 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
                 nnkp[k] = Mat3(nnkp[k])
             end
         end
+    end
+
+    # Convert to HydrogenOrbital
+    if haskey(nnkp, :projections)
+        nnkp[:projections] = [HydrogenOrbital(p...) for p in nnkp[:projections]]
     end
 
     # Convert to Vec3
@@ -160,13 +236,11 @@ Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
     integers, index of kpoints
 - `kpb_G`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector,
     then each element is a `Vec3` for translation vector, fractional w.r.t. `recip_lattice`
-- `n_wann`: if given, write an `auto_projections` block
+- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`
+- `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
+    initial projections. If given, write an `auto_projections` block
 - `exclude_bands`: if given, write the specified band indices in the `exclude_bands` block
 - `header`: first line of the file
-
-!!! note
-
-    Only use `auto_projections`, the `projections` block is not supported.
 """
 function write_nnkp end
 
@@ -178,7 +252,8 @@ function write_nnkp(
     kpoints::AbstractVector,
     kpb_k::AbstractVector,
     kpb_G::AbstractVector,
-    n_wann::Union{Nothing,Integer}=nothing,
+    projections::Union{Nothing,Vector{HydrogenOrbital}}=nothing,
+    auto_projections::Union{Nothing,Integer}=nothing,
     exclude_bands::Union{Nothing,AbstractVector}=nothing,
     header=default_header(),
 )
@@ -219,15 +294,26 @@ function write_nnkp(
         @printf(io, "end kpoints\n")
         @printf(io, "\n")
 
-        if !isnothing(n_wann)
+        if !isnothing(projections)
             @printf(io, "begin projections\n")
-            @printf(io, "%d\n", 0)
+            n_projs = length(projections)
+            @printf(io, "%d\n", n_projs)
+            for p in projections
+                @printf(
+                    io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n
+                )
+                @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
+                @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
+                @printf(io, "%8.4f\n", p.α)
+            end
             @printf(io, "end projections\n")
             @printf(io, "\n")
+        end
 
+        if !isnothing(auto_projections)
             @printf(io, "begin auto_projections\n")
-            @printf(io, "%d\n", n_wann)
-            @printf(io, "%d\n", 0)
+            @printf(io, "%d\n", auto_projections)
+            @printf(io, "%d\n", 0)  # magic number, useless
             @printf(io, "end auto_projections\n")
             @printf(io, "\n")
         end
