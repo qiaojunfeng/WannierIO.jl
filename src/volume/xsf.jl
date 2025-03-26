@@ -126,14 +126,16 @@ function write_xsf(
     lattice::AbstractMatrix{T},
     atom_positions::Vector{Vec3{T}},
     atom_numbers::AbstractVector{Int},
-    origin::AbstractVector{T},
-    span_vectors::AbstractMatrix{T},
-    W::AbstractArray{T,3},
+    origin::Union{AbstractVector{T},Nothing}=nothing,
+    span_vectors::Union{AbstractMatrix{T},Nothing}=nothing,
+    W::Union{AbstractArray{T,3},Nothing}=nothing,
 ) where {T<:Real}
     n_atoms = length(atom_numbers)
     length(atom_positions) == n_atoms || error("incompatible n_atoms")
     size(lattice) == (3, 3) || error("incompatible lattice")
-    size(span_vectors) == (3, 3) || error("incompatible span_vectors")
+    isnothing(span_vectors) ||
+        size(span_vectors) == (3, 3) ||
+        error("incompatible span_vectors")
 
     @info "Writing xsf file: " filename
     io = open(filename, "w")
@@ -157,35 +159,37 @@ function write_xsf(
         @printf(io, "%d %12.7f %12.7f %12.7f\n", atom_numbers[i], pos...)
     end
 
-    @printf(io, "\n")
-    @printf(io, "BEGIN_BLOCK_DATAGRID_3D\n")
-    @printf(io, "3D_field\n")
-    @printf(io, "BEGIN_DATAGRID_3D_UNKNOWN\n")
+    if !any([isnothing(origin), isnothing(span_vectors), isnothing(W)])
+        @printf(io, "\n")
+        @printf(io, "BEGIN_BLOCK_DATAGRID_3D\n")
+        @printf(io, "3D_field\n")
+        @printf(io, "BEGIN_DATAGRID_3D_UNKNOWN\n")
 
-    n_x, n_y, n_z = size(W)
-    @printf(io, "%d %d %d\n", n_x, n_y, n_z)
-    @printf(io, "%12.7f %12.7f %12.7f\n", origin...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 1]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 2]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 3]...)
+        n_x, n_y, n_z = size(W)
+        @printf(io, "%d %d %d\n", n_x, n_y, n_z)
+        @printf(io, "%12.7f %12.7f %12.7f\n", origin...)
+        @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 1]...)
+        @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 2]...)
+        @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 3]...)
 
-    # column-major
-    ncol = 0
-    for k in 1:n_z
-        for j in 1:n_y
-            for i in 1:n_x
-                @printf(io, " %13.5e", W[i, j, k])
-                ncol += 1
-                if ncol == 6
-                    @printf(io, "\n")
-                    ncol = 0
+        # column-major
+        ncol = 0
+        for k in 1:n_z
+            for j in 1:n_y
+                for i in 1:n_x
+                    @printf(io, " %13.5e", W[i, j, k])
+                    ncol += 1
+                    if ncol == 6
+                        @printf(io, "\n")
+                        ncol = 0
+                    end
                 end
             end
         end
+        ncol != 0 && @printf(io, "\n")
+        @printf(io, "END_DATAGRID_3D\n")
+        @printf(io, "END_BLOCK_DATAGRID_3D\n")
     end
-    ncol != 0 && @printf(io, "\n")
-    @printf(io, "END_DATAGRID_3D\n")
-    @printf(io, "END_BLOCK_DATAGRID_3D\n")
 
     close(io)
     return nothing
