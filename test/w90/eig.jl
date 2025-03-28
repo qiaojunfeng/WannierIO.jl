@@ -18,7 +18,7 @@ end
 @testitem "read/write eig binary" begin
     using LazyArtifacts
     E = read_eig(artifact"Si2_valence/Si2_valence.eig")
-    E1 = read_eig(artifact"Si2_valence/reference/binary/Si2_valence.eig")
+    E1 = read_eig(artifact"Si2_valence/outputs/binary/Si2_valence.eig")
     @test E ≈ E1
 
     tmpfile = tempname(; cleanup=true)

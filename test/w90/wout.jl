@@ -83,7 +83,7 @@ end
 @testitem "read wout" begin
     using WannierIO: Vec3
     using LazyArtifacts
-    wout = read_wout(artifact"Si2_valence/reference/Si2_valence.wout")
+    wout = read_wout(artifact"Si2_valence/outputs/Si2_valence.wout")
 
     ref_lattice = [
         0.000000 2.715265 2.715265
@@ -132,7 +132,7 @@ end
 # test for non-symmetric lattice, with disentanglement
 @testitem "read wout disentanglement" begin
     using LazyArtifacts
-    wout = read_wout(artifact"Fe_soc/reference/Fe.wout")
+    wout = read_wout(artifact"Fe_soc/outputs/Fe.wout")
 
     ref_lattice = [
         1.434996 -1.434996 -1.434996
@@ -202,7 +202,7 @@ end
 
 @testitem "read wout iterations" begin
     using LazyArtifacts
-    wout = read_wout(artifact"Fe_soc/reference/Fe.wout"; iterations=true)
+    wout = read_wout(artifact"Fe_soc/outputs/Fe.wout"; iterations=true)
 
     @test wout.iterations.disentangle.iter == 1:7000
     @test wout.iterations.disentangle.ΩI_previous[[1, 7000]] ≈ [16.06412287, 10.21963555]

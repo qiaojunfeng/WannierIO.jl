@@ -1,6 +1,6 @@
 @testitem "read/write bxsf" begin
     using LazyArtifacts
-    bxsf = read_bxsf(artifact"Cu/reference/Cu.bxsf")
+    bxsf = read_bxsf(artifact"Cu/outputs/Cu.bxsf")
 
     @test bxsf.fermi_energy ≈ 16.8985
     @test bxsf.origin ≈ [0.0, 0.0, 0.0]

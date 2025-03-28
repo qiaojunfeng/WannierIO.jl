@@ -23,7 +23,7 @@ end
 @testitem "read/write amn binary" begin
     using LazyArtifacts
     A = read_amn(artifact"Si2_valence/Si2_valence.amn")
-    A1 = read_amn(artifact"Si2_valence/reference/binary/Si2_valence.amn")
+    A1 = read_amn(artifact"Si2_valence/outputs/binary/Si2_valence.amn")
     @test A ≈ A1
 
     tmpfile = tempname(; cleanup=true)
