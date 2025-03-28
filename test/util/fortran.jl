@@ -1,7 +1,7 @@
 
 @testitem "isbinary file" begin
     using LazyArtifacts
-    @test WannierIO.isbinary(artifact"Si2_valence/reference/binary/UNK00001.1")
+    @test WannierIO.isbinary(artifact"Si2_valence/outputs/binary/UNK00001.1")
     @test !WannierIO.isbinary(artifact"Si2_valence/UNK/UNK00001.1")
 end
 

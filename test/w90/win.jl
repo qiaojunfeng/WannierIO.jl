@@ -6,7 +6,7 @@
     WRITE_TOML = false
     WRITE_TOML && write_win("/tmp/Si2_valence.win.toml"; toml=true, win...)
 
-    test_data = read_win(artifact"Si2_valence/reference/Si2_valence.win.toml")
+    test_data = read_win(artifact"Si2_valence/outputs/Si2_valence.win.toml")
     @test win == test_data
 end
 
@@ -22,7 +22,7 @@ end
 
 @testitem "read/write win toml" begin
     using LazyArtifacts
-    toml_path = artifact"Si2_valence/reference/Si2_valence.win.toml"
+    toml_path = artifact"Si2_valence/outputs/Si2_valence.win.toml"
     win = read_win(toml_path)
 
     tmpfile = tempname(; cleanup=true)

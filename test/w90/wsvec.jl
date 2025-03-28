@@ -1,6 +1,6 @@
 @testitem "read wsvec WS" begin
     using LazyArtifacts
-    wsvec = read_w90_wsvec(artifact"Si2_valence/reference/WS/Si2_valence_wsvec.dat")
+    wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
 
     @assert wsvec.mdrs == false
     @test length(wsvec.Rvectors) == 279
@@ -11,7 +11,7 @@ end
 @testitem "read wsvec MDRS" begin
     using WannierIO: Vec3
     using LazyArtifacts
-    wsvec = read_w90_wsvec(artifact"Si2_valence/reference/MDRS/Si2_valence_wsvec.dat")
+    wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/MDRS/Si2_valence_wsvec.dat")
 
     @assert wsvec.mdrs == true
     @test length(wsvec.Rvectors) == 279
@@ -25,7 +25,7 @@ end
 
 @testitem "write wsvec WS" begin
     using LazyArtifacts
-    wsvec = read_w90_wsvec(artifact"Si2_valence/reference/WS/Si2_valence_wsvec.dat")
+    wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
 
     tmpfile = tempname(; cleanup=true)
     write_w90_wsvec(tmpfile; wsvec.Rvectors, wsvec.n_wann)
@@ -41,7 +41,7 @@ end
 @testitem "write wsvec MDRS" begin
     using WannierIO: Vec3
     using LazyArtifacts
-    wsvec = read_w90_wsvec(artifact"Si2_valence/reference/MDRS/Si2_valence_wsvec.dat")
+    wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/MDRS/Si2_valence_wsvec.dat")
 
     tmpfile = tempname(; cleanup=true)
     write_w90_wsvec(tmpfile; wsvec.Rvectors, wsvec.Tvectors, wsvec.Tdegens)

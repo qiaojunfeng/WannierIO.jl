@@ -20,7 +20,7 @@ end
 @testitem "read/write unk binary" begin
     using LazyArtifacts
     ik, ψ = read_unk(artifact"Si2_valence/UNK/UNK00001.1")
-    ik1, ψ1 = read_unk(artifact"Si2_valence/reference/binary/UNK00001.1")
+    ik1, ψ1 = read_unk(artifact"Si2_valence/outputs/binary/UNK00001.1")
     @test ik == ik1
     @test ψ ≈ ψ1
 

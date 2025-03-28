@@ -1,7 +1,7 @@
 @testitem "read qe xml" begin
     using WannierIO: Vec3
     using LazyArtifacts
-    qe = WannierIO.read_qe_xml(artifact"Si2/reference/qe_bands.xml")
+    qe = WannierIO.read_qe_xml(artifact"Si2/outputs/qe_bands.xml")
 
     lattice = [0.0 2.715265 2.715265; 2.715265 0.0 2.715265; 2.715265 2.715265 0.0]
     @test qe.lattice ≈ lattice
@@ -71,7 +71,7 @@ end
 @testitem "read qe xml spin-polarized" begin
     using WannierIO: Vec3
     using LazyArtifacts
-    qe = WannierIO.read_qe_xml(artifact"CrI3/reference/qe_bands.xml")
+    qe = WannierIO.read_qe_xml(artifact"CrI3/outputs/qe_bands.xml")
 
     lattice = [
         6.8171434485254725 -3.4085717242627362 0.0

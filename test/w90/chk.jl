@@ -1,6 +1,6 @@
 @testitem "read chk" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
+    chk = read_chk(artifact"Si2_valence/outputs/Si2_valence.chk.fmt")
 
     @test chk.n_wann == 4
     @test chk.n_bands == 4
@@ -59,7 +59,7 @@ end
 
 @testitem "read/write chk" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
+    chk = read_chk(artifact"Si2_valence/outputs/Si2_valence.chk.fmt")
 
     tmpfile = tempname(; cleanup=true)
     write_chk(tmpfile, chk)
@@ -69,8 +69,8 @@ end
 
 @testitem "read/write chk binary" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2_valence/reference/Si2_valence.chk.fmt")
-    chk1 = read_chk(artifact"Si2_valence/reference/binary/Si2_valence.chk")
+    chk = read_chk(artifact"Si2_valence/outputs/Si2_valence.chk.fmt")
+    chk1 = read_chk(artifact"Si2_valence/outputs/binary/Si2_valence.chk")
     @test chk ≈ chk1
 
     tmpfile = tempname(; cleanup=true)
@@ -81,7 +81,7 @@ end
 
 @testitem "read chk disentanglement" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
+    chk = read_chk(artifact"Si2/outputs/Si2.chk.fmt")
 
     @test chk.n_wann == 8
     @test chk.n_bands == 16
@@ -97,7 +97,7 @@ end
 
 @testitem "read/write chk disentanglement" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
+    chk = read_chk(artifact"Si2/outputs/Si2.chk.fmt")
 
     tmpfile = tempname(; cleanup=true)
     write_chk(tmpfile, chk)
@@ -107,8 +107,8 @@ end
 
 @testitem "read/write chk disentanglement binary" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
-    chk1 = read_chk(artifact"Si2/reference/Si2.chk")
+    chk = read_chk(artifact"Si2/outputs/Si2.chk.fmt")
+    chk1 = read_chk(artifact"Si2/outputs/Si2.chk")
     @test chk ≈ chk1
 
     tmpfile = tempname(; cleanup=true)
@@ -119,25 +119,25 @@ end
 
 @testitem "get_Udis" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2/reference/Si2.chk")
+    chk = read_chk(artifact"Si2/outputs/Si2.chk")
     Udis = get_Udis(chk)
-    Udis_ref = read_amn(artifact"Si2/reference/Si2.chk_Udis.amn")
+    Udis_ref = read_amn(artifact"Si2/outputs/Si2.chk_Udis.amn")
     @test Udis ≈ Udis_ref
 end
 
 @testitem "get_U" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2/reference/Si2.chk")
+    chk = read_chk(artifact"Si2/outputs/Si2.chk")
     U = get_U(chk)
-    U_ref = read_amn(artifact"Si2/reference/Si2.chk_U.amn")
+    U_ref = read_amn(artifact"Si2/outputs/Si2.chk_U.amn")
     @test U ≈ U_ref
 end
 
 # test chk lattice/recip_lattice are column-major
 @testitem "read/write chk lattice" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Fe_soc/reference/Fe.chk")
-    wout = read_wout(artifact"Fe_soc/reference/Fe.wout")
+    chk = read_chk(artifact"Fe_soc/outputs/Fe.chk")
+    wout = read_wout(artifact"Fe_soc/outputs/Fe.wout")
     @test all(isapprox.(chk.lattice, wout.lattice; atol=3e-7))
     @test all(isapprox.(chk.recip_lattice, wout.recip_lattice; atol=3e-7))
 

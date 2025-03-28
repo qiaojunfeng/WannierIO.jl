@@ -1,6 +1,6 @@
 @testitem "read r WS" begin
     using LazyArtifacts
-    rdat = read_w90_rdat(artifact"Si2_valence/reference/WS/Si2_valence_r.dat")
+    rdat = read_w90_rdat(artifact"Si2_valence/outputs/WS/Si2_valence_r.dat")
     Rvectors1 = [-4, 0, 2]
     @test rdat.Rvectors[1] == Rvectors1
     r_x_end = ComplexF64[
@@ -31,8 +31,8 @@ end
 @testitem "read r MDRS" begin
     using LazyArtifacts
     # The two files are identical
-    rdat = read_w90_rdat(artifact"Si2_valence/reference/MDRS/Si2_valence_r.dat")
-    rdat_ws = read_w90_rdat(artifact"Si2_valence/reference/WS/Si2_valence_r.dat")
+    rdat = read_w90_rdat(artifact"Si2_valence/outputs/MDRS/Si2_valence_r.dat")
+    rdat_ws = read_w90_rdat(artifact"Si2_valence/outputs/WS/Si2_valence_r.dat")
 
     for p in propertynames(rdat)
         p == :header && continue
@@ -42,7 +42,7 @@ end
 
 @testitem "write r" begin
     using LazyArtifacts
-    rdat = read_w90_rdat(artifact"Si2_valence/reference/WS/Si2_valence_r.dat")
+    rdat = read_w90_rdat(artifact"Si2_valence/outputs/WS/Si2_valence_r.dat")
 
     tmpfile = tempname(; cleanup=true)
     write_w90_rdat(tmpfile; rdat...)

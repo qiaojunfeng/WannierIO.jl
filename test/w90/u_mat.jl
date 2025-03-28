@@ -1,8 +1,8 @@
 @testitem "read/write u.mat" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
+    chk = read_chk(artifact"Si2/outputs/Si2.chk.fmt")
 
-    Udismat = WannierIO.read_u_mat(artifact"Si2/reference/Si2_u.mat")
+    Udismat = WannierIO.read_u_mat(artifact"Si2/outputs/Si2_u.mat")
     @assert Udismat.U ≈ chk.Uml
     @assert Udismat.kpoints ≈ chk.kpoints
 
@@ -15,9 +15,9 @@ end
 
 @testitem "read/write u_dis.mat" begin
     using LazyArtifacts
-    chk = read_chk(artifact"Si2/reference/Si2.chk.fmt")
+    chk = read_chk(artifact"Si2/outputs/Si2.chk.fmt")
 
-    Udismat = WannierIO.read_u_mat(artifact"Si2/reference/Si2_u_dis.mat")
+    Udismat = WannierIO.read_u_mat(artifact"Si2/outputs/Si2_u_dis.mat")
     # do not use `get_Udis` since it sorts the band indices, here we want to
     # compare the raw data
     @assert Udismat.U ≈ chk.Udis
