@@ -1,87 +1,87 @@
 [Cu]
-git-tree-sha1 = "26cd04ef4c5290f197a9763ee2b5e315de87ab09"
+git-tree-sha1 = "7a62b6fd9cf0b8414d402bf5109ab1e4e3770812"
 lazy = true
 
     [[Cu.download]]
-    sha256 = "8eca895480357aaf608963b0c98bdf30a8e04c43d5599115ab8832830087cf79"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/Cu.tar.gz"
+    sha256 = "966ffc46f9bae5ea90df9d16f1a6da861cbca36bf1ca0238b72d758975f32106"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Cu.tar.gz"
 
 [Si2_valence]
-git-tree-sha1 = "03635d409d4449351ac87b8069c763de898c03af"
+git-tree-sha1 = "69abcb33e42a08354b68dae0c4ced116b6234d70"
 lazy = true
 
     [[Si2_valence.download]]
-    sha256 = "a3dbe2839f65bddf6e45ec7fa491890c365ba2a9b040a71d0a4f6000f556a324"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/Si2_valence.tar.gz"
+    sha256 = "76932bf2670ef5b05a650b07d8a16f01e6d99d7c25f2cc18848ef872a17ae684"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Si2_valence.tar.gz"
 
 [CrI3]
-git-tree-sha1 = "f698136fe78b64e96c909a4ac508fd4529610eda"
+git-tree-sha1 = "888fc3a5816e746cf3b7ddd2c469b89ae0f7e7da"
 lazy = true
 
     [[CrI3.download]]
-    sha256 = "e350e763b0523363f94c810e5854cbf4544d98663f9809c48950dcf4ee0acd96"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/CrI3.tar.gz"
+    sha256 = "d88ef0f6ffcb316bb96465bca4f79228c03486ff05c62c8ac5e640bc841f9e96"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/CrI3.tar.gz"
 
 [MoS2]
 git-tree-sha1 = "2b36703f7e686b5b3e40bcdbd86688e80be4a4d6"
 lazy = true
 
     [[MoS2.download]]
-    sha256 = "42cf665e21bab9b86fa1c41b2f9a6f7ec4667196fd8e4d3aa657651679ab29a1"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/MoS2.tar.gz"
+    sha256 = "17f7d1fbdecd472ed497e7b50855147054146387b447e5a7884c1aa395b2f9bb"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/MoS2.tar.gz"
 
 [BN]
-git-tree-sha1 = "ef7dcbfae7b90113da42d0c4f878598ea7416e7c"
+git-tree-sha1 = "5c6644b683c4783271d99973e21156daa2075bac"
 lazy = true
 
     [[BN.download]]
-    sha256 = "27b6adc3081e1e802d11165cb4bb3611f5104a13958c013d49c2a3184ff6dfda"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/BN.tar.gz"
+    sha256 = "98c7f02596a3b1b0179b2f2f64adc0ce157c3228c3234e2b0721780029712371"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/BN.tar.gz"
 
 [SnSe2]
-git-tree-sha1 = "86aa64f5fa8f9262a01d7e0720212332fb4119e2"
+git-tree-sha1 = "b45310314ba59112420850678fa416fcbbd7aa6a"
 lazy = true
 
     [[SnSe2.download]]
-    sha256 = "85e3160f1400deabc36423ad37a4dcb67fdd8f65cf3498a7631438a0f30b46a3"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/SnSe2.tar.gz"
+    sha256 = "bb6bad5142322dc083dd283c60bdc0e1a9442b96a9e828f36bb0ad34a6a83531"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/SnSe2.tar.gz"
 
 [Fe_collinear]
-git-tree-sha1 = "13bfff238b9094b296a162f37d97bb8d81636337"
+git-tree-sha1 = "7491f2d773a5f682f83cf46120ae3ef8430c0f99"
 lazy = true
 
     [[Fe_collinear.download]]
-    sha256 = "7477789a9c86c04a38366debf77267c519697c2a85433cc4b7c48a2a2cbdbb93"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/Fe_collinear.tar.gz"
+    sha256 = "3f1ab3c4010a54b9c421faae3de746b9ed1152eac7d20417a9ee42222f709cd2"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Fe_collinear.tar.gz"
 
 [Fe_soc]
-git-tree-sha1 = "7408d03abce1b2a75fa2006fabc94a83499ee5ef"
+git-tree-sha1 = "61ccd2c018e0934c3541b85c32a8bd0ee957e2d7"
 lazy = true
 
     [[Fe_soc.download]]
-    sha256 = "ab78d449d076d90f30f221609849f523265318d4ff048ceac4d7082adcc7be26"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/Fe_soc.tar.gz"
+    sha256 = "720cc325681f983aef9348da44e917802663a07226c95fe7efdb760ce96cdca0"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Fe_soc.tar.gz"
 
 [graphene]
-git-tree-sha1 = "41b06ee5668996867a89a911e6b34db102b757b0"
+git-tree-sha1 = "600f801c60eba4eb34c7d6396de079a597bc29cc"
 lazy = true
 
     [[graphene.download]]
-    sha256 = "d43be0081ac0c4901029259722a8fe5d14567f655be8a08a2f1fff72ab75d55a"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/graphene.tar.gz"
+    sha256 = "006017f33b1e67a3dba4b309c5d01a300e09d74a85ab0f8750c804f4aa256024"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/graphene.tar.gz"
 
 [CuBr2]
-git-tree-sha1 = "b399f867ae5242aacb0059186ac7b28c26ec8e73"
+git-tree-sha1 = "1cb8c060dd58a341f243216ba96932660f7310d4"
 lazy = true
 
     [[CuBr2.download]]
-    sha256 = "84e626240ac06077cbffc6b916a1c4e8ac3b059b36375fc24cab372d88e451f0"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/CuBr2.tar.gz"
+    sha256 = "287624671d7c37d0b33d0920fc582729e869b80d0d39753650ad9072198b8dd1"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/CuBr2.tar.gz"
 
 [Si2]
-git-tree-sha1 = "3fd6d3496ecb1c58334cff33e30998864ae16b66"
+git-tree-sha1 = "1459f891f478ff64c3d1296c634ad441611778b2"
 lazy = true
 
     [[Si2.download]]
-    sha256 = "7f5974dc054e8c84501daf16dd9d20ede26159488d319756ff087a3abb5e7f2d"
-    url = "https://github.com/qiaojunfeng/WannierDatasets/releases/latest/download/Si2.tar.gz"
+    sha256 = "55d0f070e4f253d2f384b9d6e350dc1acd8caad689ca256bc9c539e613538ce7"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Si2.tar.gz"
