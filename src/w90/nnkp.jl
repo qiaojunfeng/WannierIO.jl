@@ -190,7 +190,10 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
 
     # Convert to HydrogenOrbital
     if haskey(nnkp, :projections)
-        nnkp[:projections] = [HydrogenOrbital(p...) for p in nnkp[:projections]]
+        nnkp[:projections] = map(nnkp[:projections]) do proj
+            args = NamedTuple((Symbol(k), v) for (k, v) in proj)
+            HydrogenOrbital(; args...)
+        end
     end
 
     # Convert to Vec3
