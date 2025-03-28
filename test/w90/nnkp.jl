@@ -22,13 +22,16 @@ end
 
 @testitem "read/write nnkp toml" begin
     using LazyArtifacts
-    nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp.toml")
+    # Note that this requires https://github.com/JuliaLang/julia/pull/57584
+    if VERSION > v"1.11.4"
+        nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp.toml")
 
-    tmpfile = tempname(; cleanup=true)
-    write_nnkp(tmpfile; toml=true, nnkp...)
+        tmpfile = tempname(; cleanup=true)
+        write_nnkp(tmpfile; toml=true, nnkp...)
 
-    nnkp2 = read_nnkp(tmpfile)
-    @test pairs(nnkp) == pairs(nnkp2)
+        nnkp2 = read_nnkp(tmpfile)
+        @test pairs(nnkp) == pairs(nnkp2)
+    end
 end
 
 @testitem "read auto_projections" begin
