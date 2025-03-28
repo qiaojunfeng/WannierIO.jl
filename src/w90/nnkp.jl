@@ -350,6 +350,9 @@ function write_nnkp(
 )
     open(filename, "w") do io
         println(io, header, "\n")
+        # Note that this requires https://github.com/JuliaLang/julia/pull/57584
+        # otherwise it will fail at writing toml file when the `projections`
+        # block exists. I.e., this works for julia >= v"1.11.4".
         write_toml(io; kwargs...)
     end
 end
