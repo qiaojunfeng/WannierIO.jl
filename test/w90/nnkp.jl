@@ -14,8 +14,7 @@ end
     using LazyArtifacts
     nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp")
     tmpfile = tempname(; cleanup=true)
-    n_wann = 4
-    write_nnkp(tmpfile; nnkp..., n_wann)
+    write_nnkp(tmpfile; nnkp...)
 
     nnkp2 = read_nnkp(tmpfile)
     @test pairs(nnkp) == pairs(nnkp2)
