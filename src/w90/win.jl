@@ -498,11 +498,10 @@ function write_win(
 )
     _check_win_required_params(kwargs)
 
-    # convert immutable kwargs to Dict
+    # Convert immutable kwargs to OrderedDict, to keep the order
+    # Most likely the important parameters are at the beginning upon user input
     params = OrderedDict(kwargs)
-    num_wann = pop!(params, :num_wann)
-    num_bands = pop!(params, :num_bands, nothing)
-    mp_grid = pop!(params, :mp_grid)
+    # These are blocks
     unit_cell_cart = pop!(params, :unit_cell_cart)
     atoms_frac = pop!(params, :atoms_frac, nothing)
     atoms_cart = pop!(params, :atoms_cart, nothing)
@@ -511,26 +510,25 @@ function write_win(
     explicit_kpath = pop!(params, :explicit_kpath, nothing)
     explicit_kpath_labels = pop!(params, :explicit_kpath_labels, nothing)
     kpoints = pop!(params, :kpoints)
-    # if !startswith(lstrip(header), "#")
-    #     header = "# $header"
-    # end
+
+    startswith(lstrip(header), "#") || (header = "# $header")
 
     open(filename, "w") do io
+        # an additional new line to separate from the rest
         println(io, "$(header)\n")
 
-        # First write most important parameters
-        println(io, "num_wann = $num_wann")
-        !isnothing(num_bands) && println(io, "num_bands = $num_bands")
-        @printf io "mp_grid = %d  %d  %d\n" mp_grid...
-        # a new line to separate from the rest
-        println(io)
-
-        # Drop remaining parameters
         for (key, value) in pairs(params)
             ismissing(value) && continue
-            # @printf fp "%-20s = %-30s\n" string(key) value
-            @printf io "%s = %s\n" string(key) value
+            # @printf io "%-20s = %-30s\n" string(key) value
+            if key == :mp_grid
+                @printf io "%s = %d  %d  %d\n" string(key) value...
+            elseif key == :exclude_bands
+                @printf io "%s = %s\n" string(key) format_indices(value)
+            else
+                @printf io "%s = %s\n" string(key) value
+            end
         end
+        # a new line to separate from the rest
         println(io)
 
         # Lattice vectors are in rows in Wannier90
@@ -585,7 +583,8 @@ function write_win(
         if !isnothing(explicit_kpath_labels)
             println(io, "begin explicit_kpath_labels")
             for (label, kpt) in explicit_kpath_labels
-                @printf io "%-3s  %14.8f  %14.8f  %14.8f\n" string(label) kpt...
+                # label width is 5, to accomodate e.g. "Gamma"
+                @printf io "%-5s  %14.8f  %14.8f  %14.8f\n" string(label) kpt...
             end
             println(io, "end explicit_kpath_labels\n")
         end

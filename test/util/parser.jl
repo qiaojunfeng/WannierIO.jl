@@ -14,3 +14,13 @@
     @test vec == collect(1:9)
     close(io)
 end
+
+@testitem "format_indices" begin
+    res = WannierIO.format_indices([1, 2, 5, 8, 9, 10])
+    ref = "1-2, 5, 8-10"
+    @test res == ref
+
+    res = WannierIO.format_indices(1:2)
+    ref = "1-2"
+    @test res == ref
+end

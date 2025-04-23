@@ -119,3 +119,37 @@ function parse_indices(str::AbstractString)
     end
     return indices
 end
+
+"""
+    $(SIGNATURES)
+
+Convert a vector of integers to a string of comma-separated indices or range.
+
+E.g., the `exclude_bands` tag of `win` file.
+
+# Examples
+
+```julia-repl
+julia> format_indices([1, 2, 5, 8, 9, 10])
+"1-2 5 8-10"
+```
+"""
+function format_indices(indices::AbstractVector{T}) where {T<:Integer}
+    groups = Vector{Vector{T}}()
+    for (i, n) in enumerate(indices)
+        if (i > 1) && (n == indices[i - 1] + 1)
+            push!(groups[end], n)
+        else
+            push!(groups, [n])
+        end
+    end
+    result = map(groups) do grp
+        if length(grp) == 1
+            return string(grp[1])
+        else
+            return string(grp[1], "-", grp[end])
+        end
+    end
+    result = join(result, ", ")
+    return result
+end
