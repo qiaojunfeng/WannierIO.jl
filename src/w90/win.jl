@@ -1,3 +1,4 @@
+using OrderedCollections
 using TOML
 
 export read_win, write_win
@@ -498,7 +499,7 @@ function write_win(
     _check_win_required_params(kwargs)
 
     # convert immutable kwargs to Dict
-    params = Dict(kwargs)
+    params = OrderedDict(kwargs)
     num_wann = pop!(params, :num_wann)
     num_bands = pop!(params, :num_bands, nothing)
     mp_grid = pop!(params, :mp_grid)
