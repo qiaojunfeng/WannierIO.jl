@@ -223,6 +223,36 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
                 push!(params, :kpoint_path => kpoint_path)
+            elseif occursin(r"^begin\s+explicit_kpath$", line)
+                block_name = "explicit_kpath"
+                explicit_kpath = Vec3{Float64}[]
+
+                line = read_line_until_nonempty(; block_name)
+                while !occursin(r"^end\s+explicit_kpath$", line)
+                    l = split(line)
+                    length(l) == 3 || error("Invalid $block_name line: $line")
+                    kpt = Vec3{Float64}(parse_float.(l))
+                    push!(explicit_kpath, kpt)
+
+                    line = read_line_until_nonempty(; block_name)
+                end
+                push!(params, :explicit_kpath => explicit_kpath)
+            elseif occursin(r"^begin\s+explicit_kpath_labels$", line)
+                block_name = "explicit_kpath_labels"
+                explicit_kpath_labels = SymbolVec3{Float64}[]
+
+                # allow uppercase
+                line = read_line_until_nonempty(; lower=false, block_name)
+                while !occursin(r"^end\s+explicit_kpath_labels$", lowercase(line))
+                    l = split(line)
+                    length(l) == 4 || error("Invalid $block_name line: $line")
+                    label = Symbol(l[1])
+                    kpt = Vec3{Float64}(parse_float.(l[2:4]))
+                    push!(explicit_kpath_labels, label => kpt)
+
+                    line = read_line_until_nonempty(; lower=false, block_name)
+                end
+                push!(params, :explicit_kpath_labels => explicit_kpath_labels)
             elseif occursin(r"^begin\s+(.+)", line)
                 # treat all remaining unknown blocks as Vector of String
                 block_name = match(r"^begin\s+(.+)", line).captures[1]
@@ -450,9 +480,15 @@ function write_win end
     $(SIGNATURES)
 """
 @inline function _check_win_required_params(kwargs)
-    required_keys = [:num_wann, :unit_cell_cart, :atoms_frac, :mp_grid, :kpoints]
+    required_keys = [:num_wann, :unit_cell_cart, :mp_grid, :kpoints]
     for k in required_keys
         @assert haskey(kwargs, k) "Required parameter $k not found"
+    end
+    atoms_cart_frac = haskey.(Ref(kwargs), [:atoms_cart, :atoms_frac])
+    if all(atoms_cart_frac)
+        error("Both atoms_cart and atoms_frac are found")
+    elseif !any(atoms_cart_frac)
+        error("Both atoms_frac and atoms_cart are missing")
     end
 end
 
@@ -465,11 +501,14 @@ function write_win(
     params = Dict(kwargs)
     num_wann = pop!(params, :num_wann)
     num_bands = pop!(params, :num_bands, nothing)
+    mp_grid = pop!(params, :mp_grid)
     unit_cell_cart = pop!(params, :unit_cell_cart)
-    atoms_frac = pop!(params, :atoms_frac)
+    atoms_frac = pop!(params, :atoms_frac, nothing)
+    atoms_cart = pop!(params, :atoms_cart, nothing)
     projections = pop!(params, :projections, nothing)
     kpoint_path = pop!(params, :kpoint_path, nothing)
-    mp_grid = pop!(params, :mp_grid)
+    explicit_kpath = pop!(params, :explicit_kpath, nothing)
+    explicit_kpath_labels = pop!(params, :explicit_kpath_labels, nothing)
     kpoints = pop!(params, :kpoints)
     # if !startswith(lstrip(header), "#")
     #     header = "# $header"
@@ -481,6 +520,7 @@ function write_win(
         # First write most important parameters
         println(io, "num_wann = $num_wann")
         !isnothing(num_bands) && println(io, "num_bands = $num_bands")
+        @printf io "mp_grid = %d  %d  %d\n" mp_grid...
         # a new line to separate from the rest
         println(io)
 
@@ -501,14 +541,23 @@ function write_win(
         end
         println(io, "end unit_cell_cart\n")
 
-        println(io, "begin atoms_frac")
-        for (element, position) in atoms_frac
-            if isa(element, Symbol)
-                element = string(element)
+        if !isnothing(atoms_frac)
+            println(io, "begin atoms_frac")
+            for (element, position) in atoms_frac
+                @printf io "%-3s  %14.8f  %14.8f  %14.8f\n" string(element) position...
             end
-            @printf io "%-3s  %14.8f  %14.8f  %14.8f\n" element position...
+            println(io, "end atoms_frac\n")
         end
-        println(io, "end atoms_frac\n")
+
+        if !isnothing(atoms_cart)
+            println(io, "begin atoms_cart")
+            # unit is angstrom
+            println(io, "angstrom")
+            for (element, position) in atoms_cart
+                @printf io "%-3s  %14.8f  %14.8f  %14.8f\n" string(element) position...
+            end
+            println(io, "end atoms_cart\n")
+        end
 
         if !isnothing(projections)
             println(io, "begin projections")
@@ -532,13 +581,27 @@ function write_win(
             println(io, "end kpoint_path\n")
         end
 
-        @printf io "mp_grid = %d  %d  %d\n\n" mp_grid...
+        if !isnothing(explicit_kpath_labels)
+            println(io, "begin explicit_kpath_labels")
+            for (label, kpt) in explicit_kpath_labels
+                @printf io "%-3s  %14.8f  %14.8f  %14.8f\n" string(label) kpt...
+            end
+            println(io, "end explicit_kpath_labels\n")
+        end
+
+        if !isnothing(explicit_kpath)
+            println(io, "begin explicit_kpath")
+            for kpt in explicit_kpath
+                @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
+            end
+            println(io, "end explicit_kpath\n")
+        end
 
         println(io, "begin kpoints")
         for kpt in kpoints
             @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
         end
-        println(io, "end kpoints")
+        println(io, "end kpoints\n")
     end
 end
 
