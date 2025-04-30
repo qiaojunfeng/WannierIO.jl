@@ -65,3 +65,28 @@ end
     win = read_win(joinpath(windir, "exclude_bands.win"))
     @test win.exclude_bands == [1, 3, 4, 5, 6]
 end
+
+@testitem "read win: explicit_kpath" begin
+    using LazyArtifacts
+    toml_path = artifact"GaAs/GaAs.win"
+    win = read_win(toml_path)
+
+    @test win.explicit_kpath_labels == [
+        :L => [0.5, 0.5, 0.5],
+        :G => [0.0, 0.0, 0.0],
+        :X => [0.5, 0.0, 0.5],
+        :X2 => [0.5, -0.5, 0.0],
+        :K => [0.375, -0.375, 0.0],
+    ]
+    @test length(win.explicit_kpath) == 214
+    @test win.explicit_kpath[[1, end-1]] == [
+        [0.5, 0.5, 0.5],
+        [0.012097, -0.012097, 0.0],
+    ]
+
+    tmpfile = tempname(; cleanup=true)
+    write_win(tmpfile; win...)
+    win2 = read_win(tmpfile)
+    # compare without order
+    @test Dict(pairs(win)) == Dict(pairs(win2))
+end
