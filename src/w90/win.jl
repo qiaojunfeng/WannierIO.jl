@@ -231,8 +231,8 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                 line = read_line_until_nonempty(; block_name)
                 while !occursin(r"^end\s+explicit_kpath$", line)
                     l = split(line)
-                    length(l) == 3 || error("Invalid $block_name line: $line")
-                    kpt = Vec3{Float64}(parse_float.(l))
+                    length(l) >= 3 || error("Invalid $block_name line: $line")
+                    kpt = Vec3{Float64}(parse_float.(l[1:3]))
                     push!(explicit_kpath, kpt)
 
                     line = read_line_until_nonempty(; block_name)
@@ -583,7 +583,7 @@ function write_win(
         if !isnothing(explicit_kpath_labels)
             println(io, "begin explicit_kpath_labels")
             for (label, kpt) in explicit_kpath_labels
-                # label width is 5, to accomodate e.g. "Gamma"
+                # label width is 5, to accommodate e.g. "Gamma"
                 @printf io "%-5s  %14.8f  %14.8f  %14.8f\n" string(label) kpt...
             end
             println(io, "end explicit_kpath_labels\n")
