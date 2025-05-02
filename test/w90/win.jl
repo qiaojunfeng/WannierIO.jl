@@ -17,7 +17,8 @@ end
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
     win2 = read_win(tmpfile)
-    @test win == win2
+    # compare without order
+    @test Dict(pairs(win)) == Dict(pairs(win2))
 end
 
 @testitem "read/write win toml" begin
@@ -28,7 +29,8 @@ end
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
     win2 = read_win(tmpfile)
-    @test win == win2
+    # compare without order
+    @test Dict(pairs(win)) == Dict(pairs(win2))
 end
 
 @testitem "read win: special cases" begin

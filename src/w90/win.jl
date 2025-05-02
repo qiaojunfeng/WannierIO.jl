@@ -348,7 +348,7 @@ function read_win(filename::AbstractString, ::Wannier90Toml; fix_inputs::Bool=tr
     return NamedTuple(win)
 end
 
-function read_win(filename::AbstractString; fix_inputs=true)
+function read_win(filename::AbstractString; fix_inputs::Bool=true)
     format = Wannier90Text()
     try
         TOML.parsefile(filename)
@@ -378,7 +378,7 @@ Sanity check and add missing input parameters from a `win` file.
 
 See also [`read_win`](@ref).
 """
-function fix_win!(params::Dict)
+function fix_win!(params::AbstractDict)
     !haskey(params, :num_wann) && error("num_wann not found")
     params[:num_wann] > 0 || error("num_wann must be positive")
 
@@ -420,21 +420,27 @@ function fix_win!(params::Dict)
 end
 
 """
-    write_win(filename; toml=false, kwargs...)
-    write_win(filename, ::Wannier90Text; kwargs...)
-    write_win(filename, ::Wannier90Toml; kwargs...)
+    write_win(filename, params; header)
+    write_win(filename, params, ::Wannier90Text; header)
+    write_win(filename, params, ::Wannier90Toml; header)
+    write_win(filename; header, kwargs...)
+    write_win(filename, ::Wannier90Text; header, kwargs...)
+    write_win(filename, ::Wannier90Toml; header, kwargs...)
 
 Write input parameters into a wannier90 `win` file.
 
-The input parameters are keyword arguments, with key names same as that of wannier90.
+There are two choice for passing the input parameters:
+1. as a `Dict` (or `OrderedDict` to preserve ordering) to the `params` argument
+2. as keyword arguments `kwargs...`, with argument names the same as the input
+    parameters of wannier90
 
 # Examples
 
 ```julia
 using WannierIO
 
-write_win(
-    "silicon.win";
+# you can also use `Dict` or `OrderedDict`
+params = (;
     num_wann=4,
     num_bands=4,
     # unit_cell_cart is a matrix, its columns are the lattice vectors in angstrom
@@ -473,6 +479,7 @@ write_win(
     # additional parameters can be passed as keyword arguments, e.g.,
     num_iter=500,
 )
+write_win("silicon.win", params)
 ```
 """
 function write_win end
@@ -494,13 +501,21 @@ function write_win end
 end
 
 function write_win(
-    filename::AbstractString, ::Wannier90Text; header=default_header(), kwargs...
+    filename::AbstractString, params::Union{NamedTuple,AbstractDict}, ::Wannier90Text; header=default_header()
 )
-    _check_win_required_params(kwargs)
+    _check_win_required_params(params)
 
-    # Convert immutable kwargs to OrderedDict, to keep the order
-    # Most likely the important parameters are at the beginning upon user input
-    params = OrderedDict(kwargs)
+    num_wann = get(params, :num_wann, nothing)
+    num_bands = get(params, :num_bands, nothing)
+    mp_grid = get(params, :mp_grid, nothing)
+    # I need to convert to tuple so that @info does not output its type
+    mp_grid !== nothing && (mp_grid = Tuple(mp_grid))
+    @info "Writing win file" filename num_wann num_bands mp_grid
+
+    # Copy params to an OrderedDict, to avoid modifying the input `params`.
+    # Here we use OrderedDict to keep the order if the input is a OrderedDict.
+    # Most likely the important parameters are at the beginning upon user input.
+    params = OrderedDict(params)
     # These are blocks
     unit_cell_cart = pop!(params, :unit_cell_cart)
     atoms_frac = pop!(params, :atoms_frac, nothing)
@@ -606,29 +621,31 @@ function write_win(
 end
 
 function write_win(
-    filename::AbstractString, ::Wannier90Toml; header=default_header(), kwargs...
+    filename::AbstractString, params::Union{NamedTuple,AbstractDict}, ::Wannier90Toml; header=default_header()
 )
-    _check_win_required_params(kwargs)
+    _check_win_required_params(params)
 
-    open(filename, "w") do io
-        println(io, header, "\n")
-        write_toml(io; kwargs...)
-    end
-end
-
-function write_win(filename::AbstractString; toml=false, kwargs...)
-    if toml
-        format = Wannier90Toml()
-    else
-        format = Wannier90Text()
-    end
-
-    num_wann = get(kwargs, :num_wann, nothing)
-    num_bands = get(kwargs, :num_bands, nothing)
-    mp_grid = get(kwargs, :mp_grid, nothing)
+    num_wann = get(params, :num_wann, nothing)
+    num_bands = get(params, :num_bands, nothing)
+    mp_grid = get(params, :mp_grid, nothing)
     # I need to convert to tuple so that @info does not output its type
     mp_grid !== nothing && (mp_grid = Tuple(mp_grid))
     @info "Writing win file" filename num_wann num_bands mp_grid
 
-    return write_win(filename, format; kwargs...)
+    open(filename, "w") do io
+        println(io, header, "\n")
+        write_toml(io, params)
+    end
+end
+
+function write_win(
+    filename::AbstractString, params::Union{NamedTuple,AbstractDict}; kwargs...
+)
+    write_win(filename, params, Wannier90Text(); kwargs...)
+end
+
+function write_win(
+    filename::AbstractString, format::FileFormat=Wannier90Text(); header=default_header(), kwargs...
+)
+    write_win(filename, kwargs, format; header)
 end
