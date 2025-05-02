@@ -35,7 +35,7 @@ git-tree-sha1 = "5c6644b683c4783271d99973e21156daa2075bac"
 lazy = true
 
     [[BN.download]]
-    sha256 = "98c7f02596a3b1b0179b2f2f64adc0ce157c3228c3234e2b0721780029712371"
+    sha256 = "b752c7c106407f365a93c9d2b4811644ca0920214a2cee5b7fa36185a2de01a9"
     url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/BN.tar.gz"
 
 [SnSe2]
@@ -53,6 +53,14 @@ lazy = true
     [[Fe_collinear.download]]
     sha256 = "3f1ab3c4010a54b9c421faae3de746b9ed1152eac7d20417a9ee42222f709cd2"
     url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Fe_collinear.tar.gz"
+
+[GaAs]
+git-tree-sha1 = "bfdffa9983ba6801e7dec5c197fac959f756b02b"
+lazy = true
+
+    [[GaAs.download]]
+    sha256 = "628d290d507f2ad7ef996cf27aee02feb54fcf973e13644ba9bccfab1ab707a9"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/GaAs.tar.gz"
 
 [Fe_soc]
 git-tree-sha1 = "61ccd2c018e0934c3541b85c32a8bd0ee957e2d7"
