@@ -10,7 +10,7 @@ x = Dict(:a => (; b=1))
 TOML.print(to_toml, x)
 """
 function to_toml(x)
-    # x isa Pair && return Dict(x)
+    x isa Pair && return Dict(x)
     # x isa Symbol && return String(x)
     x isa Mat3 && return eachcol(x)
     # use pairs other than Dict to preserve the order as much as possible

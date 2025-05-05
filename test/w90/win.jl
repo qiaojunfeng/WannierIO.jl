@@ -27,7 +27,7 @@ end
     win = read_win(toml_path)
 
     tmpfile = tempname(; cleanup=true)
-    write_win(tmpfile; win...)
+    write_win(tmpfile, WannierIO.Wannier90Toml(); win...)
     win2 = read_win(tmpfile)
     # compare without order
     @test Dict(pairs(win)) == Dict(pairs(win2))
@@ -88,6 +88,19 @@ end
 
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
+    win2 = read_win(tmpfile)
+    # compare without order
+    @test Dict(pairs(win)) == Dict(pairs(win2))
+end
+
+@testitem "write win: OrderedDict" begin
+    using LazyArtifacts, OrderedCollections
+    win = read_win(artifact"GaAs/GaAs.win")
+
+    # convert to OrderedDict
+    win = OrderedDict(pairs(win))
+    tmpfile = tempname(; cleanup=true)
+    write_win(tmpfile, win)
     win2 = read_win(tmpfile)
     # compare without order
     @test Dict(pairs(win)) == Dict(pairs(win2))
