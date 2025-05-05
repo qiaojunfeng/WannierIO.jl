@@ -423,15 +423,15 @@ end
     write_win(filename, params; header)
     write_win(filename, params, ::Wannier90Text; header)
     write_win(filename, params, ::Wannier90Toml; header)
-    write_win(filename; header, kwargs...)
-    write_win(filename, ::Wannier90Text; header, kwargs...)
-    write_win(filename, ::Wannier90Toml; header, kwargs...)
+    write_win(filename; header, params...)
+    write_win(filename, ::Wannier90Text; header, params...)
+    write_win(filename, ::Wannier90Toml; header, params...)
 
 Write input parameters into a wannier90 `win` file.
 
 There are two choice for passing the input parameters:
 1. as a `Dict` (or `OrderedDict` to preserve ordering) to the `params` argument
-2. as keyword arguments `kwargs...`, with argument names the same as the input
+2. as keyword arguments `params...`, with argument names the same as the input
     parameters of wannier90
 
 # Examples
@@ -639,13 +639,13 @@ function write_win(
 end
 
 function write_win(
-    filename::AbstractString, params::Union{NamedTuple,AbstractDict}; kwargs...
+    filename::AbstractString, params::Union{NamedTuple,AbstractDict}; header=default_header()
 )
-    write_win(filename, params, Wannier90Text(); kwargs...)
+    write_win(filename, params, Wannier90Text(); header)
 end
 
 function write_win(
-    filename::AbstractString, format::FileFormat=Wannier90Text(); header=default_header(), kwargs...
+    filename::AbstractString, format::FileFormat=Wannier90Text(); header=default_header(), params...
 )
-    write_win(filename, kwargs, format; header)
+    write_win(filename, params, format; header)
 end
