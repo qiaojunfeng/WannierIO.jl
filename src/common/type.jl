@@ -1,40 +1,58 @@
 using StaticArrays
 
 """
-3 x 3 matrix type.
-
-For lattice and recip_lattice.
-"""
-const Mat3{T} = SMatrix{3,3,T,9} where {T}
-
-"""
 Length-3 vector type.
 
-For atom posistions, kpoints, etc.
+For atom positions, kpoints, etc.
 """
 const Vec3{T} = SVector{3,T} where {T}
 
-"""
-`Vector{Vector}` -> `Mat3`
-"""
-Mat3(A::AbstractVector) = Mat3(reduce(hcat, A))
+vec3(v::Vec3) = v
+vec3(v::AbstractVector) = Vec3(v)
 
 """
-`Mat3` -> `Vec3{Vec3}`
+3 x 3 matrix type.
+
+For lattice and reciprocal lattice.
 """
-Vec3(A::Mat3) = Vec3(eachcol(A))
+const Mat3{T} = SMatrix{3,3,T,9} where {T}
+
+mat3(A::Mat3) = A
+mat3(A::AbstractMatrix) = Mat3(A)
+
+"""
+    $(SIGNATURES)
+
+Convert `Vector{Vector}` to `Mat3`. Each vector is a column of the matrix.
+
+!!! note
+
+    This is not defined as a constructor of `Mat3` to avoid type piracy.
+"""
+mat3(A::AbstractVector) = Mat3(reduce(hcat, A))
+
+"""
+    $(SIGNATURES)
+
+Convert `Mat3` to `Vec3{Vec3}`. Each column of the matrix is a vector.
+
+!!! note
+
+    This is not defined as a constructor of `vec3` to avoid type piracy.
+"""
+vec3(A::Mat3) = Vec3(eachcol(A))
 
 """
 Pair type associating a `Symbol` with a `Vec3`.
 
-For win file `atoms_frac` and `kpoint_path`.
+Used for win file `atoms_frac` and `kpoint_path`.
 """
 const SymbolVec3{T} = Pair{Symbol,Vec3{T}} where {T}
 
-SymbolVec3(s, v) = SymbolVec3{eltype(v)}(s, v)
-SymbolVec3(s::AbstractString, v) = SymbolVec3(Symbol(s), v)
-SymbolVec3(p::Pair) = SymbolVec3(p.first, p.second)
-SymbolVec3(d::Dict) = SymbolVec3(only(d))
+symbolvec3(s, v) = SymbolVec3{eltype(v)}(s, vec3(v))
+symbolvec3(s::AbstractString, v) = symbolvec3(Symbol(s), v)
+symbolvec3(p::Pair) = symbolvec3(p.first, p.second)
+symbolvec3(d::Dict) = symbolvec3(only(d))
 
 abstract type FileFormat end
 

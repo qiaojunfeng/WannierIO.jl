@@ -4,9 +4,9 @@ using TOML
 export read_win, write_win
 
 """
-    read_win(filename; fix_inputs=true)
-    read_win(filename, ::Wannier90Text; fix_inputs=true)
-    read_win(filename, ::Wannier90Toml; fix_inputs=true)
+    read_win(filename; standardize=true)
+    read_win(filename, ::Wannier90Text; standardize=true)
+    read_win(filename, ::Wannier90Toml; standardize=true)
 
 Read wannier90 input `win` file.
 
@@ -14,14 +14,14 @@ Read wannier90 input `win` file.
 - `filename`: The name of the input file.
 
 # Keyword Arguments
-- `fix_inputs`: sanity check and fix the input parameters, e.g., set
+- `standardize`: sanity check and fix the input parameters, e.g., set
     `num_bands = num_wann` if `num_bands` is not specified,
     convert `atoms_cart` always to `atoms_frac`, etc.
-    See also [`fix_win!`](@ref).
+    See also [`standardize_win!`](@ref).
 """
 function read_win end
 
-function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=true)
+function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=true)
     params = open(filename) do io
         # The win file uses "num_wann", so I keep it as is, and not using "n_wann".
         keys_int = [
@@ -163,14 +163,14 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
                     l = split(lines[i])
                     symbol = Symbol(l[1])
                     frac = Vec3(parse_float.(l[2:end])...)
-                    push!(atoms_frac, SymbolVec3(symbol, frac))
+                    push!(atoms_frac, symbolvec3(symbol, frac))
                 end
 
                 if iscart
                     if startswith(unit, "b")
                         # convert to angstrom
                         atoms_frac = map(atoms_frac) do (symbol, pos)
-                            SymbolVec3(symbol, pos .* Bohr)
+                            symbolvec3(symbol, pos .* Bohr)
                         end
                     end
                     push!(params, :atoms_cart => atoms_frac)
@@ -292,7 +292,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
         return params
     end
 
-    fix_inputs && fix_win!(params)
+    standardize && standardize_win!(params)
 
     # convert to NamedTuple, easier to access its fields with dot notation,
     # e.g., params.num_wann
@@ -300,7 +300,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; fix_inputs::Bool=tr
     return params
 end
 
-function read_win(filename::AbstractString, ::Wannier90Toml; fix_inputs::Bool=true)
+function read_win(filename::AbstractString, ::Wannier90Toml; standardize::Bool=true)
     win = TOML.parsefile(filename)
 
     # I store atoms_frac and kpoint_path as Vector of SymbolVec3.
@@ -311,7 +311,7 @@ function read_win(filename::AbstractString, ::Wannier90Toml; fix_inputs::Bool=tr
         # SymbolVec3 are converted to Dict of length 1 when writing
         if length(d) == 1
             k, v = only(d)
-            isa(k, String) && isa(v, Vector{<:Real}) && return SymbolVec3(k, v)
+            isa(k, String) && isa(v, Vector{<:Real}) && return symbolvec3(k, v)
         end
 
         # Need to do the conversion recursively
@@ -333,22 +333,22 @@ function read_win(filename::AbstractString, ::Wannier90Toml; fix_inputs::Bool=tr
     # Convert keys to Symbol
     win = Dict(Symbol(k) => v for (k, v) in pairs(win))
 
-    fix_inputs && fix_win!(win)
+    standardize && standardize_win!(win)
 
     # Vector{Vector} -> Mat3
     if haskey(win, :unit_cell_cart)
-        win[:unit_cell_cart] = Mat3(win[:unit_cell_cart])
+        win[:unit_cell_cart] = mat3(win[:unit_cell_cart])
     end
 
     # Vector{Vector} -> Vector{Vec3}
     if haskey(win, :kpoints)
-        win[:kpoints] = [Vec3(k) for k in win[:kpoints]]
+        win[:kpoints] = [vec3(k) for k in win[:kpoints]]
     end
 
     return NamedTuple(win)
 end
 
-function read_win(filename::AbstractString; fix_inputs::Bool=true)
+function read_win(filename::AbstractString; standardize::Bool=true)
     format = Wannier90Text()
     try
         TOML.parsefile(filename)
@@ -357,7 +357,7 @@ function read_win(filename::AbstractString; fix_inputs::Bool=true)
     else
         format = Wannier90Toml()
     end
-    win = read_win(filename, format; fix_inputs)
+    win = read_win(filename, format; standardize)
 
     num_wann = win[:num_wann]
     num_bands = nothing
@@ -378,7 +378,7 @@ Sanity check and add missing input parameters from a `win` file.
 
 See also [`read_win`](@ref).
 """
-function fix_win!(params::AbstractDict)
+function standardize_win!(params::AbstractDict)
     !haskey(params, :num_wann) && error("num_wann not found")
     params[:num_wann] > 0 || error("num_wann must be positive")
 
@@ -501,7 +501,10 @@ function write_win end
 end
 
 function write_win(
-    filename::AbstractString, params::Union{NamedTuple,AbstractDict}, ::Wannier90Text; header=default_header()
+    filename::AbstractString,
+    params::Union{NamedTuple,AbstractDict},
+    ::Wannier90Text;
+    header=default_header(),
 )
     _check_win_required_params(params)
 
@@ -621,7 +624,10 @@ function write_win(
 end
 
 function write_win(
-    filename::AbstractString, params::Union{NamedTuple,AbstractDict}, ::Wannier90Toml; header=default_header()
+    filename::AbstractString,
+    params::Union{NamedTuple,AbstractDict},
+    ::Wannier90Toml;
+    header=default_header(),
 )
     _check_win_required_params(params)
 
@@ -639,13 +645,18 @@ function write_win(
 end
 
 function write_win(
-    filename::AbstractString, params::Union{NamedTuple,AbstractDict}; header=default_header()
+    filename::AbstractString,
+    params::Union{NamedTuple,AbstractDict};
+    header=default_header(),
 )
     write_win(filename, params, Wannier90Text(); header)
 end
 
 function write_win(
-    filename::AbstractString, format::FileFormat=Wannier90Text(); header=default_header(), params...
+    filename::AbstractString,
+    format::FileFormat=Wannier90Text();
+    header=default_header(),
+    params...,
 )
     write_win(filename, params, format; header)
 end
