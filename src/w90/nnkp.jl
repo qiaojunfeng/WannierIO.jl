@@ -172,7 +172,7 @@ end
 
 function read_nnkp(filename::AbstractString, ::Wannier90Toml)
     # I can just reuse the read_win function, without fix win inputs
-    nnkp = read_win(filename, Wannier90Toml(); fix_inputs=false)
+    nnkp = read_win(filename, Wannier90Toml(); standardize=false)
 
     # Need to set value to Any, otherwise it is Dict{Symbol,Vector},
     # then I cannot assign Mat3 to it.
@@ -183,7 +183,7 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
     if haskey(nnkp, :lattice) || haskey(nnkp, :recip_lattice)
         for k in (:lattice, :recip_lattice)
             if haskey(nnkp, k)
-                nnkp[k] = Mat3(nnkp[k])
+                nnkp[k] = mat3(nnkp[k])
             end
         end
     end
