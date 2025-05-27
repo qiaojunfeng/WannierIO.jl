@@ -24,3 +24,14 @@ end
     ref = "1-2"
     @test res == ref
 end
+
+@testitem "parse_indices" begin
+    s = "1-2, 5,8 -10"
+    ref = [1, 2, 5, 8, 9, 10]
+    idxs = WannierIO.parse_indices(s)
+    @test idxs == ref
+
+    s = "1-2 5 8 -10"
+    idxs = WannierIO.parse_indices(s)
+    @test idxs == ref
+end

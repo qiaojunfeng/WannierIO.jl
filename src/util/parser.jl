@@ -100,10 +100,20 @@ julia> parse_indices("1-2, 5,8 -10")
   8
   9
  10
+julia> parse_indices("1-2 5,8 -10")
 ```
 """
 function parse_indices(str::AbstractString)
-    segments = split(replace(strip(str), r"\s+" => ""), ",")
+    s = strip(str)
+    # Remove leading and trailing whitespaces beside `-` sign
+    s = replace(s, r"\s+-" => "-")
+    s = replace(s, r"-\s+" => "-")
+    # Replace `,` with whitespace
+    s = replace(s, "," => " ")
+    # Remove consecutive whitespaces
+    s = replace(s, r"\s+" => " ")
+    # Split by whitespace
+    segments = split(s)
     indices = Vector{Int}()
     for s in segments
         if isempty(s)
