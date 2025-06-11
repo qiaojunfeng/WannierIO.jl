@@ -36,42 +36,57 @@ function read_xsf(filename::AbstractString)
     X = Y = Z = nothing
     W = nothing
 
+    block_structure = false
+    block_datagrid = false
     while !eof(io)
         line = strip(readline(io))
         if isempty(line) || startswith(line, '#')
             continue
         end
 
-        if occursin("CRYSTAL", line)
-            # primitive lattice, each column is a lattice vector
-            @assert strip(readline(io)) == "PRIMVEC"
-            primvec = zeros(Float64, 3, 3)
-            for i in 1:3
-                line = strip(readline(io))
-                primvec[:, i] = parse.(Float64, split(line))
-            end
-            # conventional lattice, each column is a lattice vector
-            @assert strip(readline(io)) == "CONVVEC"
-            convvec = zeros(Float64, 3, 3)
-            for i in 1:3
-                line = strip(readline(io))
-                convvec[:, i] = parse.(Float64, split(line))
-            end
-            # read atom positions
-            @assert strip(readline(io)) == "PRIMCOORD"
-            line = strip(readline(io))
-            n_atom = parse(Int, split(line)[1])
-            atoms = Vector{String}(undef, n_atom)
-            # each column is a position vector
-            atom_positions = zeros(Vec3{Float64}, n_atom)
-            for i in 1:n_atom
-                line = strip(readline(io))
-                # might be element label, or atomic number
-                atoms[i] = split(line)[1]
-                atom_positions[i] = Vec3(parse.(Float64, split(line)[2:4])...)
-            end
+        if occursin("CRYSTAL", line) || occursin("SLAB", line)
+            block_structure = true
+            block_datagrid = false
+            continue
         elseif occursin("BEGIN_BLOCK_DATAGRID_3D", line)
-            comment = strip(readline(io))
+            block_structure = false
+            block_datagrid = true
+            continue
+        end
+
+        if block_structure
+            if startswith(line, "PRIMVEC")
+                # primitive lattice, each column is a lattice vector
+                primvec = zeros(Float64, 3, 3)
+                for i in 1:3
+                    line = strip(readline(io))
+                    primvec[:, i] = parse.(Float64, split(line))
+                end
+            elseif startswith(line, "CONVVEC")
+                # conventional lattice, each column is a lattice vector
+                convvec = zeros(Float64, 3, 3)
+                for i in 1:3
+                    line = strip(readline(io))
+                    convvec[:, i] = parse.(Float64, split(line))
+                end
+            elseif startswith(line, "PRIMCOORD")
+                # read atom positions
+                line = strip(readline(io))
+                n_atom = parse(Int, split(line)[1])
+                atoms = Vector{String}(undef, n_atom)
+                # each column is a position vector
+                atom_positions = zeros(Vec3{Float64}, n_atom)
+                for i in 1:n_atom
+                    line = strip(readline(io))
+                    # might be element label, or atomic number
+                    atoms[i] = split(line)[1]
+                    atom_positions[i] = Vec3(parse.(Float64, split(line)[2:4])...)
+                end
+            else
+                error("Unexpected line in block_structure: $line")
+            end
+        elseif block_datagrid
+            comment = line  # current line is a comment
             line = strip(readline(io))
             # I only read the 1st data grid, others are ignored
             @assert startswith(line, "BEGIN_DATAGRID_3D")
@@ -95,6 +110,9 @@ function read_xsf(filename::AbstractString)
             end
             @assert occursin("END_DATAGRID_3D", strip(readline(io)))
             @assert strip(readline(io)) == "END_BLOCK_DATAGRID_3D"
+            block_datagrid = false
+        else
+            error("Unexpected block: $line")
         end
     end
 
