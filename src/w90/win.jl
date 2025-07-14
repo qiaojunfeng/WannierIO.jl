@@ -541,7 +541,9 @@ function write_win(
             if key == :mp_grid
                 @printf io "%s = %d  %d  %d\n" string(key) value...
             elseif key == :exclude_bands
-                @printf io "%s = %s\n" string(key) format_indices(value)
+                if !isempty(value)
+                    @printf io "%s = %s\n" string(key) format_indices(value)
+                end
             else
                 @printf io "%s = %s\n" string(key) value
             end
