@@ -163,18 +163,18 @@ function write_xsf(
 
     @printf(io, "CRYSTAL\n")
     @printf(io, "PRIMVEC\n")
-    @printf(io, "%12.7f %12.7f %12.7f\n", lattice[:, 1]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", lattice[:, 2]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", lattice[:, 3]...)
+    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 1]...)
+    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 2]...)
+    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 3]...)
     @printf(io, "CONVVEC\n")
-    @printf(io, "%12.7f %12.7f %12.7f\n", lattice[:, 1]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", lattice[:, 2]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", lattice[:, 3]...)
+    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 1]...)
+    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 2]...)
+    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 3]...)
     @printf(io, "PRIMCOORD\n")
     @printf(io, "%d 1\n", n_atoms)
     for i in 1:n_atoms
         pos = lattice * atom_positions[i]
-        @printf(io, "%d %12.7f %12.7f %12.7f\n", atom_numbers[i], pos...)
+        @printf(io, "%d %15.10f %15.10f %15.10f\n", atom_numbers[i], pos...)
     end
 
     if !any([isnothing(origin), isnothing(span_vectors), isnothing(W)])
@@ -185,10 +185,10 @@ function write_xsf(
 
         n_x, n_y, n_z = size(W)
         @printf(io, "%d %d %d\n", n_x, n_y, n_z)
-        @printf(io, "%12.7f %12.7f %12.7f\n", origin...)
-        @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 1]...)
-        @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 2]...)
-        @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 3]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", origin...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", span_vectors[:, 1]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", span_vectors[:, 2]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", span_vectors[:, 3]...)
 
         # column-major
         ncol = 0
