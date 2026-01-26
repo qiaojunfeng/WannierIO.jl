@@ -85,6 +85,7 @@ function read_qe_xml(filename::AbstractString)
         eigenvalues = Vector{Float64}[]
     end
     kpoints = Vec3{Float64}[]
+    kweights = Float64[]
 
     n_electrons = parse(Float64, findfirst("nelec", band_structure).content)
     fermi_energy = parse(Float64, findfirst("fermi_energy", band_structure).content)
@@ -95,6 +96,8 @@ function read_qe_xml(filename::AbstractString)
     ks_energies = findall("ks_energies", band_structure)
     for ks_energy in ks_energies
         k_point = findfirst("k_point", ks_energy)
+        wt = parse(Float64, k_point["weight"])
+        push!(kweights, wt)
         kpt = parse.(Float64, split(k_point.content))
         # to 1/angstrom
         kpt *= 2π / alat
@@ -126,6 +129,7 @@ function read_qe_xml(filename::AbstractString)
         atom_labels,
         recip_lattice,
         kpoints,
+        kweights,
         n_electrons,
         fermi_energy,
         alat,
