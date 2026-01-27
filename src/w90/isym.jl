@@ -113,7 +113,7 @@ function read_isym(filename::AbstractString)
                     u[i, j] = complex(a, b)
                 end
             else
-                u .= 0
+                u .= I(2)
             end
             isym_inv = parse(Int64, readline(io))
 
@@ -196,4 +196,34 @@ function read_isym(filename::AbstractString)
             repmat_wann,
         )
     end
+end
+
+"""
+    $(SIGNATURES)
+
+Build the index mapping from `ik_ibz` and `isym` to the index in `repmat_band`.
+"""
+function build_mapping_ik_isym(
+    repmat_band::AbstractVector{<:RepMatBand};
+    nkpts_ibz::Union{Integer,Nothing}=nothing,
+    n_symops::Union{Integer,Nothing}=nothing,
+)
+    n_repmat = length(repmat_band)
+    if isnothing(nkpts_ibz)
+        nkpts_ibz = maximum(r.ik_ibz for r in repmat_band)
+    end
+    if isnothing(n_symops)
+        n_symops = maximum(r.isym for r in repmat_band)
+    end
+    mapping = [Vector{Union{Int64,Nothing}}(nothing, n_symops) for _ in 1:nkpts_ibz]
+
+    for ir in 1:n_repmat
+        ik_ibz = repmat_band[ir].ik_ibz
+        (0 < ik_ibz <= nkpts_ibz) || error("ik_ibz out of range")
+        isym = repmat_band[ir].isym
+        (0 < isym <= n_symops) || error("isym out of range")
+        mapping[ik_ibz][isym] = ir
+    end
+
+    return mapping
 end

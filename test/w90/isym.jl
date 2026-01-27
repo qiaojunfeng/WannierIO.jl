@@ -27,3 +27,12 @@
     @test sym.repmat_wann[end].isym == 96
     @test sym.repmat_wann[end].D[1, 5] ≈ 0.999999999999999
 end
+
+@testitem "build_mapping_ik_isym" begin
+    using LazyArtifacts
+    sym = read_isym(artifact"Si2_hse/Si2.isym")
+    mapping = WannierIO.build_mapping_ik_isym(sym.repmat_band; sym.nkpts_ibz, sym.n_symops)
+
+    @test mapping[1][1] == 1
+    @test mapping[29][82] == length(sym.repmat_band)
+end
