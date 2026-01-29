@@ -26,6 +26,19 @@ struct SymOp
     isym_inv::Int64
 end
 
+function Base.show(io::IO, ::MIME"text/plain", s::SymOp)
+    print(
+        io,
+        """SymOp ($(s.comment))
+          isym = $(s.isym), isym_inv = $(s.isym_inv)
+          R = $(s.R)
+          t = $(s.t)
+          time_reversal = $(s.time_reversal)
+          u = $(s.u)
+        """,
+    )
+end
+
 """
 A representation matrix applied to the Bloch functions for a symmetry operation
 from the little group of a k-point.
@@ -102,7 +115,7 @@ function read_isym(filename::AbstractString)
             comment = strip(readline(io))
             for j in 1:3
                 line = split(readline(io))
-                R[:, j] = parse.(Int64, line)
+                R[j, :] = parse.(Int64, line)
             end
             line = split(readline(io))
             t .= parse.(Float64, line)

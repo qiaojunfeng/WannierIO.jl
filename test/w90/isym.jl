@@ -1,14 +1,14 @@
 @testitem "read isym" begin
-    using LazyArtifacts
+    using LazyArtifacts, LinearAlgebra
     sym = read_isym(artifact"Si2_hse/Si2.isym")
 
     @test sym.n_symops == 96
     @test sym.spinors == false
 
-    @test sym.symops[end].R == [0 -1 0; 1 1 1; 0 0 -1]
+    @test sym.symops[end].R == [0 1 0; -1 1 0; 0 1 -1]
     @test sym.symops[end].t ≈ [-1 / 4, -1 / 4, -1 / 4]
     @test sym.symops[end].time_reversal == true
-    @test sym.symops[end].u == zeros(ComplexF64, 2, 2)
+    @test sym.symops[end].u == Matrix{ComplexF64}(I, 2, 2)
     @test sym.symops[end].isym == 96
     @test sym.symops[end].isym_inv == 91
 
