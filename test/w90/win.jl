@@ -4,10 +4,11 @@
 
     # how to generate reference data:
     WRITE_TOML = false
-    WRITE_TOML && write_win("/tmp/Si2_valence.win.toml"; toml=true, win...)
+    WRITE_TOML && write_win("/tmp/Si2_valence.win.toml", win, WannierIO.Wannier90Toml())
 
     test_data = read_win(artifact"Si2_valence/outputs/Si2_valence.win.toml")
-    @test win == test_data
+    # TOML files are unordered
+    @test Dict(pairs(win)) == Dict(pairs(test_data))
 end
 
 @testitem "read/write win" begin
@@ -17,7 +18,7 @@ end
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
     win2 = read_win(tmpfile)
-    # compare without order
+    # Compare without order
     @test Dict(pairs(win)) == Dict(pairs(win2))
 end
 
@@ -29,7 +30,7 @@ end
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile, WannierIO.Wannier90Toml(); win...)
     win2 = read_win(tmpfile)
-    # compare without order
+    # Compare without order
     @test Dict(pairs(win)) == Dict(pairs(win2))
 end
 

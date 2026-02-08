@@ -52,7 +52,7 @@ const SymbolVec3{T} = Pair{Symbol,Vec3{T}} where {T}
 symbolvec3(s, v) = SymbolVec3{eltype(v)}(s, vec3(v))
 symbolvec3(s::AbstractString, v) = symbolvec3(Symbol(s), v)
 symbolvec3(p::Pair) = symbolvec3(p.first, p.second)
-symbolvec3(d::Dict) = symbolvec3(only(d))
+symbolvec3(d::AbstractDict) = symbolvec3(only(d))
 
 abstract type FileFormat end
 

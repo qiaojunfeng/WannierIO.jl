@@ -300,35 +300,36 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
     return params
 end
 
+"""
+I store atoms_frac and kpoint_path as Vector of SymbolVec3.
+However, TOML.print does not accept Pair (specifically, SymbolVec3);
+instead, I convert SymbolVec3 to Dict in write_win with toml format.
+On reading I convert it back.
+"""
+function _to_SymbolVec3(d::AbstractDict)
+    # SymbolVec3 are converted to Dict of length 1 when writing
+    if length(d) == 1
+        k, v = only(d)
+        if isa(k, AbstractString) && isa(v, AbstractVector{<:Real})
+            return symbolvec3(k, v)
+        end
+    end
+
+    # Need to do the conversion recursively
+    for (k, v) in pairs(d)
+        d[k] = _to_SymbolVec3(v)
+    end
+    return d
+end
+
+_to_SymbolVec3(v::AbstractVector) = map(_to_SymbolVec3, v)
+
+"""Fallback to doing nothing."""
+_to_SymbolVec3(x) = x
+
 function read_win(filename::AbstractString, ::Wannier90Toml; standardize::Bool=true)
     win = TOML.parsefile(filename)
-
-    # I store atoms_frac and kpoint_path as Vector of SymbolVec3.
-    # However, TOML.print does not accept Pair (specifically, SymbolVec3),
-    # instead I convert SymbolVec3 to Dict in _write_win_toml.
-    # On reading I convert it back.
-    function convert_SymbolVec3(d::Dict)
-        # SymbolVec3 are converted to Dict of length 1 when writing
-        if length(d) == 1
-            k, v = only(d)
-            isa(k, String) && isa(v, Vector{<:Real}) && return symbolvec3(k, v)
-        end
-
-        # Need to do the conversion recursively
-        for (k, v) in pairs(d)
-            if isa(v, Dict) || isa(v, Vector)
-                d[k] = convert_SymbolVec3(v)
-            end
-        end
-        return d
-    end
-    function convert_SymbolVec3(v::Vector)
-        if isa(v, Vector{<:Dict}) || isa(v, Vector{<:Vector})
-            return map(convert_SymbolVec3, v)
-        end
-        return v
-    end
-    win = convert_SymbolVec3(win)
+    win = _to_SymbolVec3(win)
 
     # Convert keys to Symbol
     win = OrderedDict(Symbol(k) => v for (k, v) in pairs(win))
@@ -481,6 +482,13 @@ params = (;
 )
 write_win("silicon.win", params)
 ```
+
+!!! note
+
+    The variables can also be passed as keyword arguments, e.g.,
+    ```julia
+    write_win(filename; num_wann, num_bands)
+    ```
 """
 function write_win end
 

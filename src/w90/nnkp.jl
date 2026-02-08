@@ -162,7 +162,7 @@ function read_nnkp(filename::AbstractString, ::Wannier90Text)
 
         lattice = Mat3(lattice)
         recip_lattice = Mat3(recip_lattice)
-        # note I keep the order here: projections frist, then auto_projections, ...
+        # note I keep the order here: projections first, then auto_projections, ...
         res = (;)
         isnothing(projections) || (res = (; res..., projections))
         isnothing(auto_projections) || (res = (; res..., auto_projections))
@@ -174,9 +174,9 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
     # I can just reuse the read_win function, without fix win inputs
     nnkp = read_win(filename, Wannier90Toml(); standardize=false)
 
-    # Need to set value to Any, otherwise it is Dict{Symbol,Vector},
+    # Need to set value to Any, otherwise it is OrderedDict{Symbol,Vector},
     # then I cannot assign Mat3 to it.
-    nnkp = Dict{Symbol,Any}(pairs(nnkp))
+    nnkp = OrderedDict{Symbol,Any}(pairs(nnkp))
 
     # Some following cleanups
     # Convert to Mat3
@@ -225,46 +225,79 @@ function read_nnkp(filename::AbstractString)
 end
 
 """
-    write_nnkp(filename; toml=false, kwargs...)
-    write_nnkp(filename, ::Wannier90Text; kwargs...)
-    write_nnkp(filename, ::Wannier90Toml; kwargs...)
+    $(SIGNATURES)
+"""
+@inline function _check_nnkp_required_params(kwargs)
+    required_keys = [:lattice, :recip_lattice, :kpoints, :kpb_k, :kpb_G]
+    for k in required_keys
+        @assert haskey(kwargs, k) "Required parameter $k not found"
+    end
+end
+
+"""
+    write_nnkp(filename, params; header)
+    write_nnkp(filename, params, ::Wannier90Text; header)
+    write_nnkp(filename, params, ::Wannier90Toml; header)
+    write_nnkp(filename; header, params...)
+    write_nnkp(filename, ::Wannier90Text; header, params...)
+    write_nnkp(filename, ::Wannier90Toml; header, params...)
 
 Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
 
-# Keyword Arguments
-- `toml`: write to a TOML file, otherwise write to a Wannier90 text file format
+The `params` should have at least the following keys:
+- `lattice`: each column is a lattice vector
 - `recip_lattice`: each column is a reciprocal lattice vector
 - `kpoints`: length-`n_kpts` vector of `Vec3`, in fractional coordinates
 - `kpb_k`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
     integers, index of kpoints
 - `kpb_G`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector,
     then each element is a `Vec3` for translation vector, fractional w.r.t. `recip_lattice`
+
+The following keys are optional:
 - `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`
 - `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
     initial projections. If given, write an `auto_projections` block
 - `exclude_bands`: if given, write the specified band indices in the `exclude_bands` block
+
+# Keyword arguments
 - `header`: first line of the file
+
+!!! note
+
+    The variables can also be passed as keyword arguments, e.g.,
+    ```julia
+    write_nnkp(filename; lattice, recip_lattice, kpoints, kpb_k, kpb_G)
+    ```
 """
 function write_nnkp end
 
 function write_nnkp(
     filename::AbstractString,
+    params::Union{NamedTuple,AbstractDict},
     ::Wannier90Text;
-    lattice::AbstractMatrix,
-    recip_lattice::AbstractMatrix,
-    kpoints::AbstractVector,
-    kpb_k::AbstractVector,
-    kpb_G::AbstractVector,
-    projections::Union{Nothing,Vector{HydrogenOrbital}}=nothing,
-    auto_projections::Union{Nothing,Integer}=nothing,
-    exclude_bands::Union{Nothing,AbstractVector}=nothing,
     header=default_header(),
 )
+    _check_nnkp_required_params(params)
+
+    lattice = params[:lattice]
+    recip_lattice = params[:recip_lattice]
+    kpoints = params[:kpoints]
+    kpb_k = params[:kpb_k]
+    kpb_G = params[:kpb_G]
+    projections = get(params, :projections, nothing)
+    isnothing(projections) ||
+        @assert projections isa AbstractVector{<:HydrogenOrbital} "projections should be a vector of HydrogenOrbital"
+
+    auto_projections = get(params, :auto_projections, nothing)
+    exclude_bands = get(params, :exclude_bands, nothing)
+
+    n_kpts = length(kpoints)
+    n_bvecs = length(kpb_k[1])
+    @info "Writing nnkp file" filename n_kpts n_bvecs
+
     @assert size(recip_lattice) == (3, 3) "size(recip_lattice) != (3, 3)"
     _check_dimensions_kpb(kpb_k, kpb_G)
-    n_kpts = length(kpoints)
     @assert n_kpts == length(kpb_k) "kpoints and kpb_k have different length"
-    n_bvecs = length(kpb_k[1])
     @assert size(lattice) == (3, 3) "size(lattice) != (3, 3)"
     @assert size(recip_lattice) == (3, 3) "size(recip_lattice) != (3, 3)"
 
@@ -346,30 +379,29 @@ function write_nnkp(
 end
 
 function write_nnkp(
-    filename::AbstractString, ::Wannier90Toml; header=default_header(), kwargs...
+    filename::AbstractString,
+    params::Union{NamedTuple,AbstractDict},
+    ::Wannier90Toml;
+    header=default_header(),
 )
+    _check_nnkp_required_params(params)
+    kpb_k = params[:kpb_k]
+    _check_dimensions_kpb(kpb_k, params[:kpb_G])
+    n_kpts = length(kpb_k)
+    n_bvecs = length(kpb_k[1])
+    @info "Writing nnkp file" filename n_kpts n_bvecs
+
     open(filename, "w") do io
         println(io, header, "\n")
         # Note that this requires https://github.com/JuliaLang/julia/pull/57584
         # otherwise it will fail at writing toml file when the `projections`
         # block exists. I.e., this works for julia >= v"1.11.4".
-        write_toml(io; kwargs...)
+        write_toml(io, params)
     end
 end
 
-function write_nnkp(filename::AbstractString; toml=false, kwargs...)
-    @assert :kpb_k in keys(kwargs) "missing kpb_k"
-    kpb_k = kwargs[:kpb_k]
-    n_kpts = length(kpb_k)
-    @assert n_kpts > 0 "empty kpb_k"
-    n_bvecs = length(kpb_k[1])
-    @info "Writing nnkp file" filename n_kpts n_bvecs
-
-    if toml
-        format = Wannier90Toml()
-    else
-        format = Wannier90Text()
-    end
-
-    return write_nnkp(filename, format; kwargs...)
+function write_nnkp(
+    filename::AbstractString, format=Wannier90Text(); header=default_header(), params...
+)
+    return write_nnkp(filename, params, format; header)
 end
