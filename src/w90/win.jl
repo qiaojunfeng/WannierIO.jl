@@ -75,7 +75,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
         ]
         keys_indices = [:exclude_bands, :select_projections]
 
-        params = Dict{Symbol,Any}()
+        params = OrderedDict{Symbol,Any}()
 
         read_line() = strip(readline(io))
         function remove_comments(line::AbstractString)
@@ -331,7 +331,7 @@ function read_win(filename::AbstractString, ::Wannier90Toml; standardize::Bool=t
     win = convert_SymbolVec3(win)
 
     # Convert keys to Symbol
-    win = Dict(Symbol(k) => v for (k, v) in pairs(win))
+    win = OrderedDict(Symbol(k) => v for (k, v) in pairs(win))
 
     standardize && standardize_win!(win)
 
@@ -518,7 +518,7 @@ function write_win(
     # Copy params to an OrderedDict, to avoid modifying the input `params`.
     # Here we use OrderedDict to keep the order if the input is a OrderedDict.
     # Most likely the important parameters are at the beginning upon user input.
-    params = OrderedDict(params)
+    params = OrderedDict(pairs(params))
     # These are blocks
     unit_cell_cart = pop!(params, :unit_cell_cart)
     atoms_frac = pop!(params, :atoms_frac, nothing)
