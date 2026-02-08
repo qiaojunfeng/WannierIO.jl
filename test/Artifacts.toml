@@ -15,11 +15,11 @@ lazy = true
     url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Cu.tar.gz"
 
 [Si2_valence]
-git-tree-sha1 = "69abcb33e42a08354b68dae0c4ced116b6234d70"
+git-tree-sha1 = "c7fd5d5070047d85872c19c320b7170fd4b155c8"
 lazy = true
 
     [[Si2_valence.download]]
-    sha256 = "76932bf2670ef5b05a650b07d8a16f01e6d99d7c25f2cc18848ef872a17ae684"
+    sha256 = "34e0d38cc9e4b89eb95316b7b5d806f1a7d91943a1ac7ae8a1e4278fa1b03862"
     url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Si2_valence.tar.gz"
 
 [CrI3]
