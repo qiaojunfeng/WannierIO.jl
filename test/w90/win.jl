@@ -81,10 +81,7 @@ end
         :K => [0.375, -0.375, 0.0],
     ]
     @test length(win.explicit_kpath) == 214
-    @test win.explicit_kpath[[1, end-1]] == [
-        [0.5, 0.5, 0.5],
-        [0.012097, -0.012097, 0.0],
-    ]
+    @test win.explicit_kpath[[1, end-1]] == [[0.5, 0.5, 0.5], [0.012097, -0.012097, 0.0]]
 
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile; win...)
@@ -104,4 +101,22 @@ end
     win2 = read_win(tmpfile)
     # compare without order
     @test Dict(pairs(win)) == Dict(pairs(win2))
+end
+
+@testitem "read/write win order" begin
+    using LazyArtifacts
+    # This might standardize some params, I will write it then read again
+    win = read_win(artifact"Si2_valence/Si2_valence.win")
+
+    tmpfile1 = tempname(; cleanup=true)
+    write_win(tmpfile1, win)
+    win1 = read_win(tmpfile1)
+
+    # This time, write then read should be idempotent: the order should be preserved
+    tmpfile2 = tempname(; cleanup=true)
+    write_win(tmpfile2, win1)
+    win2 = read_win(tmpfile2)
+
+    # Compare with order
+    @test win1 == win2
 end
