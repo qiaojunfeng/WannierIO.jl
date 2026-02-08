@@ -8,6 +8,7 @@ Convert types for TOML writing.
 using TOML
 x = Dict(:a => (; b=1))
 TOML.print(to_toml, x)
+```
 """
 function to_toml(x)
     x isa Pair && return Dict(x)
@@ -34,6 +35,7 @@ This is more convenient than `TOML.print`, in that:
 # Examples
 ```julia
 write_toml(stdout; b=2, a=1)
+```
 """
 function write_toml end
 
