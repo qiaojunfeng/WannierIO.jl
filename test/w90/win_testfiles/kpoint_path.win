@@ -1,0 +1,30 @@
+mp_grid = 1  1  1
+num_wann = 1
+num_bands = 1
+
+begin unit_cell_cart
+angstrom
+    1.00000000      0.00000000      0.00000000
+    0.00000000      1.00000000      0.00000000
+    0.00000000      0.00000000      1.00000000
+end unit_cell_cart
+
+begin atoms_frac
+H      0.00000000      0.00000000      0.00000000
+end atoms_frac
+
+begin kpoint_path
+Gamma      0.00000000      0.00000000      0.00000000    A          0.50000000      0.00000000      0.00000000
+A          0.50000000      0.00000000      0.00000000    B          0.00000000      0.50000000      0.00000000
+end kpoint_path
+
+begin explicit_kpath_labels
+Gamma      0.00000000      0.00000000      0.00000000
+A          0.50000000      0.00000000      0.00000000
+B          0.00000000      0.50000000      0.00000000
+end explicit_kpath_labels
+
+begin kpoints
+    0.00000000      0.00000000      0.00000000
+end kpoints
+

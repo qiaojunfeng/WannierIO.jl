@@ -121,3 +121,18 @@ end
     # Compare with order
     @test win1 == win2
 end
+
+@testitem "write win: label width" begin
+    windir = joinpath(@__DIR__, "win_testfiles")
+    p = joinpath(windir, "kpoint_path.win")
+    win = read_win(p)
+    win_lines = readlines(p)
+
+    tmpfile = tempname(; cleanup=true)
+    write_win(tmpfile, win; header=nothing)
+    win2_lines = readlines(tmpfile)
+
+    # Compare the kpoint_path and explicit_kpath_labels, especially all the
+    # labels and numbers should be aligned, i.e., having the same width
+    @test win_lines == win2_lines
+end

@@ -1,3 +1,4 @@
+using Printf
 using OrderedCollections
 using TOML
 
@@ -537,11 +538,12 @@ function write_win(
     explicit_kpath_labels = pop!(params, :explicit_kpath_labels, nothing)
     kpoints = pop!(params, :kpoints)
 
-    startswith(lstrip(header), "#") || (header = "# $header")
-
     open(filename, "w") do io
-        # an additional new line to separate from the rest
-        println(io, "$(header)\n")
+        if !isnothing(header)
+            startswith(lstrip(header), "#") || (header = "# $header")
+            # an additional new line to separate from the rest
+            println(io, "$(header)\n")
+        end
 
         for (key, value) in pairs(params)
             ismissing(value) && continue
@@ -570,8 +572,11 @@ function write_win(
 
         if !isnothing(atoms_frac)
             println(io, "begin atoms_frac")
+            # label width is dynamic, e.g. 3 to accommodate "Si1"
+            n = maximum(p -> length(string(first(p))), atoms_frac)
+            fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
             for (element, position) in atoms_frac
-                @printf io "%-3s  %14.8f  %14.8f  %14.8f\n" string(element) position...
+                Printf.format(io, fmt, string(element), position...)
             end
             println(io, "end atoms_frac\n")
         end
@@ -580,8 +585,11 @@ function write_win(
             println(io, "begin atoms_cart")
             # unit is angstrom
             println(io, "angstrom")
+            # label width is dynamic, e.g. 3 to accommodate "Si1"
+            n = maximum(p -> length(string(first(p))), atoms_cart)
+            fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
             for (element, position) in atoms_cart
-                @printf io "%-3s  %14.8f  %14.8f  %14.8f\n" string(element) position...
+                Printf.format(io, fmt, string(element), position...)
             end
             println(io, "end atoms_cart\n")
         end
@@ -596,10 +604,13 @@ function write_win(
 
         if !isnothing(kpoint_path)
             println(io, "begin kpoint_path")
+            # label width is dynamic, e.g. 5 to accommodate "Gamma"
+            n = maximum(maximum(p -> length(string(first(p))), seg) for seg in kpoint_path)
+            fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f    ")
             for segment in kpoint_path
                 line = ""
                 for (label, kpt) in segment
-                    seg = @sprintf "%-3s  %14.8f  %14.8f  %14.8f    " string(label) kpt...
+                    seg = Printf.format(fmt, string(label), kpt...)
                     line *= seg
                 end
                 line = rstrip(line)
@@ -610,9 +621,11 @@ function write_win(
 
         if !isnothing(explicit_kpath_labels)
             println(io, "begin explicit_kpath_labels")
+            # label width is dynamic, e.g. 5 to accommodate "Gamma"
+            n = maximum(p -> length(string(first(p))), explicit_kpath_labels)
+            fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
             for (label, kpt) in explicit_kpath_labels
-                # label width is 5, to accommodate e.g. "Gamma"
-                @printf io "%-5s  %14.8f  %14.8f  %14.8f\n" string(label) kpt...
+                Printf.format(io, fmt, string(label), kpt...)
             end
             println(io, "end explicit_kpath_labels\n")
         end
@@ -649,7 +662,7 @@ function write_win(
     @info "Writing win file" filename num_wann num_bands mp_grid
 
     open(filename, "w") do io
-        println(io, header, "\n")
+        isnothing(header) || println(io, header, "\n")
         write_toml(io, params)
     end
 end
