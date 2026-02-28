@@ -1,7 +1,11 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
+WannierIO = "cb1bc77f-5443-4951-af9f-05b616a3e422"
+
+[sources]
+WannierIO = {path = ".."}
 
 [compat]
-Documenter = "0.27"
+Documenter = "1"
 LiveServer = "1.2"

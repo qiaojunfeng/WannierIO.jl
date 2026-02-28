@@ -15,14 +15,15 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 if [[ $USE_PYTHON == false ]]; then
     # 1. Use [`LiveServer.jl`](https://docs.juliahub.com/LiveServer) to track
-    # changes and rebuild docs automatically
+    # changes and rebuild docs automatically.
+    # The LiveServer.servedocs requires running in the root directory of the package.
     cd "$SCRIPT_DIR/.."
-    # use `0.0.0.0` to listen on all interfaces, so that port forward works
+    # Use `0.0.0.0` to listen on all interfaces, so that port forward works.
     julia_code="using WannierIO, Documenter, LiveServer; \
                 servedocs(host=\"0.0.0.0\")"
     julia --project=docs -e "$julia_code"
 else
-    # 2. use python's http.server to set up a local server
+    # 2. Use python's http.server to set up a local server.
     cd "$SCRIPT_DIR"
     julia --project make.jl
     python -m http.server --directory build
