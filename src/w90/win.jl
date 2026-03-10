@@ -26,57 +26,57 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
     params = open(filename) do io
         # The win file uses "num_wann", so I keep it as is, and not using "n_wann".
         keys_int = [
-            :num_wann,
-            :num_bands,
-            :num_iter,
-            :dis_num_iter,
-            :dis_conv_window,
-            :conv_window,
-            :num_cg_steps,
-            :num_print_cycles,
-            :iprint,
-            :search_shells,
-            :bands_num_points,
-            :ws_search_size,
-            :num_guide_cycles,
-            :num_no_guide_iter,
+            "num_wann",
+            "num_bands",
+            "num_iter",
+            "dis_num_iter",
+            "dis_conv_window",
+            "conv_window",
+            "num_cg_steps",
+            "num_print_cycles",
+            "iprint",
+            "search_shells",
+            "bands_num_points",
+            "ws_search_size",
+            "num_guide_cycles",
+            "num_no_guide_iter",
         ]
-        keys_int3 = [:mp_grid, :wannier_plot_supercell]
+        keys_int3 = ["mp_grid", "wannier_plot_supercell"]
         keys_float = [
-            :kmesh_tol,
-            :conv_tol,
-            :dis_froz_min,
-            :dis_froz_max,
-            :dis_win_min,
-            :dis_win_max,
-            :dis_mix_ratio,
-            :dis_conv_tol,
-            :fermi_energy,
-            :fermi_energy_min,
-            :fermi_energy_max,
-            :fermi_energy_step,
-            :ws_distance_tol,
+            "kmesh_tol",
+            "conv_tol",
+            "dis_froz_min",
+            "dis_froz_max",
+            "dis_win_min",
+            "dis_win_max",
+            "dis_mix_ratio",
+            "dis_conv_tol",
+            "fermi_energy",
+            "fermi_energy_min",
+            "fermi_energy_max",
+            "fermi_energy_step",
+            "ws_distance_tol",
         ]
         keys_bool = [
-            :use_ws_distance,
-            :wannier_plot,
-            :bands_plot,
-            :wvfn_formatted,
-            :spn_formatted,
-            :write_hr,
-            :write_tb,
-            :write_xyz,
-            :write_rmn,
-            :guiding_centres,
-            :gamma_only,
-            :spinors,
-            :postproc_setup,
-            :auto_projections,
-            :restart,
+            "use_ws_distance",
+            "wannier_plot",
+            "bands_plot",
+            "wvfn_formatted",
+            "spn_formatted",
+            "write_hr",
+            "write_tb",
+            "write_xyz",
+            "write_rmn",
+            "guiding_centres",
+            "gamma_only",
+            "spinors",
+            "postproc_setup",
+            "auto_projections",
+            "restart",
         ]
-        keys_indices = [:exclude_bands, :select_projections]
+        keys_indices = ["exclude_bands", "select_projections"]
 
-        params = OrderedDict{Symbol,Any}()
+        params = OrderedDict{String,Any}()
 
         read_line() = strip(readline(io))
         function remove_comments(line::AbstractString)
@@ -135,7 +135,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
                     unit_cell .*= Bohr
                 end
                 unit_cell = Mat3{Float64}(unit_cell)
-                push!(params, :unit_cell_cart => unit_cell)
+                push!(params, "unit_cell_cart" => unit_cell)
             elseif occursin(r"^begin\s+atoms_(frac|cart)", line)
                 iscart = occursin("cart", line)
                 block_name = "atoms_$(iscart ? "cart" : "frac")"
@@ -159,24 +159,24 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
                 n_atoms = length(lines)
-                atoms_frac = SymbolVec3{Float64}[]
+                atoms_frac = StringVec3{Float64}[]
                 for i in 1:n_atoms
                     l = split(lines[i])
-                    symbol = Symbol(l[1])
+                    atom = l[1]
                     frac = Vec3(parse_float.(l[2:end])...)
-                    push!(atoms_frac, symbolvec3(symbol, frac))
+                    push!(atoms_frac, stringvec3(atom, frac))
                 end
 
                 if iscart
                     if startswith(unit, "b")
                         # convert to angstrom
-                        atoms_frac = map(atoms_frac) do (symbol, pos)
-                            symbolvec3(symbol, pos .* Bohr)
+                        atoms_frac = map(atoms_frac) do (atom, pos)
+                            stringvec3(atom, pos .* Bohr)
                         end
                     end
-                    push!(params, :atoms_cart => atoms_frac)
+                    push!(params, "atoms_cart" => atoms_frac)
                 else
-                    push!(params, :atoms_frac => atoms_frac)
+                    push!(params, "atoms_frac" => atoms_frac)
                 end
             elseif occursin(r"^begin\s+projections", line)
                 block_name = "projections"
@@ -186,7 +186,7 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
                     push!(projections, line)
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
-                push!(params, :projections => projections)
+                push!(params, "projections" => projections)
             elseif occursin(r"^begin\s+kpoints", line)
                 block_name = "kpoints"
                 line = read_line_until_nonempty(; block_name)
@@ -203,10 +203,10 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
                     # There might be weight at 4th column, but we don't use it.
                     kpoints[i] = Vec3(parse_array(lines[i])[1:3])
                 end
-                push!(params, :kpoints => kpoints)
+                push!(params, "kpoints" => kpoints)
             elseif occursin(r"^begin\s+kpoint_path", line)
                 block_name = "kpoint_path"
-                kpoint_path = Vector{Vector{SymbolVec3{Float64}}}()
+                kpoint_path = Vector{Vector{StringVec3{Float64}}}()
 
                 # allow uppercase
                 line = read_line_until_nonempty(; lower=false, block_name)
@@ -214,17 +214,17 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
                     l = split(line)
                     length(l) == 8 || error("Invalid kpoint_path line: $line")
                     # start kpoint
-                    start_label = Symbol(l[1])
+                    start_label = l[1]
                     start_kpt = Vec3{Float64}(parse.(Float64, l[2:4]))
                     # end kpoint
-                    end_label = Symbol(l[5])
+                    end_label = l[5]
                     end_kpt = Vec3{Float64}(parse.(Float64, l[6:8]))
                     # push to kpath
                     push!(kpoint_path, [start_label => start_kpt, end_label => end_kpt])
 
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
-                push!(params, :kpoint_path => kpoint_path)
+                push!(params, "kpoint_path" => kpoint_path)
             elseif occursin(r"^begin\s+explicit_kpath$", line)
                 block_name = "explicit_kpath"
                 explicit_kpath = Vec3{Float64}[]
@@ -238,23 +238,23 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
 
                     line = read_line_until_nonempty(; block_name)
                 end
-                push!(params, :explicit_kpath => explicit_kpath)
+                push!(params, "explicit_kpath" => explicit_kpath)
             elseif occursin(r"^begin\s+explicit_kpath_labels$", line)
                 block_name = "explicit_kpath_labels"
-                explicit_kpath_labels = SymbolVec3{Float64}[]
+                explicit_kpath_labels = StringVec3{Float64}[]
 
                 # allow uppercase
                 line = read_line_until_nonempty(; lower=false, block_name)
                 while !occursin(r"^end\s+explicit_kpath_labels$", lowercase(line))
                     l = split(line)
                     length(l) == 4 || error("Invalid $block_name line: $line")
-                    label = Symbol(l[1])
+                    label = l[1]
                     kpt = Vec3{Float64}(parse_float.(l[2:4]))
                     push!(explicit_kpath_labels, label => kpt)
 
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
-                push!(params, :explicit_kpath_labels => explicit_kpath_labels)
+                push!(params, "explicit_kpath_labels" => explicit_kpath_labels)
             elseif occursin(r"^begin\s+(.+)", line)
                 # treat all remaining unknown blocks as Vector of String
                 block_name = match(r"^begin\s+(.+)", line).captures[1]
@@ -265,13 +265,12 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
                     push!(block_content, line)
                     line = read_line_until_nonempty(; lower=false, block_name)
                 end
-                push!(params, Symbol(block_name) => block_content)
+                push!(params, block_name => block_content)
             else
                 # now treat remaining lines as key-value pairs
                 line = strip(replace(line, "=" => " ", ":" => " "))
                 key, value = split(line; limit=2)
                 value = strip(value)  # remove leading whitespaces
-                key = Symbol(key)
                 if key in keys_int
                     value = parse(Int, value)
                 elseif key in keys_int3
@@ -295,59 +294,55 @@ function read_win(filename::AbstractString, ::Wannier90Text; standardize::Bool=t
 
     standardize && standardize_win!(params)
 
-    # convert to NamedTuple, easier to access its fields with dot notation,
-    # e.g., params.num_wann
-    params = NamedTuple(params)
     return params
 end
 
 """
-I store atoms_frac and kpoint_path as Vector of SymbolVec3.
-However, TOML.print does not accept Pair (specifically, SymbolVec3);
-instead, I convert SymbolVec3 to Dict in write_win with toml format.
+I store atoms_frac and kpoint_path as Vector of StringVec3.
+However, TOML.print does not accept Pair (specifically, StringVec3);
+instead, I convert StringVec3 to Dict in write_win with toml format.
 On reading I convert it back.
 """
-function _to_SymbolVec3(d::AbstractDict)
-    # SymbolVec3 are converted to Dict of length 1 when writing
+function _to_StringVec3(d::AbstractDict)
+    # StringVec3 are converted to Dict of length 1 when writing
     if length(d) == 1
         k, v = only(d)
         if isa(k, AbstractString) && isa(v, AbstractVector{<:Real})
-            return symbolvec3(k, v)
+            return stringvec3(k, v)
         end
     end
 
     # Need to do the conversion recursively
     for (k, v) in pairs(d)
-        d[k] = _to_SymbolVec3(v)
+        d[k] = _to_StringVec3(v)
     end
     return d
 end
 
-_to_SymbolVec3(v::AbstractVector) = map(_to_SymbolVec3, v)
+_to_StringVec3(v::AbstractVector) = map(_to_StringVec3, v)
 
 """Fallback to doing nothing."""
-_to_SymbolVec3(x) = x
+_to_StringVec3(x) = x
 
 function read_win(filename::AbstractString, ::Wannier90Toml; standardize::Bool=true)
     win = TOML.parsefile(filename)
-    win = _to_SymbolVec3(win)
+    win = _to_StringVec3(win)
 
-    # Convert keys to Symbol
-    win = OrderedDict(Symbol(k) => v for (k, v) in pairs(win))
+    win = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(win))
 
     standardize && standardize_win!(win)
 
     # Vector{Vector} -> Mat3
-    if haskey(win, :unit_cell_cart)
-        win[:unit_cell_cart] = mat3(win[:unit_cell_cart])
+    if haskey(win, "unit_cell_cart")
+        win["unit_cell_cart"] = mat3(win["unit_cell_cart"])
     end
 
     # Vector{Vector} -> Vector{Vec3}
-    if haskey(win, :kpoints)
-        win[:kpoints] = [vec3(k) for k in win[:kpoints]]
+    if haskey(win, "kpoints")
+        win["kpoints"] = [vec3(k) for k in win["kpoints"]]
     end
 
-    return NamedTuple(win)
+    return win
 end
 
 function read_win(filename::AbstractString; standardize::Bool=true)
@@ -361,13 +356,13 @@ function read_win(filename::AbstractString; standardize::Bool=true)
     end
     win = read_win(filename, format; standardize)
 
-    num_wann = win[:num_wann]
+    num_wann = win["num_wann"]
     num_bands = nothing
-    if :num_bands in keys(win)
-        num_bands = win[:num_bands]
+    if "num_bands" in keys(win)
+        num_bands = win["num_bands"]
     end
     # I need to convert to tuple so that @info does not output its type
-    mp_grid = Tuple(win[:mp_grid])
+    mp_grid = Tuple(win["mp_grid"])
     @info "Reading win file" filename num_wann num_bands mp_grid
 
     return win
@@ -381,42 +376,43 @@ Sanity check and add missing input parameters from a `win` file.
 See also [`read_win`](@ref).
 """
 function standardize_win!(params::AbstractDict)
-    !haskey(params, :num_wann) && error("num_wann not found")
-    params[:num_wann] > 0 || error("num_wann must be positive")
+    !haskey(params, "num_wann") && error("num_wann not found")
+    params["num_wann"] > 0 || error("num_wann must be positive")
 
     # add num_bands if not found
-    !haskey(params, :num_bands) && push!(params, :num_bands => params[:num_wann])
-    params[:num_bands] > 0 || error("num_bands must be positive")
+    !haskey(params, "num_bands") && push!(params, "num_bands" => params["num_wann"])
+    params["num_bands"] > 0 || error("num_bands must be positive")
 
-    if haskey(params, :mp_grid)
-        length(params[:mp_grid]) != 3 && error("mp_grid has wrong length")
-        any(i -> i <= 0, params[:mp_grid]) && error("mp_grid must be positive")
+    if haskey(params, "mp_grid")
+        length(params["mp_grid"]) != 3 && error("mp_grid has wrong length")
+        any(i -> i <= 0, params["mp_grid"]) && error("mp_grid must be positive")
     else
         error("mp_grid not found")
     end
 
-    if haskey(params, :kpoints)
-        n_kpts = prod(params[:mp_grid])
-        length(params[:kpoints]) != n_kpts && error("kpoints has wrong shape")
+    if haskey(params, "kpoints")
+        n_kpts = prod(params["mp_grid"])
+        length(params["kpoints"]) != n_kpts && error("kpoints has wrong shape")
     else
         error("kpoints not found")
     end
 
-    if haskey(params, :unit_cell_cart)
-        any(x -> ismissing(x), params[:unit_cell_cart]) && error("unit_cell_cart not found")
+    if haskey(params, "unit_cell_cart")
+        any(x -> ismissing(x), params["unit_cell_cart"]) &&
+            error("unit_cell_cart not found")
     else
         error("unit_cell_cart not found")
     end
 
     # if atoms_cart, convert to fractional
-    if !haskey(params, :atoms_frac)
-        !haskey(params, :atoms_cart) && error("both atoms_frac and atoms_cart are missing")
-        atoms_cart = pop!(params, :atoms_cart)
-        inv_cell = inv(params[:unit_cell_cart])
-        atoms_frac = map(atoms_cart) do (symbol, cart)
-            SymbolVec3{Float64}(symbol, inv_cell * cart)
+    if !haskey(params, "atoms_frac")
+        !haskey(params, "atoms_cart") && error("both atoms_frac and atoms_cart are missing")
+        atoms_cart = pop!(params, "atoms_cart")
+        inv_cell = inv(params["unit_cell_cart"])
+        atoms_frac = map(atoms_cart) do (atom, cart)
+            stringvec3(atom, inv_cell * cart)
         end
-        push!(params, :atoms_frac => atoms_frac)
+        push!(params, "atoms_frac" => atoms_frac)
     end
     return nothing
 end
@@ -425,9 +421,6 @@ end
     write_win(filename, params; header)
     write_win(filename, params, ::Wannier90Text; header)
     write_win(filename, params, ::Wannier90Toml; header)
-    write_win(filename; header, params...)
-    write_win(filename, ::Wannier90Text; header, params...)
-    write_win(filename, ::Wannier90Toml; header, params...)
 
 Write input parameters into a wannier90 `win` file.
 
@@ -453,18 +446,16 @@ params = (;
     ],
     # atoms_frac is a vector of pairs of atom_label and fractional coordinates
     atoms_frac=[
-        :Si => [0.0, 0.0, 0.0],
-        :Si => [0.25, 0.25, 0.25],
-        # both `:Si` and `"Si"` are allowed
-        # "Si" => [0.25, 0.25, 0.25],
+        "Si" => [0.0, 0.0, 0.0],
+        "Si" => [0.25, 0.25, 0.25],
     ],
     # each element in projections will be written as a line in the win file
     projections=[
         "random",
     ]
     kpoint_path=[
-        [:G => [0.0, 0.0, 0.0], :X => [0.5, 0.0, 0.5]],
-        [:X => [0.5, 0.0, 0.5], :U => [0.625, 0.25, 0.625]],
+        ["G" => [0.0, 0.0, 0.0], "X" => [0.5, 0.0, 0.5]],
+        ["X" => [0.5, 0.0, 0.5], "U" => [0.625, 0.25, 0.625]],
     ],
     mp_grid=[2, 2, 2],
     # kpoints is a matrix, its columns are the fractional coordinates
@@ -497,11 +488,11 @@ function write_win end
     $(SIGNATURES)
 """
 @inline function _check_win_required_params(kwargs)
-    required_keys = [:num_wann, :unit_cell_cart, :mp_grid, :kpoints]
+    required_keys = ["num_wann", "unit_cell_cart", "mp_grid", "kpoints"]
     for k in required_keys
         @assert haskey(kwargs, k) "Required parameter $k not found"
     end
-    atoms_cart_frac = haskey.(Ref(kwargs), [:atoms_cart, :atoms_frac])
+    atoms_cart_frac = haskey.(Ref(kwargs), ["atoms_cart", "atoms_frac"])
     if all(atoms_cart_frac)
         error("Both atoms_cart and atoms_frac are found")
     elseif !any(atoms_cart_frac)
@@ -510,16 +501,13 @@ function write_win end
 end
 
 function write_win(
-    filename::AbstractString,
-    params::Union{NamedTuple,AbstractDict},
-    ::Wannier90Text;
-    header=default_header(),
+    filename::AbstractString, params::AbstractDict, ::Wannier90Text; header=default_header()
 )
     _check_win_required_params(params)
 
-    num_wann = get(params, :num_wann, nothing)
-    num_bands = get(params, :num_bands, nothing)
-    mp_grid = get(params, :mp_grid, nothing)
+    num_wann = get(params, "num_wann", nothing)
+    num_bands = get(params, "num_bands", nothing)
+    mp_grid = get(params, "mp_grid", nothing)
     # I need to convert to tuple so that @info does not output its type
     mp_grid !== nothing && (mp_grid = Tuple(mp_grid))
     @info "Writing win file" filename num_wann num_bands mp_grid
@@ -529,14 +517,14 @@ function write_win(
     # Most likely the important parameters are at the beginning upon user input.
     params = OrderedDict(pairs(params))
     # These are blocks
-    unit_cell_cart = pop!(params, :unit_cell_cart)
-    atoms_frac = pop!(params, :atoms_frac, nothing)
-    atoms_cart = pop!(params, :atoms_cart, nothing)
-    projections = pop!(params, :projections, nothing)
-    kpoint_path = pop!(params, :kpoint_path, nothing)
-    explicit_kpath = pop!(params, :explicit_kpath, nothing)
-    explicit_kpath_labels = pop!(params, :explicit_kpath_labels, nothing)
-    kpoints = pop!(params, :kpoints)
+    unit_cell_cart = pop!(params, "unit_cell_cart")
+    atoms_frac = pop!(params, "atoms_frac", nothing)
+    atoms_cart = pop!(params, "atoms_cart", nothing)
+    projections = pop!(params, "projections", nothing)
+    kpoint_path = pop!(params, "kpoint_path", nothing)
+    explicit_kpath = pop!(params, "explicit_kpath", nothing)
+    explicit_kpath_labels = pop!(params, "explicit_kpath_labels", nothing)
+    kpoints = pop!(params, "kpoints")
 
     open(filename, "w") do io
         if !isnothing(header)
@@ -548,9 +536,9 @@ function write_win(
         for (key, value) in pairs(params)
             ismissing(value) && continue
             # @printf io "%-20s = %-30s\n" string(key) value
-            if key == :mp_grid
+            if key == "mp_grid"
                 @printf io "%s = %d  %d  %d\n" string(key) value...
-            elseif key == :exclude_bands
+            elseif key == "exclude_bands"
                 if !isempty(value)
                     @printf io "%s = %s\n" string(key) format_indices(value)
                 end
@@ -647,16 +635,13 @@ function write_win(
 end
 
 function write_win(
-    filename::AbstractString,
-    params::Union{NamedTuple,AbstractDict},
-    ::Wannier90Toml;
-    header=default_header(),
+    filename::AbstractString, params::AbstractDict, ::Wannier90Toml; header=default_header()
 )
     _check_win_required_params(params)
 
-    num_wann = get(params, :num_wann, nothing)
-    num_bands = get(params, :num_bands, nothing)
-    mp_grid = get(params, :mp_grid, nothing)
+    num_wann = get(params, "num_wann", nothing)
+    num_bands = get(params, "num_bands", nothing)
+    mp_grid = get(params, "mp_grid", nothing)
     # I need to convert to tuple so that @info does not output its type
     mp_grid !== nothing && (mp_grid = Tuple(mp_grid))
     @info "Writing win file" filename num_wann num_bands mp_grid
@@ -667,19 +652,6 @@ function write_win(
     end
 end
 
-function write_win(
-    filename::AbstractString,
-    params::Union{NamedTuple,AbstractDict};
-    header=default_header(),
-)
+function write_win(filename::AbstractString, params::AbstractDict; header=default_header())
     write_win(filename, params, Wannier90Text(); header)
-end
-
-function write_win(
-    filename::AbstractString,
-    format::FileFormat=Wannier90Text();
-    header=default_header(),
-    params...,
-)
-    write_win(filename, params, format; header)
 end

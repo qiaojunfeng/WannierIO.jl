@@ -12,7 +12,7 @@ Parse wannier90 `wout` file.
 # Return
 - `lattice`: each column is a lattice vector in Å
 - `recip_lattice`: each column is a reciprocal lattice vector in Å⁻¹
-- `atom_labels`: atomic symbols
+- `atom_labels`: atomic labels
 - `atom_positions`: in fractional coordinates
 - `kgrid`: kpoint grid used in Wannierization
 - `centers`: center of each final WF, in Å
@@ -47,8 +47,8 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
         mark_maxloc_start = "| Iter  Delta Spread     RMS Gradient      Spread (Ang^2)      Time  |<-- CONV"
         mark_maxloc_end = mark_finalstate_start
         # parsed results
-        results = Dict{Symbol,Any}()
-        iters = Dict{Symbol,Any}()
+        results = Dict{String,Any}()
+        iters = Dict{String,Any}()
 
         srline() = strip(readline(io))
 
@@ -57,13 +57,13 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
             if occursin(mark_lattice, line)
                 lines = String[line]
                 append!(lines, srline() for _ in 1:3)
-                push!(results, :lattice => Mat3(_parse_wout_lattice(lines)))
+                push!(results, "lattice" => Mat3(_parse_wout_lattice(lines)))
                 continue
             end
             if occursin(mark_recip, line)
                 lines = String[line]
                 append!(lines, srline() for _ in 1:3)
-                push!(results, :recip_lattice => Mat3(_parse_wout_recip_lattice(lines)))
+                push!(results, "recip_lattice" => Mat3(_parse_wout_recip_lattice(lines)))
                 continue
             end
             if occursin(mark_atom_start, line)
@@ -74,14 +74,16 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
                 end
                 atom_labels, atom_positions = _parse_wout_atoms(lines)
                 push!(
-                    results, :atom_labels => atom_labels, :atom_positions => atom_positions
+                    results,
+                    "atom_labels" => atom_labels,
+                    "atom_positions" => atom_positions,
                 )
                 continue
             end
             if occursin(mark_kgrid, line)
                 #  parse line `Grid size =  9 x  9 x  9      Total points =  729`
                 line = split(line)[[4, 6, 8]]
-                push!(results, :kgrid => parse.(Int, line))
+                push!(results, "kgrid" => parse.(Int, line))
                 continue
             end
             if iterations
@@ -91,7 +93,7 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
                         line = srline()
                         push!(lines, line)
                     end
-                    push!(iters, :disentangle => _parse_wout_disentangle(lines))
+                    push!(iters, "disentangle" => _parse_wout_disentangle(lines))
                     continue
                 end
                 if occursin(mark_maxloc_start, line)
@@ -100,7 +102,7 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
                         line = srline()
                         push!(lines, line)
                     end
-                    push!(iters, :wannierize => _parse_wout_wannierize(lines))
+                    push!(iters, "wannierize" => _parse_wout_wannierize(lines))
                     # Do not continue: we use the same "Final State" mark for
                     # checking both the end of max localization and the start of
                     # final spread. Therefore, we need to proceed with the next
@@ -117,21 +119,21 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
                 c, s, sc, ss = _parse_wout_wf_center_spread(lines)
                 push!(
                     results,
-                    :centers => c,
-                    :spreads => s,
-                    :sum_centers => sc,
-                    :sum_spreads => ss,
+                    "centers" => c,
+                    "spreads" => s,
+                    "sum_centers" => sc,
+                    "sum_spreads" => ss,
                 )
                 continue
             end
             if occursin(mark_ΩI, line)
-                push!(results, :ΩI => parse_float(split(line, mark_ΩI)[2]))
+                push!(results, "ΩI" => parse_float(split(line, mark_ΩI)[2]))
                 line = srline()
-                push!(results, :ΩD => parse_float(split(line, mark_ΩD)[2]))
+                push!(results, "ΩD" => parse_float(split(line, mark_ΩD)[2]))
                 line = srline()
-                push!(results, :ΩOD => parse_float(split(line, mark_ΩOD)[2]))
+                push!(results, "ΩOD" => parse_float(split(line, mark_ΩOD)[2]))
                 line = srline()
-                push!(results, :Ωtotal => parse_float(split(line, mark_Ωtotal)[2]))
+                push!(results, "Ωtotal" => parse_float(split(line, mark_Ωtotal)[2]))
                 continue
             end
             if occursin(mark_phase, line)
@@ -142,7 +144,7 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
                     push!(phases, v)
                     line = srline()  # there is an empty line after phase block
                 end
-                push!(results, :phase_factors => phases)
+                push!(results, "phase_factors" => phases)
                 continue
             end
             if occursin(mark_imre, line)
@@ -153,12 +155,12 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
                     push!(imre, v)
                     line = srline()  # there is an empty line after im/re block
                 end
-                push!(results, :im_re_ratios => imre)
+                push!(results, "im_re_ratios" => imre)
                 continue
             end
         end
-        iterations && push!(results, :iterations => NamedTuple(iters))
-        return NamedTuple(results)
+        iterations && push!(results, "iterations" => iters)
+        return results
     end
 end
 
@@ -277,7 +279,12 @@ function _parse_wout_disentangle(lines)
         push!(ΩI_current, parse(Float64, line[3]))
         push!(ΔΩI, parse(Float64, line[4]))
     end
-    return (; iter, ΩI_previous, ΩI_current, ΔΩI)
+    return OrderedDict{String,Any}(
+        "iter" => iter,
+        "ΩI_previous" => ΩI_previous,
+        "ΩI_current" => ΩI_current,
+        "ΔΩI" => ΔΩI,
+    )
 end
 
 """
@@ -445,5 +452,14 @@ function _parse_wout_wannierize(lines)
         end
         i += 1
     end
-    return (; iter, centers, spreads, sum_centers, sum_spreads, ΩD, ΩOD, Ωtotal)
+    return OrderedDict{String,Any}(
+        "iter" => iter,
+        "centers" => centers,
+        "spreads" => spreads,
+        "sum_centers" => sum_centers,
+        "sum_spreads" => sum_spreads,
+        "ΩD" => ΩD,
+        "ΩOD" => ΩOD,
+        "Ωtotal" => Ωtotal,
+    )
 end

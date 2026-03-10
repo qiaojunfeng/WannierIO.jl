@@ -37,13 +37,13 @@
     @test chk.header == "written on 15Jun2023 at 10:39:45"
 
     win = read_win(artifact"Si2_valence/Si2_valence.win")
-    @test chk.kgrid == win.mp_grid
-    @test chk.kpoints == win.kpoints
+    @test chk.kgrid == win["mp_grid"]
+    @test chk.kpoints == win["kpoints"]
 
     # make sure we read the lattice as column-major
-    @test chk.lattice ≈ win.unit_cell_cart
+    @test chk.lattice ≈ win["unit_cell_cart"]
 
-    @test chk.recip_lattice ≈ WannierIO.get_recip_lattice(chk.lattice)
+    @test chk.recip_lattice ≈ WannierIO.reciprocal_lattice(chk.lattice)
 
     ref_r = WannierIO.Vec3[
         [0.6788160683908873, -0.678816205763796, -0.6788162184647731],
@@ -90,8 +90,8 @@ end
     @test length(chk.M) == 9^3
     @test length(chk.M[1]) == 8
     @test size(chk.M[1][1]) == (8, 8)
-    @test chk.dis_bands == [trues(16) for _ in 1:(9^3)]
-    @test chk.n_dis == [16 for _ in 1:(9^3)]
+    @test chk.dis_bands == [trues(16) for _ in 1:(9 ^ 3)]
+    @test chk.n_dis == [16 for _ in 1:(9 ^ 3)]
     @test chk.have_disentangled == true
 end
 
@@ -138,8 +138,8 @@ end
     using LazyArtifacts
     chk = read_chk(artifact"Fe_soc/outputs/Fe.chk")
     wout = read_wout(artifact"Fe_soc/outputs/Fe.wout")
-    @test all(isapprox.(chk.lattice, wout.lattice; atol=3e-7))
-    @test all(isapprox.(chk.recip_lattice, wout.recip_lattice; atol=3e-7))
+    @test all(isapprox.(chk.lattice, wout["lattice"]; atol=3e-7))
+    @test all(isapprox.(chk.recip_lattice, wout["recip_lattice"]; atol=3e-7))
 
     tmpfile = tempname(; cleanup=true)
     write_chk(tmpfile, chk; binary=true)
