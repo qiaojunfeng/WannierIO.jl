@@ -278,7 +278,8 @@ chk = read_chk("BN.chk")
 #   conversion using QE constant:
 alat = 6.8330 * WannierIO.Bohr_QE
 # - or better by parsing the QE xml file, and the unit conversion is done automatically
-alat = read_qe_xml("BN.xml").alat
+using QuantumEspressoIO: read_pw_xml
+alat = read_pw_xml("BN.xml").alat
 ukk = Ukk(chk, alat)
 WannierIO.write_epw_ukk("BN.ukk", ukk)
 ```

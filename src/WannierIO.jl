@@ -53,9 +53,6 @@ include("volume/xsf.jl")
 include("volume/cube.jl")
 include("volume/bxsf.jl")
 
-include("qe/band.jl")
-include("qe/xml.jl")
-
 include("misc/epw.jl")
 
 end
