@@ -11,7 +11,7 @@ Read `xsf` file.
 # Return
 - `primvec`: `3 * 3`, Å, each column is a primitive lattice vector
 - `convvec`: `3 * 3`, Å, each column is a conventional lattice vector
-- `atoms`: `n_atoms` String, atomic symbols or numbers
+- `atoms`: `n_atoms` String, atomic labels or numbers
 - `atom_positions`: length-`n_atoms` vector, Å, cartesian coordinates
 - `origin`: `3`, Å, origin of the grid
 - `span_vectors`: `3 * 3`, Å, each column is a spanning vector

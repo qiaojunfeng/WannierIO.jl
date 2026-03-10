@@ -23,14 +23,14 @@
 end
 
 @testitem "symbolvec3" begin
-    using WannierIO: SymbolVec3, symbolvec3, vec3
+    using WannierIO: StringVec3, stringvec3, vec3
 
-    s = :Si
+    s = "Si"
     v = [1, 2, 3]
-    sv = symbolvec3(s, v)
+    sv = stringvec3(s, v)
 
-    @test (sv isa SymbolVec3) && (sv.first == s) && (sv.second == vec3(v))
-    @test symbolvec3(string(s), v) == sv
-    @test symbolvec3(s => v) == sv
-    @test symbolvec3(Dict(s => v)) == sv
+    @test (sv isa StringVec3) && (sv.first == s) && (sv.second == vec3(v))
+    @test stringvec3(s, v) == sv
+    @test stringvec3(s => v) == sv
+    @test stringvec3(Dict(s => v)) == sv
 end

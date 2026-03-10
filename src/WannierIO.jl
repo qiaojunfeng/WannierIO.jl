@@ -17,10 +17,14 @@ module WannierIO
 using Printf: @printf, @sprintf
 using DocStringExtensions
 
+using LinearAlgebra
+using StaticArrays
+
+using CrystalBase
+
 include("common/const.jl")
 include("common/type.jl")
 include("util/fortran.jl")
-include("util/lattice.jl")
 include("util/header.jl")
 include("util/toml.jl")
 include("util/parser.jl")

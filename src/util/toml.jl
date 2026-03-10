@@ -42,14 +42,3 @@ function write_toml end
 function write_toml(io, params::AbstractDict)
     return TOML.print(to_toml, io, params)
 end
-
-function write_toml(io, params::NamedTuple)
-    # Note that we cannot pass NamedTuple to TOML.print, but we can pass
-    # pairs(::NamedTuple) which is a subtype of AbstractDict.
-    return write_toml(io, pairs(params))
-end
-
-function write_toml(io; kwargs...)
-    # typeof(kwargs) = pairs(::NamedTuple), and this keeps the order.
-    return write_toml(io, kwargs)
-end

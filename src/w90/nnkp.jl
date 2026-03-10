@@ -163,10 +163,15 @@ function read_nnkp(filename::AbstractString, ::Wannier90Text)
         lattice = Mat3(lattice)
         recip_lattice = Mat3(recip_lattice)
         # note I keep the order here: projections first, then auto_projections, ...
-        res = (;)
-        isnothing(projections) || (res = (; res..., projections))
-        isnothing(auto_projections) || (res = (; res..., auto_projections))
-        return (; res..., lattice, recip_lattice, kpoints, kpb_k, kpb_G)
+        res = OrderedDict{String,Any}()
+        isnothing(projections) || (res["projections"] = projections)
+        isnothing(auto_projections) || (res["auto_projections"] = auto_projections)
+        res["lattice"] = lattice
+        res["recip_lattice"] = recip_lattice
+        res["kpoints"] = kpoints
+        res["kpb_k"] = kpb_k
+        res["kpb_G"] = kpb_G
+        return res
     end
 end
 
@@ -174,14 +179,14 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
     # I can just reuse the read_win function, without fix win inputs
     nnkp = read_win(filename, Wannier90Toml(); standardize=false)
 
-    # Need to set value to Any, otherwise it is OrderedDict{Symbol,Vector},
-    # then I cannot assign Mat3 to it.
-    nnkp = OrderedDict{Symbol,Any}(pairs(nnkp))
+    # Need to set value to Any, otherwise value type can be too narrow and then
+    # I cannot assign Mat3 to it.
+    nnkp = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(nnkp))
 
     # Some following cleanups
     # Convert to Mat3
-    if haskey(nnkp, :lattice) || haskey(nnkp, :recip_lattice)
-        for k in (:lattice, :recip_lattice)
+    if haskey(nnkp, "lattice") || haskey(nnkp, "recip_lattice")
+        for k in ("lattice", "recip_lattice")
             if haskey(nnkp, k)
                 nnkp[k] = mat3(nnkp[k])
             end
@@ -189,20 +194,19 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
     end
 
     # Convert to HydrogenOrbital
-    if haskey(nnkp, :projections)
-        nnkp[:projections] = map(nnkp[:projections]) do proj
+    if haskey(nnkp, "projections")
+        nnkp["projections"] = map(nnkp["projections"]) do proj
             args = NamedTuple((Symbol(k), v) for (k, v) in proj)
             HydrogenOrbital(; args...)
         end
     end
 
     # Convert to Vec3
-    if haskey(nnkp, :kpb_G)
-        nnkp[:kpb_G] = [[Vec3{Int}(G) for G in Gk] for Gk in nnkp[:kpb_G]]
+    if haskey(nnkp, "kpb_G")
+        nnkp["kpb_G"] = [[Vec3{Int}(G) for G in Gk] for Gk in nnkp["kpb_G"]]
     end
 
-    # back to NamedTuple
-    return NamedTuple(nnkp)
+    return nnkp
 end
 
 function read_nnkp(filename::AbstractString)
@@ -216,9 +220,9 @@ function read_nnkp(filename::AbstractString)
     end
     nnkp = read_nnkp(filename, format)
 
-    n_kpts = length(nnkp.kpb_k)
+    n_kpts = length(nnkp["kpb_k"])
     @assert n_kpts > 0 "no kpoints found"
-    n_bvecs = length(nnkp.kpb_k[1])
+    n_bvecs = length(nnkp["kpb_k"][1])
     @info "Reading nnkp file" filename n_kpts n_bvecs
 
     return nnkp
@@ -228,7 +232,7 @@ end
     $(SIGNATURES)
 """
 @inline function _check_nnkp_required_params(kwargs)
-    required_keys = [:lattice, :recip_lattice, :kpoints, :kpb_k, :kpb_G]
+    required_keys = ["lattice", "recip_lattice", "kpoints", "kpb_k", "kpb_G"]
     for k in required_keys
         @assert haskey(kwargs, k) "Required parameter $k not found"
     end
@@ -238,9 +242,6 @@ end
     write_nnkp(filename, params; header)
     write_nnkp(filename, params, ::Wannier90Text; header)
     write_nnkp(filename, params, ::Wannier90Toml; header)
-    write_nnkp(filename; header, params...)
-    write_nnkp(filename, ::Wannier90Text; header, params...)
-    write_nnkp(filename, ::Wannier90Toml; header, params...)
 
 Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
 
@@ -272,24 +273,22 @@ The following keys are optional:
 function write_nnkp end
 
 function write_nnkp(
-    filename::AbstractString,
-    params::Union{NamedTuple,AbstractDict},
-    ::Wannier90Text;
-    header=default_header(),
+    filename::AbstractString, params::AbstractDict, ::Wannier90Text; header=default_header()
 )
+    params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
 
-    lattice = params[:lattice]
-    recip_lattice = params[:recip_lattice]
-    kpoints = params[:kpoints]
-    kpb_k = params[:kpb_k]
-    kpb_G = params[:kpb_G]
-    projections = get(params, :projections, nothing)
+    lattice = params["lattice"]
+    recip_lattice = params["recip_lattice"]
+    kpoints = params["kpoints"]
+    kpb_k = params["kpb_k"]
+    kpb_G = params["kpb_G"]
+    projections = get(params, "projections", nothing)
     isnothing(projections) ||
         @assert projections isa AbstractVector{<:HydrogenOrbital} "projections should be a vector of HydrogenOrbital"
 
-    auto_projections = get(params, :auto_projections, nothing)
-    exclude_bands = get(params, :exclude_bands, nothing)
+    auto_projections = get(params, "auto_projections", nothing)
+    exclude_bands = get(params, "exclude_bands", nothing)
 
     n_kpts = length(kpoints)
     n_bvecs = length(kpb_k[1])
@@ -379,14 +378,12 @@ function write_nnkp(
 end
 
 function write_nnkp(
-    filename::AbstractString,
-    params::Union{NamedTuple,AbstractDict},
-    ::Wannier90Toml;
-    header=default_header(),
+    filename::AbstractString, params::AbstractDict, ::Wannier90Toml; header=default_header()
 )
+    params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
-    kpb_k = params[:kpb_k]
-    _check_dimensions_kpb(kpb_k, params[:kpb_G])
+    kpb_k = params["kpb_k"]
+    _check_dimensions_kpb(kpb_k, params["kpb_G"])
     n_kpts = length(kpb_k)
     n_bvecs = length(kpb_k[1])
     @info "Writing nnkp file" filename n_kpts n_bvecs
@@ -400,8 +397,7 @@ function write_nnkp(
     end
 end
 
-function write_nnkp(
-    filename::AbstractString, format=Wannier90Text(); header=default_header(), params...
-)
-    return write_nnkp(filename, params, format; header)
+function write_nnkp(filename::AbstractString, params::AbstractDict; header=default_header())
+    format = Wannier90Text()
+    write_nnkp(filename, params, format; header)
 end

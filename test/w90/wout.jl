@@ -100,23 +100,23 @@ end
     ]
     ref_spreads = [1.92917892, 1.92917900, 1.92917883, 1.92917887]
 
-    @test wout.lattice ≈ ref_lattice
-    @test wout.atom_labels == ref_atom_labels
-    @test wout.atom_positions ≈ ref_atom_positions
-    @test wout.centers ≈ ref_centers
-    @test wout.spreads ≈ ref_spreads
-    @test wout.kgrid == [6, 6, 6]
-    @test wout.sum_centers ≈ [-0.000001, -0.000000, 0.000000]
-    @test wout.sum_spreads ≈ 7.71671562
+    @test wout["lattice"] ≈ ref_lattice
+    @test wout["atom_labels"] == ref_atom_labels
+    @test wout["atom_positions"] ≈ ref_atom_positions
+    @test wout["centers"] ≈ ref_centers
+    @test wout["spreads"] ≈ ref_spreads
+    @test wout["kgrid"] == [6, 6, 6]
+    @test wout["sum_centers"] ≈ [-0.000001, -0.000000, 0.000000]
+    @test wout["sum_spreads"] ≈ 7.71671562
 
     ref_ΩI = 7.153329184
     ref_ΩD = 0.000000000
     ref_ΩOD = 0.563386215
     ref_Ωtotal = 7.716715399
-    @test wout.ΩI ≈ ref_ΩI
-    @test wout.ΩD ≈ ref_ΩD
-    @test wout.ΩOD ≈ ref_ΩOD
-    @test wout.Ωtotal ≈ ref_Ωtotal
+    @test wout["ΩI"] ≈ ref_ΩI
+    @test wout["ΩD"] ≈ ref_ΩD
+    @test wout["ΩOD"] ≈ ref_ΩOD
+    @test wout["Ωtotal"] ≈ ref_Ωtotal
 
     ref_phases = [
         0.996157 + 0.087588im,
@@ -125,8 +125,8 @@ end
         0.998869 + 0.047543im,
     ]
     ref_imre = [4.566451, 4.566481, 4.566335, 2.154381]
-    @test wout.phase_factors ≈ ref_phases
-    @test wout.im_re_ratios ≈ ref_imre
+    @test wout["phase_factors"] ≈ ref_phases
+    @test wout["im_re_ratios"] ≈ ref_imre
 end
 
 # test for non-symmetric lattice, with disentanglement
@@ -183,34 +183,36 @@ end
         0.44062982,
     ]
 
-    @test wout.lattice ≈ ref_lattice
-    @test wout.recip_lattice ≈ ref_recip_lattice
-    @test wout.atom_labels == ref_atom_labels
-    @test wout.atom_positions ≈ ref_atom_positions
-    @test wout.centers ≈ ref_centers
-    @test wout.spreads ≈ ref_spreads
+    @test wout["lattice"] ≈ ref_lattice
+    @test wout["recip_lattice"] ≈ ref_recip_lattice
+    @test wout["atom_labels"] == ref_atom_labels
+    @test wout["atom_positions"] ≈ ref_atom_positions
+    @test wout["centers"] ≈ ref_centers
+    @test wout["spreads"] ≈ ref_spreads
 
     ref_ΩI = 10.219635550
     ref_ΩD = 0.055212384
     ref_ΩOD = 0.968016319
     ref_Ωtotal = 11.242864254
-    @test wout.ΩI ≈ ref_ΩI
-    @test wout.ΩD ≈ ref_ΩD
-    @test wout.ΩOD ≈ ref_ΩOD
-    @test wout.Ωtotal ≈ ref_Ωtotal
+    @test wout["ΩI"] ≈ ref_ΩI
+    @test wout["ΩD"] ≈ ref_ΩD
+    @test wout["ΩOD"] ≈ ref_ΩOD
+    @test wout["Ωtotal"] ≈ ref_Ωtotal
 end
 
 @testitem "read wout iterations" begin
     using LazyArtifacts
     wout = read_wout(artifact"Fe_soc/outputs/Fe.wout"; iterations=true)
 
-    @test wout.iterations.disentangle.iter == 1:7000
-    @test wout.iterations.disentangle.ΩI_previous[[1, 7000]] ≈ [16.06412287, 10.21963555]
-    @test wout.iterations.disentangle.ΩI_current[[1, 7000]] ≈ [15.60506153, 10.21963555]
-    @test wout.iterations.disentangle.ΔΩI[[1, 7000]] ≈ [2.942e-02, 3.224e-10]
+    @test wout["iterations"]["disentangle"]["iter"] == 1:7000
+    @test wout["iterations"]["disentangle"]["ΩI_previous"][[1, 7000]] ≈
+        [16.06412287, 10.21963555]
+    @test wout["iterations"]["disentangle"]["ΩI_current"][[1, 7000]] ≈
+        [15.60506153, 10.21963555]
+    @test wout["iterations"]["disentangle"]["ΔΩI"][[1, 7000]] ≈ [2.942e-02, 3.224e-10]
 
-    @test wout.iterations.wannierize.iter == 0:2083
-    @test wout.iterations.wannierize.centers[[1, 2084]] ≈ [
+    @test wout["iterations"]["wannierize"]["iter"] == 0:2083
+    @test wout["iterations"]["wannierize"]["centers"][[1, 2084]] ≈ [
         [
             [0.032917, -0.046451, -0.535906],
             [0.024248, 0.103848, 0.410673],
@@ -248,7 +250,7 @@ end
             [0.000055, 0.000493, -0.000470],
         ],
     ]
-    @test wout.iterations.wannierize.spreads[[1, 2084]] ≈ [
+    @test wout["iterations"]["wannierize"]["spreads"][[1, 2084]] ≈ [
         [
             6.91546411,
             7.13787642,
@@ -286,12 +288,13 @@ end
             0.44062982,
         ],
     ]
-    @test wout.iterations.wannierize.sum_centers[[1, 2084]] ≈
+    @test wout["iterations"]["wannierize"]["sum_centers"][[1, 2084]] ≈
         [[-0.035896, -0.042867, -0.094975], [-0.009014, -0.000203, 0.006043]]
-    @test wout.iterations.wannierize.sum_spreads[[1, 2084]] ≈ [51.19628337, 11.24286425]
-    @test wout.iterations.wannierize.ΩD[[1, 2084]] ≈ [22.8931526, 0.0552124]
-    @test wout.iterations.wannierize.ΩOD[[1, 2084]] ≈ [18.0834952, 0.9680163]
-    @test wout.iterations.wannierize.Ωtotal[[1, 2084]] ≈ [51.1962834, 11.2428643]
+    @test wout["iterations"]["wannierize"]["sum_spreads"][[1, 2084]] ≈
+        [51.19628337, 11.24286425]
+    @test wout["iterations"]["wannierize"]["ΩD"][[1, 2084]] ≈ [22.8931526, 0.0552124]
+    @test wout["iterations"]["wannierize"]["ΩOD"][[1, 2084]] ≈ [18.0834952, 0.9680163]
+    @test wout["iterations"]["wannierize"]["Ωtotal"][[1, 2084]] ≈ [51.1962834, 11.2428643]
 
     # test that parsing the "Final State" is correct
     ref_centers = [
@@ -331,17 +334,17 @@ end
         0.44062982,
     ]
 
-    @test wout.centers ≈ ref_centers
-    @test wout.spreads ≈ ref_spreads
+    @test wout["centers"] ≈ ref_centers
+    @test wout["spreads"] ≈ ref_spreads
 
     ref_ΩI = 10.219635550
     ref_ΩD = 0.055212384
     ref_ΩOD = 0.968016319
     ref_Ωtotal = 11.242864254
-    @test wout.ΩI ≈ ref_ΩI
-    @test wout.ΩD ≈ ref_ΩD
-    @test wout.ΩOD ≈ ref_ΩOD
-    @test wout.Ωtotal ≈ ref_Ωtotal
+    @test wout["ΩI"] ≈ ref_ΩI
+    @test wout["ΩD"] ≈ ref_ΩD
+    @test wout["ΩOD"] ≈ ref_ΩOD
+    @test wout["Ωtotal"] ≈ ref_Ωtotal
 end
 
 @testitem "read wout fortran stars" begin
@@ -354,7 +357,7 @@ end
         [-99.973841, 1.973841, 0.866253],
         [NaN, 0.866253, 1.973841],
     ]
-    @test wout.centers[1:3] ≈ ref_centers[1:3]
-    @test isnan(wout.centers[end][1])
-    @test wout.centers[end][2:end] ≈ ref_centers[end][2:end]
+    @test wout["centers"][1:3] ≈ ref_centers[1:3]
+    @test isnan(wout["centers"][end][1])
+    @test wout["centers"][end][2:end] ≈ ref_centers[end][2:end]
 end

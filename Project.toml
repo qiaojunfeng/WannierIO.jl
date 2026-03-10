@@ -1,9 +1,10 @@
 name = "WannierIO"
 uuid = "cb1bc77f-5443-4951-af9f-05b616a3e422"
 authors = ["Junfeng Qiao <qiaojunfeng@outlook.com>"]
-version = "0.2.9"
+version = "0.3.0"
 
 [deps]
+CrystalBase = "0ae0509d-b425-412a-aec4-62d47edd1221"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
@@ -15,10 +16,11 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
+CrystalBase = "0.1"
 DelimitedFiles = "1"
 DocStringExtensions = "0.9"
-FortranFiles = "0.6.0"
-OrderedCollections = "1.8.0"
+FortranFiles = "0.6"
+OrderedCollections = "1.8"
 StaticArrays = "1"
 TOML = "1"
 julia = "1.12"

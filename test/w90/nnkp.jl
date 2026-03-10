@@ -7,14 +7,14 @@
 
     test_data = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp.toml")
     # make their keys unordered for comparison
-    @test pairs(nnkp) == pairs(test_data)
+    @test Dict(pairs(nnkp)) == Dict(pairs(test_data))
 end
 
 @testitem "read/write nnkp" begin
     using LazyArtifacts
     nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp")
     tmpfile = tempname(; cleanup=true)
-    write_nnkp(tmpfile; nnkp...)
+    write_nnkp(tmpfile, nnkp)
 
     nnkp2 = read_nnkp(tmpfile)
     @test nnkp == nnkp2
@@ -27,7 +27,7 @@ end
         nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp.toml")
 
         tmpfile = tempname(; cleanup=true)
-        write_nnkp(tmpfile, WannierIO.Wannier90Toml(); nnkp...)
+        write_nnkp(tmpfile, nnkp, WannierIO.Wannier90Toml())
 
         nnkp2 = read_nnkp(tmpfile)
         @test nnkp == nnkp2
@@ -37,10 +37,10 @@ end
 @testitem "read auto_projections" begin
     using LazyArtifacts
     nnkp = read_nnkp(artifact"SnSe2/outputs/SnSe2.nnkp")
-    @test nnkp.auto_projections == 12
+    @test nnkp["auto_projections"] == 12
 
     tmpfile = tempname(; cleanup=true)
     write_nnkp(tmpfile, nnkp, WannierIO.Wannier90Toml())
     nnkp2 = read_nnkp(tmpfile)
-    @test nnkp.auto_projections == nnkp2.auto_projections
+    @test nnkp["auto_projections"] == nnkp2["auto_projections"]
 end

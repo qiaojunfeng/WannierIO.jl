@@ -13,13 +13,6 @@ Modules = [WannierIO]
 Pages   = ["util/fortran.jl"]
 ```
 
-## Lattice
-
-```@autodocs
-Modules = [WannierIO]
-Pages   = ["util/lattice.jl"]
-```
-
 ## Types
 
 ```@autodocs
