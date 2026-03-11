@@ -39,10 +39,9 @@ function read_w90_rdat(io::IO)
 end
 
 function read_w90_rdat(filename::AbstractString)
-    result = open(filename) do io
+    return open(filename) do io
         read_w90_rdat(io)
     end
-    return result
 end
 
 """

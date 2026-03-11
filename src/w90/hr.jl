@@ -35,10 +35,9 @@ function read_w90_hrdat(io::IO)
 end
 
 function read_w90_hrdat(filename::AbstractString)
-    result = open(filename) do io
+    return open(filename) do io
         read_w90_hrdat(io)
     end
-    return result
 end
 
 """

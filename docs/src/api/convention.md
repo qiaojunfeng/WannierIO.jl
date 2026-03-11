@@ -76,15 +76,8 @@ Why do we need several functions for reading the same format? The reasons are:
   file type we want to read.
 - However, asking the user to manually specify the file format is tedious,
   therefore, we provide a high-level user-friendly function (the 1st one), which
-  - automatically detects the file format and calls the corresponding low-level
-    (2nd or 3rd) function
-  - prints some information of key quantities of the file, e.g., number of
-    kpoints, number of Wannier functions, etc., to give user a hint of what
-    have been parsed
-  - hides some irrelevant return values, e.g., the header (the 1st line) of the
-    file, since it has been printed in the stdout
-- The low-level functions parse everything in the file, while the high-level
-  function aims at user ergonomics.
+  automatically detects the file format and calls the corresponding low-level
+  (2nd or 3rd) function
 
 Thus,
 
@@ -92,46 +85,23 @@ Thus,
 
   ```julia-repl
   julia> using WannierIO
-  julia> A = read_amn("si2.amn")
-  ┌ Info: Reading amn file
-  │   filename = "si2.amn"
-  │   header = "Created on  9Sep2022 at 16:41: 5"
-  │   n_kpts = 8
-  │   n_bands = 4
-  └   n_wann = 4
+  julia> amn = read_amn("si2.amn");
+  julia> amn.header
+  "Created on  9Sep2022 at 16:41: 5"
+  julia> amn.A
   8-element Vector{Matrix{ComplexF64}}:
    [...]
   ```
 
 - Use the low-level functions if you
-  - want to get the header of the file (or quantities not returned by high-level function)
-  - do not want stdout to be "polluted"
+  - want to control the file format (text or binary) when reading/writing files
 
   ```julia-repl
   julia> using WannierIO
-  julia> A, header = read_amn("si2.amn", WannierIO.FortranText())
-  julia> typeof(A)
-  Vector{Matrix{ComplexF64}} (alias for Array{Array{Complex{Float64}, 2}, 1})
-  julia> header
+  julia> amn = read_amn("si2.amn", WannierIO.FortranText())
+  julia> amn.header
   "Created on  9Sep2022 at 16:41: 5"
   ```
-
-Note that usually the high-level function directly returns the quantities, e.g.,
-a single `A` to avoid the user unpacking return values; however, often the low-level
-functions return a `NamedTuple` of all the quantities, for the sake of clarity.
-
-```julia-repl
-julia> amn = read_amn("si2.amn", WannierIO.FortranText())
-julia> typeof(amn)
-NamedTuple{(:A, :header), Tuple{Vector{Matrix{ComplexF64}}, SubString{String}}}
-```
-
-Of course, when using low-level functions you can also directly access the
-quantity without unpacking by
-
-```julia-repl
-julia> A = read_amn("si2.amn", WannierIO.FortranText()).A
-```
 
 When writing files, the user can specify whether to write in text or binary by
 a keyword argument `binary` of the high-level function

@@ -441,14 +441,8 @@ function read_chk(filename::AbstractString, ::FortranBinary)
 end
 
 function read_chk(filename::AbstractString)
-    if isbinary(filename)
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
-    chk = read_chk(filename, format)
-
-    return chk
+    format = isbinary(filename) ? FortranBinary() : FortranText()
+    return read_chk(filename, format)
 end
 
 """
@@ -676,11 +670,7 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
 end
 
 function write_chk(filename::AbstractString, chk::Chk; binary=false)
-    if binary
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
+    format = binary ? FortranBinary() : FortranText()
     return write_chk(filename, chk, format)
 end
 

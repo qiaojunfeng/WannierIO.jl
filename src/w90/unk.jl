@@ -37,7 +37,7 @@ function read_unk(io::IO, ::FortranText; n_spin::Integer=1)
         end
     end
 
-    return ik, Ψ
+    return (; ik, Ψ)
 end
 
 function read_unk(filename::AbstractString, ::FortranText)
@@ -64,7 +64,7 @@ function read_unk(io::FortranFile, ::FortranBinary; n_spin::Integer=1)
     end
 
     close(io)
-    return ik, Ψ
+    return (; ik, Ψ)
 end
 
 function read_unk(filename::AbstractString, ::FortranBinary)
@@ -75,14 +75,8 @@ function read_unk(filename::AbstractString, ::FortranBinary)
 end
 
 function read_unk(filename::AbstractString)
-    if isbinary(filename)
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
-    ik, Ψ = read_unk(filename, format)
-
-    return ik, Ψ
+    format = isbinary(filename) ? FortranBinary() : FortranText()
+    return read_unk(filename, format)
 end
 
 """
@@ -157,10 +151,6 @@ function write_unk(
 end
 
 function write_unk(filename::AbstractString, ik, Ψ; binary=false)
-    if binary
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
+    format = binary ? FortranBinary() : FortranText()
     return write_unk(filename, ik, Ψ, format)
 end

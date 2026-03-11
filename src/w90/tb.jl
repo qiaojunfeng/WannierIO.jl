@@ -80,10 +80,9 @@ function read_w90_tbdat(io::IO)
 end
 
 function read_w90_tbdat(filename::AbstractString)
-    result = open(filename) do io
+    return open(filename) do io
         read_w90_tbdat(io)
     end
-    return result
 end
 
 """

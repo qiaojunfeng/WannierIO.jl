@@ -1,6 +1,9 @@
 @testitem "read/write spn" begin
     using LazyArtifacts
-    Sx, Sy, Sz = read_spn(artifact"Fe_soc/test/Fe.spn.fmt")
+    spn = read_spn(artifact"Fe_soc/test/Fe.spn.fmt")
+    Sx = spn.Sx
+    Sy = spn.Sy
+    Sz = spn.Sz
 
     ref_Sx_end = ComplexF64[
         -1.045982416783206e-9+0.0im 1.8309573615290023e-9+1.8135039310434643e-9im -0.9143596596228599+0.39269798727353im 2.2580234889560057e-5+0.00012322780868176796im
@@ -16,7 +19,10 @@
     tmpfile = tempname(; cleanup=true)
     write_spn(tmpfile, Sx, Sy, Sz; binary=false)
 
-    Sx1, Sy1, Sz1 = read_spn(tmpfile)
+    spn1 = read_spn(tmpfile)
+    Sx1 = spn1.Sx
+    Sy1 = spn1.Sy
+    Sz1 = spn1.Sz
     @test Sx ≈ Sx1
     @test Sy ≈ Sy1
     @test Sz ≈ Sz1
@@ -24,15 +30,24 @@ end
 
 @testitem "read/write spn binary" begin
     using LazyArtifacts
-    Sx, Sy, Sz = read_spn(artifact"Fe_soc/test/Fe.spn")
-    Sx1, Sy1, Sz1 = read_spn(artifact"Fe_soc/test/Fe.spn.fmt")
+    spn = read_spn(artifact"Fe_soc/test/Fe.spn")
+    Sx = spn.Sx
+    Sy = spn.Sy
+    Sz = spn.Sz
+    spn1 = read_spn(artifact"Fe_soc/test/Fe.spn.fmt")
+    Sx1 = spn1.Sx
+    Sy1 = spn1.Sy
+    Sz1 = spn1.Sz
     @test Sx ≈ Sx1
     @test Sy ≈ Sy1
     @test Sz ≈ Sz1
 
     tmpfile = tempname(; cleanup=true)
     write_spn(tmpfile, Sx, Sy, Sz; binary=true)
-    Sx2, Sy2, Sz2 = read_spn(tmpfile)
+    spn2 = read_spn(tmpfile)
+    Sx2 = spn2.Sx
+    Sy2 = spn2.Sy
+    Sz2 = spn2.Sz
     @test Sx ≈ Sx2
     @test Sy ≈ Sy2
     @test Sz ≈ Sz2

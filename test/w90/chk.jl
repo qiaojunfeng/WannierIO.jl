@@ -121,7 +121,7 @@ end
     using LazyArtifacts
     chk = read_chk(artifact"Si2/outputs/Si2.chk")
     Udis = get_Udis(chk)
-    Udis_ref = read_amn(artifact"Si2/outputs/Si2.chk_Udis.amn")
+    Udis_ref = read_amn(artifact"Si2/outputs/Si2.chk_Udis.amn").A
     @test Udis ≈ Udis_ref
 end
 
@@ -129,7 +129,7 @@ end
     using LazyArtifacts
     chk = read_chk(artifact"Si2/outputs/Si2.chk")
     U = get_U(chk)
-    U_ref = read_amn(artifact"Si2/outputs/Si2.chk_U.amn")
+    U_ref = read_amn(artifact"Si2/outputs/Si2.chk_U.amn").A
     @test U ≈ U_ref
 end
 
