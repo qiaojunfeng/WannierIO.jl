@@ -1,4 +1,4 @@
-export read_chk, write_chk, get_U, get_Udis
+export read_chk, write_chk, gauge_matrices, gauge_matrices_dis
 
 """
 Struct for storing matrices in `prefix.chk` file.
@@ -679,16 +679,21 @@ end
 
 Extract the combined `U = Udis * Uml` matrices from `Chk`.
 """
-function get_U(chk::Chk)
+function gauge_matrices(chk::Chk)
+    Uml = gauge_matrices_ml(chk)
     if !chk.have_disentangled
-        # Return deepcopy for safety, so that chk.Uml is not modified
-        return deepcopy(chk.Uml)
+        return Uml
     end
 
-    Udis = get_Udis(chk)
-    return map(zip(Udis, chk.Uml)) do (d, m)
+    Udis = gauge_matrices_dis(chk)
+    return map(zip(Udis, Uml)) do (d, m)
         d * m
     end
+end
+
+function gauge_matrices_ml(chk::Chk)
+    # Return deepcopy for safety, so that chk.Uml is not modified
+    return deepcopy(chk.Uml)
 end
 
 """
@@ -696,7 +701,7 @@ end
 
 Extract disentanglement `Udis` matrices from `Chk`.
 """
-function get_Udis(chk::Chk)
+function gauge_matrices_dis(chk::Chk)
     n_kpts = chk.n_kpts
     n_bands = chk.n_bands
     n_wann = chk.n_wann

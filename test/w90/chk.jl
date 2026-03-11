@@ -117,18 +117,18 @@ end
     @test chk ≈ chk2
 end
 
-@testitem "get_Udis" begin
+@testitem "gauge_matrices_dis" begin
     using LazyArtifacts
     chk = read_chk(artifact"Si2/outputs/Si2.chk")
-    Udis = get_Udis(chk)
+    Udis = gauge_matrices_dis(chk)
     Udis_ref = read_amn(artifact"Si2/outputs/Si2.chk_Udis.amn").A
     @test Udis ≈ Udis_ref
 end
 
-@testitem "get_U" begin
+@testitem "gauge_matrices" begin
     using LazyArtifacts
     chk = read_chk(artifact"Si2/outputs/Si2.chk")
-    U = get_U(chk)
+    U = gauge_matrices(chk)
     U_ref = read_amn(artifact"Si2/outputs/Si2.chk_U.amn").A
     @test U ≈ U_ref
 end
