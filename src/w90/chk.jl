@@ -186,66 +186,63 @@ Similar to [`read_amn`](@ref), the 1st version auto detect `chk` file format
 (binary or text) and read it.
 """
 function read_chk(io::IO, ::FortranText)
-    # strip and read line
-    srline() = strip(readline(io))
-
     # Read formatted chk file
-    header = String(srline())
+    header = String(readstrip(io))
 
-    n_bands = parse(Int, srline())
+    n_bands = parse(Int, readstrip(io))
 
-    n_exclude_bands = parse(Int, srline())
+    n_exclude_bands = parse(Int, readstrip(io))
 
     exclude_bands = zeros(Int, n_exclude_bands)
 
     if n_exclude_bands > 0
         for i in 1:n_exclude_bands
-            exclude_bands[i] = parse(Int, srline())
+            exclude_bands[i] = parse(Int, readstrip(io))
         end
     end
 
     # Each column is a lattice vector
     # but W90 writes x components first, then y, z. NOT a1 first, then a2, a3.
-    line = parse.(Float64, split(srline()))
+    line = parse_vector(readstrip(io))
     lattice = Mat3{Float64}(reshape(line, (3, 3))')
 
     # Each column is a lattice vector
-    line = parse.(Float64, split(srline()))
+    line = parse_vector(readstrip(io))
     recip_lattice = Mat3{Float64}(reshape(line, (3, 3))')
 
-    n_kpts = parse(Int, srline())
+    n_kpts = parse(Int, readstrip(io))
 
-    kgrid = Vec3{Int}(parse.(Int, split(srline())))
+    kgrid = Vec3{Int}(parse.(Int, split(readstrip(io))))
 
     kpoints = zeros(Vec3{Float64}, n_kpts)
     for ik in 1:n_kpts
-        kpoints[ik] = Vec3(parse.(Float64, split(srline()))...)
+        kpoints[ik] = parse_vector(readstrip(io))
     end
 
-    n_bvecs = parse(Int, srline())
+    n_bvecs = parse(Int, readstrip(io))
 
-    n_wann = parse(Int, srline())
+    n_wann = parse(Int, readstrip(io))
 
-    checkpoint = String(srline())
+    checkpoint = String(readstrip(io))
 
     # 1 -> True, 0 -> False
-    have_disentangled = Bool(parse(Int, srline()))
+    have_disentangled = Bool(parse(Int, readstrip(io)))
 
     if have_disentangled
         # omega_invariant
-        ΩI = parse(Float64, srline())
+        ΩI = parse(Float64, readstrip(io))
 
         dis_bands = [falses(n_bands) for _ in 1:n_kpts]
         for ik in 1:n_kpts
             for ib in 1:n_bands
                 # 1 -> True, 0 -> False
-                dis_bands[ik][ib] = Bool(parse(Int, srline()))
+                dis_bands[ik][ib] = Bool(parse(Int, readstrip(io)))
             end
         end
 
         n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
-            n_dis[ik] = parse(Int, srline())
+            n_dis[ik] = parse(Int, readstrip(io))
             n_dis[ik] == count(dis_bands[ik]) ||
                 error("Inconsistent number of disentangled bands")
         end
@@ -255,7 +252,7 @@ function read_chk(io::IO, ::FortranText)
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_bands
-                    vals = parse.(Float64, split(srline()))
+                    vals = parse_vector(readstrip(io))
                     Udis[ik][ib, iw] = vals[1] + im * vals[2]
                 end
             end
@@ -273,7 +270,7 @@ function read_chk(io::IO, ::FortranText)
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_wann
-                vals = parse.(Float64, split(srline()))
+                vals = parse_vector(readstrip(io))
                 Uml[ik][ib, iw] = vals[1] + im * vals[2]
             end
         end
@@ -285,7 +282,7 @@ function read_chk(io::IO, ::FortranText)
         for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
-                    vals = parse.(Float64, split(srline()))
+                    vals = parse_vector(readstrip(io))
                     M[ik][inn][ib, iw] = vals[1] + im * vals[2]
                 end
             end
@@ -295,13 +292,13 @@ function read_chk(io::IO, ::FortranText)
     # wannier_centres
     r = zeros(Vec3{Float64}, n_wann)
     for iw in 1:n_wann
-        r[iw] = Vec3(parse.(Float64, split(srline()))...)
+        r[iw] = parse_vector(readstrip(io))
     end
 
     # wannier_spreads
     ω = zeros(Float64, n_wann)
     for iw in 1:n_wann
-        ω[iw] = parse(Float64, srline())
+        ω[iw] = parse(Float64, readstrip(io))
     end
 
     return Chk(
@@ -430,7 +427,7 @@ function read_chk(io::FortranFile, ::FortranBinary)
         Udis,
         [Uml[:, :, ik] for ik in 1:n_kpts],
         [[M[:, :, ib, ik] for ib in 1:n_bvecs] for ik in 1:n_kpts],
-        [Vec3(r[:, iw]) for iw in 1:n_wann],
+        [vec3(r[:, iw]) for iw in 1:n_wann],
         ω,
     )
 end

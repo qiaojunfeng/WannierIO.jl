@@ -1,7 +1,9 @@
-@testitem "_parse_wout_lattice" begin
+@testitem "_wout_parse_lattice" begin
     file = joinpath(@__DIR__, "wout_testfiles", "lattice.txt")
-    lines = readlines(file)
-    lattice = WannierIO._parse_wout_lattice(lines)
+    lattice = open(file) do io
+        readline(io)
+        WannierIO._wout_parse_lattice(io)
+    end
     ref_lattice = [
         0.1 1.1 2.1
         0.2 0.2 0.2
@@ -10,10 +12,12 @@
     @test lattice ≈ ref_lattice
 end
 
-@testitem "_parse_wout_recip_lattice" begin
+@testitem "_wout_parse_recip_lattice" begin
     file = joinpath(@__DIR__, "wout_testfiles", "recip_lattice.txt")
-    lines = readlines(file)
-    recip_lattice = WannierIO._parse_wout_recip_lattice(lines)
+    recip_lattice = open(file) do io
+        readline(io)
+        WannierIO._wout_parse_recip_lattice(io)
+    end
     ref_recip_lattice = [
         0.1 1.1 2.1
         0.2 0.2 0.2
@@ -22,46 +26,51 @@ end
     @test recip_lattice ≈ ref_recip_lattice
 end
 
-@testitem "_parse_wout_atoms" begin
+@testitem "_wout_parse_atoms" begin
     file = joinpath(@__DIR__, "wout_testfiles", "atoms.txt")
-    lines = readlines(file)
-    atom_labels, atom_positions = WannierIO._parse_wout_atoms(lines)
+    atom_labels, atom_positions = open(file) do io
+        readline(io)
+        WannierIO._wout_parse_atoms(io)
+    end
     ref_atom_labels = ["Si", "Si"]
     ref_atom_positions = [[0.00000, 0.00000, 0.00000], [0.25000, 0.25000, 0.25000]]
     @test atom_labels == ref_atom_labels
     @test atom_positions ≈ ref_atom_positions
 end
 
-@testitem "_parse_wout_disentangle" begin
+@testitem "_wout_parse_disentangle" begin
     file = joinpath(@__DIR__, "wout_testfiles", "disentangle.txt")
-    lines = readlines(file)
-    results = WannierIO._parse_wout_disentangle(lines)
+    results = open(file) do io
+        readline(io)
+        WannierIO._wout_parse_disentangle(io)
+    end
     @test results["iter"] == [1, 341, 342]
     @test results["ΩI_previous"] ≈ [25.38943399, 16.22884440, 16.22884440]
     @test results["ΩI_current"] ≈ [21.32896063, 16.22884440, 16.22884440]
     @test results["ΔΩI"] ≈ [1.904e-01, -1.883e-10, -1.799e-10]
 end
 
-@testitem "_parse_wout_wf_center_spread" begin
+@testitem "_wout_parse_wf_center_spread" begin
     file = joinpath(@__DIR__, "wout_testfiles", "wf_center_spread.txt")
-    lines = readlines(file)
-    centers, spreads, sum_centers, sum_spreads = WannierIO._parse_wout_wf_center_spread(
-        lines
-    )
+    omega = open(file) do io
+        WannierIO._wout_parse_wf_center_spread(io)
+    end
     ref_centers = [[-0.000005, 0.000021, 0.000023], [0.000013, -0.000054, 0.000016]]
     ref_spreads = [2.56218734, 3.19493515]
     ref_sum_centers = [5.430528, 5.430529, 5.430534]
     ref_sum_spreads = 24.29446759
-    @test centers ≈ ref_centers
-    @test spreads ≈ ref_spreads
-    @test sum_centers ≈ ref_sum_centers
-    @test sum_spreads ≈ ref_sum_spreads
+    @test omega.centers ≈ ref_centers
+    @test omega.spreads ≈ ref_spreads
+    @test omega.sum_centers ≈ ref_sum_centers
+    @test omega.sum_spreads ≈ ref_sum_spreads
 end
 
-@testitem "_parse_wout_wannierize" begin
+@testitem "_wout_parse_wannierize" begin
     file = joinpath(@__DIR__, "wout_testfiles", "wannierize.txt")
-    lines = readlines(file)
-    results = WannierIO._parse_wout_wannierize(lines)
+    results = open(file) do io
+        readline(io)
+        WannierIO._wout_parse_wannierize(io)
+    end
     @test results["iter"] == [0, 1, 45]
     @test results["centers"] ≈ [
         [[-0.000005, 0.000021, 0.000023]],

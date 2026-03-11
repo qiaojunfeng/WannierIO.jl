@@ -177,34 +177,15 @@ function read_nnkp(io::IO, ::Wannier90Text)
 end
 
 function read_nnkp(io::IO, ::Wannier90Toml)
-    # I can just reuse the read_win function, without fix win inputs
-    nnkp = read_win(io, Wannier90Toml(); standardize=false)
-
-    # Need to set value to Any, otherwise value type can be too narrow and then
-    # I cannot assign Mat3 to it.
-    nnkp = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(nnkp))
+    nnkp = read_toml(io)
 
     # Some following cleanups
-    # Convert to Mat3
-    if haskey(nnkp, "lattice") || haskey(nnkp, "recip_lattice")
-        for k in ("lattice", "recip_lattice")
-            if haskey(nnkp, k)
-                nnkp[k] = mat3(nnkp[k])
-            end
-        end
-    end
-
     # Convert to HydrogenOrbital
     if haskey(nnkp, "projections")
         nnkp["projections"] = map(nnkp["projections"]) do proj
             args = NamedTuple((Symbol(k), v) for (k, v) in proj)
             HydrogenOrbital(; args...)
         end
-    end
-
-    # Convert to Vec3
-    if haskey(nnkp, "kpb_G")
-        nnkp["kpb_G"] = [[Vec3{Int}(G) for G in Gk] for Gk in nnkp["kpb_G"]]
     end
 
     return nnkp

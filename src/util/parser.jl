@@ -1,3 +1,51 @@
+"""
+    $(SIGNATURES)
+
+Strip comments (`!` or `#`) from a line.
+
+# Arguments
+- `line::AbstractString`: input line
+
+# Keyword Arguments
+- `spaces::Bool=false`: if true, preserve leading and trailing whitespace.
+"""
+function strip_comment(line::AbstractString; spaces::Bool=false)
+    i = findfirst(r"!|#", line)
+    res = isnothing(i) ? line : line[1:(i.start - 1)]
+    return spaces ? res : strip(res)
+end
+
+@inline readstrip(io::IO) = strip(readline(io))
+
+"""
+    $(SIGNATURES)
+
+Read a line from the input stream, ignoring empty lines (containing only whitespace).
+
+Returns the first non-empty line found, or empty string if EOF is reached.
+
+# Arguments
+- `io::IO`: input stream
+
+# Keyword Arguments
+- `comment::Bool=false`: if true, keep comments (starting with `!` or `#`)
+- `lower::Bool=false`: if true, convert the returned string to lowercase
+
+# Returns
+- A string containing the first non-empty line, with leading and trailing whitespace removed, or empty string if EOF is reached.
+"""
+function nextline(io::IO; comment::Bool=false, lower::Bool=false)
+    while !eof(io)
+        line = readstrip(io)
+        if !comment
+            line = strip_comment(line)
+        end
+        if !isempty(line)
+            return lower ? lowercase(line) : line
+        end
+    end
+    return ""
+end
 
 """
     $(SIGNATURES)
@@ -80,6 +128,13 @@ function parse_vector(io::IO, T::Type, n_elements::Integer)
     end
 
     return vec
+end
+
+@inline function parse_vector(parts::AbstractVector{<:AbstractString}, T::Type=Float64)
+    map(x -> parse(T, x), parts)
+end
+@inline function parse_vector(line::AbstractString, T::Type=Float64)
+    parse_vector(split(line), T)
 end
 
 """

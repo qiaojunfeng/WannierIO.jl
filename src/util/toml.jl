@@ -1,3 +1,21 @@
+function istoml(io::IO)
+    content = read(io, String)
+    try
+        TOML.parse(content)
+    catch err
+        err isa TOML.ParserError || rethrow()
+        return false
+    else
+        return true
+    end
+end
+
+function istoml(filename::AbstractString)
+    return open(filename) do io
+        istoml(io)
+    end
+end
+
 """
     $(SIGNATURES)
 
@@ -43,20 +61,56 @@ function write_toml(io, params::AbstractDict)
     return TOML.print(to_toml, io, params)
 end
 
-function istoml(io::IO)
-    content = read(io, String)
-    try
-        TOML.parse(content)
-    catch err
-        err isa TOML.ParserError || rethrow()
-        return false
+"""
+I store atoms_frac and kpoint_path as Vector of StringVec3.
+However, TOML.print does not accept Pair (specifically, StringVec3);
+instead, I convert StringVec3 to Dict in write_win with toml format.
+On reading I convert it back.
+"""
+function from_toml(d::AbstractDict)
+    # StringVec3 are converted to Dict of length 1 when writing
+    if length(d) == 1
+        k, v = only(d)
+        if isa(k, AbstractString) && isa(v, AbstractVector{<:Real})
+            return stringvec3(k, v)
+        end
+    end
+
+    # Need to do the conversion recursively
+    for (k, v) in pairs(d)
+        d[k] = from_toml(v)
+    end
+    return d
+end
+
+function from_toml(v::AbstractVector{<:Real})
+    if length(v) == 3
+        return vec3(v)
     else
-        return true
+        return v
     end
 end
 
-function istoml(filename::AbstractString)
-    return open(filename) do io
-        istoml(io)
+function from_toml(v::AbstractVector)
+    # For a 3-vector of 3-vector, TOML returned type is Vector{Any}.
+    # We want to convert it to Mat3.
+    if length(v) == 3
+        if all(x -> isa(x, AbstractVector{<:Real}) && length(x) == 3, v)
+            return mat3(v...)
+        end
     end
+    return map(from_toml, v)
+end
+
+"""Fallback to doing nothing."""
+from_toml(x) = x
+
+function read_toml(io::IO)
+    d = TOML.parse(read(io, String))
+    d = from_toml(d)
+
+    # TOML is unordered, we just return Dict.
+    # Need to set value to Any, otherwise value type can be too narrow and then
+    # I cannot assign Mat3 to it.
+    return d::Dict{String,Any}
 end

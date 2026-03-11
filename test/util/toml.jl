@@ -14,3 +14,11 @@
     lines = String(take!(io))
     @test lines == ref
 end
+
+@testitem "from_toml: Mat3" begin
+    # TOML often parse the results as Any
+    d = Vector{Any}([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    res = WannierIO.from_toml(d)
+    ref = WannierIO.mat3(Vector{Vector{Float64}}(d))
+    @test res == ref
+end

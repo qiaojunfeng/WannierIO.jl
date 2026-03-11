@@ -18,25 +18,22 @@ Read wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
     the original Bloch states, see the code and comments in [`gauge_matrices_dis`](@ref).
 """
 function read_u_mat(io::IO)
-    # strip and read line
-    srline() = strip(readline(io))
-
-    header = String(srline())
+    header = String(readstrip(io))
     # for u_dis.mat, nwann <= nbands
     # for u.mat, nbands == nwann
-    nkpts, nwann, nbands = parse.(Int, split(srline()))
+    nkpts, nwann, nbands = parse_vector(readstrip(io), Int)
 
     kpoints = zeros(Vec3{Float64}, nkpts)
     U = [zeros(ComplexF64, nbands, nwann) for _ in 1:nkpts]
 
     for ik in 1:nkpts
         # empty line
-        srline()
-        kpoints[ik] = Vec3(parse.(Float64, split(srline()))...)
+        readstrip(io)
+        kpoints[ik] = vec3(parse_vector(readstrip(io)))
 
         for iw in 1:nwann
             for ib in 1:nbands
-                vals = parse.(Float64, split(srline()))
+                vals = parse_vector(readstrip(io))
                 U[ik][ib, iw] = vals[1] + im * vals[2]
             end
         end
@@ -111,7 +108,6 @@ function write_u_mat(
     nkpts = length(U)
     nkpts > 0 || throw(ArgumentError("U is empty"))
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
-    nbands, nwann = size(U[1])
 
     open(filename, "w") do io
         write_u_mat(io, U, kpoints; header)
