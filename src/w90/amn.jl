@@ -24,59 +24,57 @@ transparent to the user.
 """
 function read_amn end
 
-function read_amn(filename::AbstractString, ::FortranText)
-    res = open("$filename") do io
-        header = strip(readline(io))
+function read_amn(io::IO, ::FortranText)
+    header = strip(readline(io))
 
+    line = split(readline(io))
+    n_bands, n_kpts, n_wann = parse.(Int64, line[1:3])
+
+    A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+
+    while !eof(io)
         line = split(readline(io))
-        n_bands, n_kpts, n_wann = parse.(Int64, line[1:3])
-
-        A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
-
-        while !eof(io)
-            line = split(readline(io))
-            m, n, k = parse.(Int64, line[1:3])
-            a = parse(Float64, line[4]) + im * parse(Float64, line[5])
-            A[k][m, n] = a
-        end
-
-        return (; A, header)
+        m, n, k = parse.(Int64, line[1:3])
+        a = parse(Float64, line[4]) + im * parse(Float64, line[5])
+        A[k][m, n] = a
     end
 
-    return res
+    return (; A, header)
 end
 
-function read_amn(filename::AbstractString, ::FortranBinaryStream)
+function read_amn(io::IO, ::FortranBinaryStream)
     # I use stream io to write amn, so I should use plain julia `open`
     # io = FortranFile("$filename")
-    res = open("$filename") do io
-        header_len = 60
-        header = read(io, FString{header_len})
-        # From FString to String
-        header = strip(String(header))
+    header_len = 60
+    header = read(io, FString{header_len})
+    # From FString to String
+    header = strip(String(header))
 
-        # gfortran default integer size = 4
-        # https://gcc.gnu.org/onlinedocs/gfortran/KIND-Type-Parameters.html
-        Tint = Int32
-        n_bands = read(io, Tint)
-        n_kpts = read(io, Tint)
-        n_wann = read(io, Tint)
+    # gfortran default integer size = 4
+    # https://gcc.gnu.org/onlinedocs/gfortran/KIND-Type-Parameters.html
+    Tint = Int32
+    n_bands = read(io, Tint)
+    n_kpts = read(io, Tint)
+    n_wann = read(io, Tint)
 
-        A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+    A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
 
-        while !eof(io)
-            m = read(io, Tint)
-            n = read(io, Tint)
-            k = read(io, Tint)
-            r = read(io, Float64)
-            i = read(io, Float64)
-            A[k][m, n] = r + im * i
-        end
-
-        return (; A, header)
+    while !eof(io)
+        m = read(io, Tint)
+        n = read(io, Tint)
+        k = read(io, Tint)
+        r = read(io, Float64)
+        i = read(io, Float64)
+        A[k][m, n] = r + im * i
     end
 
-    return res
+    return (; A, header)
+end
+
+function read_amn(filename::AbstractString, format::FileFormat)
+    return open("$filename") do io
+        read_amn(io, format)
+    end
 end
 
 function read_amn(filename::AbstractString)
@@ -121,26 +119,20 @@ the `binary` kwargs.
 """
 function write_amn end
 
-function write_amn(
-    filename::AbstractString, A::AbstractVector, ::FortranText; header=default_header()
-)
+function write_amn(io::IO, A::AbstractVector, ::FortranText; header=default_header())
     n_kpts = length(A)
     @assert n_kpts > 0 "A is empty"
     n_bands, n_wann = size(A[1])
 
-    open(filename, "w") do io
-        write(io, header, "\n")
+    write(io, header, "\n")
 
-        @printf(io, "%3d %4d %4d\n", n_bands, n_kpts, n_wann)
+    @printf(io, "%3d %4d %4d\n", n_bands, n_kpts, n_wann)
 
-        for ik in 1:n_kpts
-            for iw in 1:n_wann
-                for ib in 1:n_bands
-                    a = A[ik][ib, iw]
-                    @printf(
-                        io, "%5d %4d %4d  %16.12f  %16.12f\n", ib, iw, ik, real(a), imag(a)
-                    )
-                end
+    for ik in 1:n_kpts
+        for iw in 1:n_wann
+            for ib in 1:n_bands
+                a = A[ik][ib, iw]
+                @printf(io, "%5d %4d %4d  %16.12f  %16.12f\n", ib, iw, ik, real(a), imag(a))
             end
         end
     end
@@ -149,40 +141,44 @@ function write_amn(
 end
 
 function write_amn(
-    filename::AbstractString,
-    A::AbstractVector,
-    ::FortranBinaryStream;
-    header=default_header(),
+    filename::AbstractString, A::AbstractVector, format::FileFormat; header=default_header()
+)
+    open(filename, "w") do io
+        write_amn(io, A, format; header)
+    end
+    return nothing
+end
+
+function write_amn(
+    io::IO, A::AbstractVector, ::FortranBinaryStream; header=default_header()
 )
     n_kpts = length(A)
     @assert n_kpts > 0 "A is empty"
     n_bands, n_wann = size(A[1])
 
     # I write in Fortran stream io format.
-    open(filename, "w") do io
-        # I need to convert to String instead of SubString, for FString
-        header = String(header)
-        header_len = 60
-        header = FString(header_len, header)
-        write(io, header)
+    # I need to convert to String instead of SubString, for FString
+    header = String(header)
+    header_len = 60
+    header = FString(header_len, header)
+    write(io, header)
 
-        # gfortran default integer is 4 bytes
-        Tint = Int32
+    # gfortran default integer is 4 bytes
+    Tint = Int32
 
-        write(io, Tint(n_bands))
-        write(io, Tint(n_kpts))
-        write(io, Tint(n_wann))
+    write(io, Tint(n_bands))
+    write(io, Tint(n_kpts))
+    write(io, Tint(n_wann))
 
-        for ik in 1:n_kpts
-            for iw in 1:n_wann
-                for ib in 1:n_bands
-                    write(io, Tint(ib))
-                    write(io, Tint(iw))
-                    write(io, Tint(ik))
-                    a = A[ik][ib, iw]
-                    write(io, Float64(real(a)))
-                    write(io, Float64(imag(a)))
-                end
+    for ik in 1:n_kpts
+        for iw in 1:n_wann
+            for ib in 1:n_bands
+                write(io, Tint(ib))
+                write(io, Tint(iw))
+                write(io, Tint(ik))
+                a = A[ik][ib, iw]
+                write(io, Float64(real(a)))
+                write(io, Float64(imag(a)))
             end
         end
     end

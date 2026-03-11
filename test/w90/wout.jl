@@ -36,10 +36,10 @@ end
     file = joinpath(@__DIR__, "wout_testfiles", "disentangle.txt")
     lines = readlines(file)
     results = WannierIO._parse_wout_disentangle(lines)
-    @test results.iter == [1, 341, 342]
-    @test results.ΩI_previous ≈ [25.38943399, 16.22884440, 16.22884440]
-    @test results.ΩI_current ≈ [21.32896063, 16.22884440, 16.22884440]
-    @test results.ΔΩI ≈ [1.904e-01, -1.883e-10, -1.799e-10]
+    @test results["iter"] == [1, 341, 342]
+    @test results["ΩI_previous"] ≈ [25.38943399, 16.22884440, 16.22884440]
+    @test results["ΩI_current"] ≈ [21.32896063, 16.22884440, 16.22884440]
+    @test results["ΔΩI"] ≈ [1.904e-01, -1.883e-10, -1.799e-10]
 end
 
 @testitem "_parse_wout_wf_center_spread" begin
@@ -62,22 +62,22 @@ end
     file = joinpath(@__DIR__, "wout_testfiles", "wannierize.txt")
     lines = readlines(file)
     results = WannierIO._parse_wout_wannierize(lines)
-    @test results.iter == [0, 1, 45]
-    @test results.centers ≈ [
+    @test results["iter"] == [0, 1, 45]
+    @test results["centers"] ≈ [
         [[-0.000005, 0.000021, 0.000023]],
         [[-0.000005, 0.000020, 0.000022]],
         [[0.000001, 0.000006, 0.000006]],
     ]
-    @test results.spreads ≈ [[2.56218734], [2.46316318], [1.95373328]]
-    @test results.sum_centers ≈ [
+    @test results["spreads"] ≈ [[2.56218734], [2.46316318], [1.95373328]]
+    @test results["sum_centers"] ≈ [
         [5.430528, 5.430529, 5.430534],
         [5.430528, 5.430529, 5.430534],
         [5.430528, 5.430529, 5.430534],
     ]
-    @test results.sum_spreads ≈ [24.29446759, 24.07813875, 23.58343588]
-    @test results.ΩD ≈ [0.2135529, 0.2218113, 0.2612087]
-    @test results.ΩOD ≈ [7.8520707, 7.6274835, 7.0933833]
-    @test results.Ωtotal ≈ [24.2944680, 24.0781392, 23.5834363]
+    @test results["sum_spreads"] ≈ [24.29446759, 24.07813875, 23.58343588]
+    @test results["ΩD"] ≈ [0.2135529, 0.2218113, 0.2612087]
+    @test results["ΩOD"] ≈ [7.8520707, 7.6274835, 7.0933833]
+    @test results["Ωtotal"] ≈ [24.2944680, 24.0781392, 23.5834363]
 end
 
 @testitem "read wout" begin

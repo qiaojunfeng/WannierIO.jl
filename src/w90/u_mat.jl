@@ -17,35 +17,42 @@ Read wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
     according to the disnentanglement window, therefore it can be different from
     the original Bloch states, see the code and comments in [`get_Udis`](@ref).
 """
-function read_u_mat(filename::AbstractString)
-    return open(filename) do io
-        # strip and read line
-        srline() = strip(readline(io))
+function read_u_mat(io::IO)
+    # strip and read line
+    srline() = strip(readline(io))
 
-        header = String(srline())
-        # for u_dis.mat, nwann <= nbands
-        # for u.mat, nbands == nwann
-        nkpts, nwann, nbands = parse.(Int, split(srline()))
-        @info "Reading u_mat file" filename header nkpts nbands nwann
+    header = String(srline())
+    # for u_dis.mat, nwann <= nbands
+    # for u.mat, nbands == nwann
+    nkpts, nwann, nbands = parse.(Int, split(srline()))
 
-        kpoints = zeros(Vec3{Float64}, nkpts)
-        U = [zeros(ComplexF64, nbands, nwann) for _ in 1:nkpts]
+    kpoints = zeros(Vec3{Float64}, nkpts)
+    U = [zeros(ComplexF64, nbands, nwann) for _ in 1:nkpts]
 
-        for ik in 1:nkpts
-            # empty line
-            srline()
-            kpoints[ik] = Vec3(parse.(Float64, split(srline()))...)
+    for ik in 1:nkpts
+        # empty line
+        srline()
+        kpoints[ik] = Vec3(parse.(Float64, split(srline()))...)
 
-            for iw in 1:nwann
-                for ib in 1:nbands
-                    vals = parse.(Float64, split(srline()))
-                    U[ik][ib, iw] = vals[1] + im * vals[2]
-                end
+        for iw in 1:nwann
+            for ib in 1:nbands
+                vals = parse.(Float64, split(srline()))
+                U[ik][ib, iw] = vals[1] + im * vals[2]
             end
         end
-
-        return (; U, kpoints, header)
     end
+
+    return (; U, kpoints, header)
+end
+
+function read_u_mat(filename::AbstractString)
+    result = open(filename) do io
+        read_u_mat(io)
+    end
+    nkpts = length(result.U)
+    nbands, nwann = size(result.U[1])
+    @info "Reading u_mat file" filename result.header nkpts nbands nwann
+    return result
 end
 
 """
@@ -70,6 +77,36 @@ Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
     consider the order of disentanglement window.
 """
 function write_u_mat(
+    io::IO,
+    U::AbstractVector,
+    kpoints::AbstractVector;
+    header::AbstractString=default_header(),
+)
+    nkpts = length(U)
+    @assert nkpts > 0 "U is empty"
+    @assert nkpts == length(kpoints) "inconsistent number of kpoints"
+    nbands, nwann = size(U[1])
+
+    write(io, header, "\n")
+    @printf(io, "%d %d %d\n", nkpts, nwann, nbands)
+
+    for ik in 1:nkpts
+        # empty line
+        write(io, "\n")
+        @printf(io, "  %15.10f  %15.10f  %15.10f\n", kpoints[ik]...)
+
+        for iw in 1:nwann
+            for ib in 1:nbands
+                u = U[ik][ib, iw]
+                @printf(io, "  %15.10f  %15.10f\n", real(u), imag(u))
+            end
+        end
+    end
+
+    return nothing
+end
+
+function write_u_mat(
     filename::AbstractString,
     U::AbstractVector,
     kpoints::AbstractVector;
@@ -82,21 +119,7 @@ function write_u_mat(
 
     @info "Writing u_mat file" filename header nkpts nbands nwann
 
-    return open(filename, "w") do io
-        write(io, header, "\n")
-        @printf(io, "%d %d %d\n", nkpts, nwann, nbands)
-
-        for ik in 1:nkpts
-            # empty line
-            write(io, "\n")
-            @printf(io, "  %15.10f  %15.10f  %15.10f\n", kpoints[ik]...)
-
-            for iw in 1:nwann
-                for ib in 1:nbands
-                    u = U[ik][ib, iw]
-                    @printf(io, "  %15.10f  %15.10f\n", real(u), imag(u))
-                end
-            end
-        end
+    open(filename, "w") do io
+        write_u_mat(io, U, kpoints; header)
     end
 end

@@ -48,10 +48,8 @@ The 1st version is a convenience wrapper function for the 2nd and 3rd versions.
 """
 function read_eig end
 
-function read_eig(filename::AbstractString, ::FortranText)
-    lines = open(filename) do io
-        readlines(io)
-    end
+function read_eig(io::IO, ::FortranText)
+    lines = readlines(io)
 
     n_lines = length(lines)
     idx_b = zeros(Int, n_lines)
@@ -70,7 +68,13 @@ function read_eig(filename::AbstractString, ::FortranText)
     return eigenvalues
 end
 
-function read_eig(filename::AbstractString, ::FortranBinaryStream)
+function read_eig(filename::AbstractString, format::FileFormat)
+    return open(filename) do io
+        read_eig(io, format)
+    end
+end
+
+function read_eig(io::IO, ::FortranBinaryStream)
     idx_b = Vector{Int}()
     idx_k = Vector{Int}()
     eig = Vector{Float64}()
@@ -78,12 +82,10 @@ function read_eig(filename::AbstractString, ::FortranBinaryStream)
     # gfortran integer is 4 bytes
     Tint = Int32
 
-    open(filename) do io
-        while !eof(io)
-            push!(idx_b, read(io, Tint))
-            push!(idx_k, read(io, Tint))
-            push!(eig, read(io, Float64))
-        end
+    while !eof(io)
+        push!(idx_b, read(io, Tint))
+        push!(idx_k, read(io, Tint))
+        push!(eig, read(io, Float64))
     end
 
     eigenvalues = _reshape_eig(idx_b, idx_k, eig)
@@ -122,23 +124,27 @@ Write `eig` file.
 """
 function write_eig end
 
-function write_eig(filename::AbstractString, eigenvalues::AbstractVector, ::FortranText)
+function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranText)
     n_kpts = length(eigenvalues)
     @assert n_kpts > 0 "Empty eigenvalues"
     n_bands = length(eigenvalues[1])
 
-    open(filename, "w") do io
-        for ik in 1:n_kpts
-            for ib in 1:n_bands
-                @printf(io, "%5d%5d%18.12f\n", ib, ik, eigenvalues[ik][ib])
-            end
+    for ik in 1:n_kpts
+        for ib in 1:n_bands
+            @printf(io, "%5d%5d%18.12f\n", ib, ik, eigenvalues[ik][ib])
         end
     end
 end
 
 function write_eig(
-    filename::AbstractString, eigenvalues::AbstractVector, ::FortranBinaryStream
+    filename::AbstractString, eigenvalues::AbstractVector, format::FileFormat
 )
+    open(filename, "w") do io
+        write_eig(io, eigenvalues, format)
+    end
+end
+
+function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
     n_kpts = length(eigenvalues)
     @assert n_kpts > 0 "Empty eigenvalues"
     n_bands = length(eigenvalues[1])
@@ -146,13 +152,11 @@ function write_eig(
     # gfortran integer is 4 bytes
     Tint = Int32
     # I write in Fortran stream IO, so just plain julia `open`
-    open(filename, "w") do io
-        for ik in 1:n_kpts
-            for ib in 1:n_bands
-                write(io, Tint(ib))
-                write(io, Tint(ik))
-                write(io, Float64(eigenvalues[ik][ib]))
-            end
+    for ik in 1:n_kpts
+        for ib in 1:n_bands
+            write(io, Tint(ib))
+            write(io, Tint(ik))
+            write(io, Float64(eigenvalues[ik][ib]))
         end
     end
 end

@@ -17,9 +17,7 @@ Read `bxsf` file.
 - `Z`: `nz`, fractional coordinate of grid points along the third spanning vector
 - `E`: `n_bands * nx * ny * nz`, eigenvalues at each grid point
 """
-function read_bxsf(filename::AbstractString)
-    io = open(filename)
-
+function read_bxsf(io::IO)
     fermi_energy = nothing
     origin = nothing
     span_vectors = nothing
@@ -91,6 +89,12 @@ function read_bxsf(filename::AbstractString)
     return (; fermi_energy, origin, span_vectors, X, Y, Z, E)
 end
 
+function read_bxsf(filename::AbstractString)
+    return open(filename) do io
+        read_bxsf(io)
+    end
+end
+
 """
     $(SIGNATURES)
 
@@ -103,7 +107,7 @@ Write `bxsf` file.
 - `E`: `n_bands * nx * ny * nz`, eigenvalues at each grid point
 """
 function write_bxsf(
-    filename::AbstractString,
+    io::IO,
     fermi_energy::T,
     origin::AbstractVector{T},
     span_vectors::AbstractMatrix{T},
@@ -111,9 +115,6 @@ function write_bxsf(
 ) where {T<:Real}
     size(origin) == (3,) || error("origin should be a 3-element vector")
     size(span_vectors) == (3, 3) || error("span_vectors should be a 3×3 matrix")
-
-    @info "Writing bxsf file: " filename
-    io = open(filename, "w")
 
     # header
     @printf(io, "BEGIN_INFO\n")
@@ -153,6 +154,19 @@ function write_bxsf(
     @printf(io, "END_BANDGRID_3D\n")
     @printf(io, "END_BLOCK_BANDGRID_3D\n")
 
-    close(io)
+    return nothing
+end
+
+function write_bxsf(
+    filename::AbstractString,
+    fermi_energy::T,
+    origin::AbstractVector{T},
+    span_vectors::AbstractMatrix{T},
+    E::AbstractArray{T,4},
+) where {T<:Real}
+    @info "Writing bxsf file: " filename
+    open(filename, "w") do io
+        write_bxsf(io, fermi_energy, origin, span_vectors, E)
+    end
     return nothing
 end

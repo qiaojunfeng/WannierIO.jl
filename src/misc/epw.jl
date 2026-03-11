@@ -17,27 +17,30 @@ of kpoints/bvectors/bands, so they need to be provided as keyword arguments.
 # Return
 - `M`: length-`n_kpts` vector of length-`n_bvecs` vector of `n_bands * n_bands` matrices
 """
+function read_epw_mmn(io::IO; n_kpts::Integer, n_bvecs::Integer, n_bands::Integer)
+    M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+
+    for ik in 1:n_kpts
+        for ib in 1:n_bvecs
+            for n in 1:n_bands
+                for m in 1:n_bands
+                    line = readline(io)
+                    line = replace(strip(line), "(" => "", ")" => "", "," => " ")
+                    line = split(line)
+                    M[ik][ib][m, n] = parse(Float64, line[1]) + parse(Float64, line[2]) * im
+                end
+            end
+        end
+    end
+    @assert eof(io) "Did not reach the end of the file, maybe wrong n_kpts, n_bvecs, or n_bands?"
+    return M
+end
+
 function read_epw_mmn(
     filename::AbstractString; n_kpts::Integer, n_bvecs::Integer, n_bands::Integer
 )
     return open(filename) do io
-        M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
-
-        for ik in 1:n_kpts
-            for ib in 1:n_bvecs
-                for n in 1:n_bands
-                    for m in 1:n_bands
-                        line = readline(io)
-                        line = replace(strip(line), "(" => "", ")" => "", "," => " ")
-                        line = split(line)
-                        M[ik][ib][m, n] =
-                            parse(Float64, line[1]) + parse(Float64, line[2]) * im
-                    end
-                end
-            end
-        end
-        @assert eof(io) "Did not reach the end of the file, maybe wrong n_kpts, n_bvecs, or n_bands?"
-        return M
+        read_epw_mmn(io; n_kpts, n_bvecs, n_bands)
     end
 end
 
@@ -103,57 +106,53 @@ Read the EPW `.ukk` file.
 # Return
 - `ukk`: the [`Ukk`](@ref) struct
 """
-function read_epw_ukk(filename::AbstractString)
+function read_epw_ukk(io::IO)
+    lines = readlines(io)
+
     # Need to 1st read the last part to get the number of WFs
-    centers = open(filename) do io
-        centers = Vec3{Float64}[]
-        # note Julia 1.8 is required for reverse(eachline(io))
-        for line in Iterators.reverse(eachline(io))
-            r = split(strip(line))
-            if length(r) == 3
-                push!(centers, Vec3(parse.(Float64, r)))
-            else
-                break
-            end
+    centers = Vec3{Float64}[]
+    for line in Iterators.reverse(lines)
+        r = split(strip(line))
+        if length(r) == 3
+            push!(centers, Vec3(parse.(Float64, r)))
+        else
+            break
         end
-        return reverse(centers)
     end
+    centers = reverse(centers)
     n_wann = length(centers)
     @assert n_wann > 0 "n_wann = $n_wann ≤ 0"
 
-    ibndstart, ibndend, Uflat, flags = open(filename) do io
-        ibndstart, ibndend = parse.(Int, split(readline(io)))
+    io2 = IOBuffer(join(lines, "\n") * "\n")
+    ibndstart, ibndend = parse.(Int, split(readline(io2)))
 
-        # the unitary matrices
-        # now we don't know n_kpts and n_bands yet, so we can only read the
-        # complex numbers into a flat vector
-        Uflat = ComplexF64[]
-        # both the frozen_bands and excluded_bands, still flat vector
-        flags = Bool[]
+    # the unitary matrices
+    # now we don't know n_kpts and n_bands yet, so we can only read the
+    # complex numbers into a flat vector
+    Uflat = ComplexF64[]
+    # both the frozen_bands and excluded_bands, still flat vector
+    flags = Bool[]
 
-        for line in eachline(io)
-            line = replace(strip(line), "(" => "", ")" => "", "," => " ")
-            line = split(line)
-            if length(line) == 2
-                push!(Uflat, parse(Float64, line[1]) + parse(Float64, line[2]) * im)
-            elseif length(line) == 1
-                push!(flags, parse_bool(line[1]))
-                break
-            else
-                error("Wrong number of elements in line: $line")
-            end
+    for line in eachline(io2)
+        line = replace(strip(line), "(" => "", ")" => "", "," => " ")
+        line = split(line)
+        if length(line) == 2
+            push!(Uflat, parse(Float64, line[1]) + parse(Float64, line[2]) * im)
+        elseif length(line) == 1
+            push!(flags, parse_bool(line[1]))
+            break
+        else
+            error("Wrong number of elements in line: $line")
         end
+    end
 
-        for line in eachline(io)
-            line = strip(line)
-            if length(split(line)) == 1
-                push!(flags, parse_bool(line))
-            else
-                break
-            end
+    for line in eachline(io2)
+        line = strip(line)
+        if length(split(line)) == 1
+            push!(flags, parse_bool(line))
+        else
+            break
         end
-
-        return ibndstart, ibndend, Uflat, flags
     end
 
     n_kpts_bands_wann = length(Uflat)
@@ -164,7 +163,7 @@ function read_epw_ukk(filename::AbstractString)
     n_kpts = n_kpts_bands ÷ n_bands
     @assert n_kpts > 0 "n_kpts = $n_kpts ≤ 0"
     @assert n_bands > 0 "n_bands = $n_bands ≤ 0"
-    @info "Reading ukk file" filename n_kpts n_bands n_wann
+    @info "Reading ukk file" n_kpts n_bands n_wann
 
     U = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
     counter = 1
@@ -198,6 +197,12 @@ function read_epw_ukk(filename::AbstractString)
     )
 end
 
+function read_epw_ukk(filename::AbstractString)
+    return open(filename) do io
+        read_epw_ukk(io)
+    end
+end
+
 """
     $(SIGNATURES)
 
@@ -211,44 +216,49 @@ Write the EPW `.ukk` file.
 
 See [`Ukk(chk::Chk, alat::Real)`](@ref) for how to construct a `Ukk` from a [`Chk`](@ref).
 """
-function write_epw_ukk(filename::AbstractString, ukk::Ukk)
-    open(filename, "w") do io
-        @printf(io, "%d %d\n", ukk.ibndstart, ukk.ibndend)
+function write_epw_ukk(io::IO, ukk::Ukk)
+    @printf(io, "%d %d\n", ukk.ibndstart, ukk.ibndend)
 
-        # the unitary matrices
-        for ik in 1:(ukk.n_kpts)
-            for ib in 1:(ukk.n_bands)
-                for iw in 1:(ukk.n_wann)
-                    u = ukk.U[ik][ib, iw]
-                    @printf(io, "(%25.18E,%25.18E)\n", real(u), imag(u))
-                end
+    # the unitary matrices
+    for ik in 1:(ukk.n_kpts)
+        for ib in 1:(ukk.n_bands)
+            for iw in 1:(ukk.n_wann)
+                u = ukk.U[ik][ib, iw]
+                @printf(io, "(%25.18E,%25.18E)\n", real(u), imag(u))
             end
         end
+    end
 
-        # needs also lwindow when disentanglement is used
-        for ik in 1:(ukk.n_kpts)
-            for ib in 1:(ukk.n_bands)
-                if ukk.frozen_bands[ik][ib]
-                    @printf(io, "T\n")
-                else
-                    @printf(io, "F\n")
-                end
-            end
-        end
-
-        for ex in ukk.excluded_bands
-            if ex
+    # needs also lwindow when disentanglement is used
+    for ik in 1:(ukk.n_kpts)
+        for ib in 1:(ukk.n_bands)
+            if ukk.frozen_bands[ik][ib]
                 @printf(io, "T\n")
             else
                 @printf(io, "F\n")
             end
         end
+    end
 
-        # now write the Wannier centers to files
-        for iw in 1:(ukk.n_wann)
-            # meed more precision other WS are not determined properly.
-            @printf(io, "%22.12E  %22.12E  %22.12E\n", ukk.centers[iw]...)
+    for ex in ukk.excluded_bands
+        if ex
+            @printf(io, "T\n")
+        else
+            @printf(io, "F\n")
         end
+    end
+
+    # now write the Wannier centers to files
+    for iw in 1:(ukk.n_wann)
+        # meed more precision other WS are not determined properly.
+        @printf(io, "%22.12E  %22.12E  %22.12E\n", ukk.centers[iw]...)
+    end
+    return nothing
+end
+
+function write_epw_ukk(filename::AbstractString, ukk::Ukk)
+    open(filename, "w") do io
+        write_epw_ukk(io, ukk)
     end
     @printf("Written to %s\n", filename)
 end

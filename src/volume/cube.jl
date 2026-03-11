@@ -12,9 +12,7 @@ Read `cube` file.
 
     By default, `cube` use Bohr unit, here all returns are in Cartesian coordinates, Å unit.
 """
-function read_cube(filename::AbstractString)
-    @info "Reading cube file: " filename
-    io = open(filename)
+function read_cube(io::IO)
 
     # header
     header = readline(io; keep=true)
@@ -83,8 +81,14 @@ function read_cube(filename::AbstractString)
         end
     end
 
-    close(io)
     return (; atom_positions, atom_numbers, origin, voxel_vectors, X, Y, Z, W)
+end
+
+function read_cube(filename::AbstractString)
+    @info "Reading cube file: " filename
+    return open(filename) do io
+        read_cube(io)
+    end
 end
 
 """
@@ -100,7 +104,7 @@ Write `cube` file.
 - `W`: `nx * ny * nz`, volumetric data
 """
 function write_cube(
-    filename::AbstractString,
+    io::IO,
     atom_positions::AbstractMatrix{T},
     atom_numbers::AbstractVector{Int},
     origin::AbstractVector{T},
@@ -111,9 +115,6 @@ function write_cube(
     size(atom_positions, 2) == n_atoms || error("incompatible n_atoms")
     size(voxel_vectors) == (3, 3) || error("incompatible voxel_vectors")
     length(origin) == 3 || error("origin must be 3-vector")
-
-    @info "Writing cube file: " filename
-    io = open(filename, "w")
 
     # header
     @printf(io, "%s\n", default_header())
@@ -151,6 +152,20 @@ function write_cube(
         end
     end
 
-    close(io)
+    return nothing
+end
+
+function write_cube(
+    filename::AbstractString,
+    atom_positions::AbstractMatrix{T},
+    atom_numbers::AbstractVector{Int},
+    origin::AbstractVector{T},
+    voxel_vectors::AbstractMatrix{T},
+    W::AbstractArray{T,3},
+) where {T<:Real}
+    @info "Writing cube file: " filename
+    open(filename, "w") do io
+        write_cube(io, atom_positions, atom_numbers, origin, voxel_vectors, W)
+    end
     return nothing
 end
