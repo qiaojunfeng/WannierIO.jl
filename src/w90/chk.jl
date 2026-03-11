@@ -174,10 +174,13 @@ end
 
 """
     read_chk(filename)
-    read_chk(filename, ::FortranText)
-    read_chk(filename, ::FortranBinary)
+    read_chk(file, ::FortranText)
+    read_chk(file, ::FortranBinary)
 
 Read wannier90 `chk` checkpoint file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 Similar to [`read_amn`](@ref), the 1st version auto detect `chk` file format
 (binary or text) and read it.
@@ -450,12 +453,16 @@ end
 
 """
     write_chk(filename, chk::Chk; binary=false)
-    write_chk(filename, chk::Chk, ::FortranText)
-    write_chk(filename, chk::Chk, ::FortranBinary)
+    write_chk(file, chk::Chk, ::FortranText)
+    write_chk(file, chk::Chk, ::FortranBinary)
 
 Write wannier90 `chk` file.
 
 Similar to [`write_amn`](@ref), the 1st version is a convenience wrapper.
+
+# Arguments
+- `file`: The name of the output file, or an `IO`.
+- `chk`: the [`Chk`](@ref) struct
 
 # Keyword arguments
 - `binary`: write as Fortran binary file or not. Although wannier90 default

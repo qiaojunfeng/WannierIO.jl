@@ -2,10 +2,13 @@ export read_uIu, write_uIu
 
 """
     read_uIu(filename)
-    read_uIu(filename, ::FortranText; transpose_band_indices=true)
-    read_uIu(filename, ::FortranBinary; transpose_band_indices=true)
+    read_uIu(file, ::FortranText; transpose_band_indices=true)
+    read_uIu(file, ::FortranBinary; transpose_band_indices=true)
 
 Read the wannier90 `uIu` file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Keyword Arguments
 - `transpose_band_indices`: QE pw2wannier90.x writes the matrix in a strange
@@ -56,10 +59,15 @@ end
 
 """
     write_uIu(filename, uIu; binary=false, header)
-    write_uIu(filename, uIu, ::FortranText; header)
-    write_uIu(filename, uIu, ::FortranBinary; header)
+    write_uIu(file, uIu, ::FortranText; header)
+    write_uIu(file, uIu, ::FortranBinary; header)
 
 Write the `uIu` file.
+
+# Arguments
+- `file`: The name of the output file, or an `IO`.
+- `uIu`: a length-`n_kpts` vector, each element is a `n_bvecs * n_bvecs` matrix,
+    then each element is a `n_bands * n_bands` matrix
 
 # Keyword Arguments
 - `transpose_band_indices`: see [`read_uIu`](@ref)

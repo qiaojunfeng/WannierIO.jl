@@ -38,11 +38,14 @@ end
 Base.NamedTuple(o::HydrogenOrbital) = (; o.center, o.n, o.l, o.m, o.α, o.zaxis, o.xaxis)
 
 """
-    read_nnkp(filename)
-    read_nnkp(filename, ::Wannier90Text)
-    read_nnkp(filename, ::Wannier90Toml)
+    read_nnkp(file)
+    read_nnkp(file, ::Wannier90Text)
+    read_nnkp(file, ::Wannier90Toml)
 
 Read wannier90 `nnkp` file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `lattice`: each column is a lattice vector
@@ -173,12 +176,6 @@ function read_nnkp(io::IO, ::Wannier90Text)
     return res
 end
 
-function read_nnkp(filename::AbstractString, format::FileFormat)
-    return open(filename) do io
-        read_nnkp(io, format)
-    end
-end
-
 function read_nnkp(io::IO, ::Wannier90Toml)
     # I can just reuse the read_win function, without fix win inputs
     nnkp = read_win(io, Wannier90Toml(); standardize=false)
@@ -213,28 +210,15 @@ function read_nnkp(io::IO, ::Wannier90Toml)
     return nnkp
 end
 
-function read_nnkp(io::IO)
-    content = read(io, String)
-    format = Wannier90Text()
-    try
-        TOML.parse(content)
-    catch err
-        err isa TOML.ParserError || rethrow()
-    else
-        format = Wannier90Toml()
+function read_nnkp(filename::AbstractString, format::FileFormat)
+    return open(filename) do io
+        read_nnkp(io, format)
     end
-    nnkp = read_nnkp(IOBuffer(content), format)
-
-    return nnkp
 end
 
-function read_nnkp(filename::AbstractString)
-    nnkp = open(filename) do io
-        read_nnkp(io)
-    end
-
-    n_kpts = length(nnkp["kpb_k"])
-    n_kpts > 0 || error("no kpoints found")
+function read_nnkp(file::Union{IO,AbstractString})
+    format = istoml(file) ? Wannier90Toml() : Wannier90Text()
+    nnkp = read_nnkp(file, format)
     return nnkp
 end
 
@@ -249,11 +233,15 @@ end
 end
 
 """
-    write_nnkp(filename, params; header)
-    write_nnkp(filename, params, ::Wannier90Text; header)
-    write_nnkp(filename, params, ::Wannier90Toml; header)
+    write_nnkp(file, params; header)
+    write_nnkp(file, params, ::Wannier90Text; header)
+    write_nnkp(file, params, ::Wannier90Toml; header)
 
 Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
+
+# Arguments
+- `file`: The name of the output file, or an `IO`.
+- `params`: a `Dict` (or `OrderedDict`) of parameters to be written into the `nnkp` file
 
 The `params` should have at least the following keys:
 - `lattice`: each column is a lattice vector
@@ -277,7 +265,7 @@ The following keys are optional:
 
     The variables can also be passed as keyword arguments, e.g.,
     ```julia
-    write_nnkp(filename; lattice, recip_lattice, kpoints, kpb_k, kpb_G)
+    write_nnkp(file; lattice, recip_lattice, kpoints, kpb_k, kpb_G)
     ```
 """
 function write_nnkp end
@@ -385,17 +373,6 @@ function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Text; header=defaul
     return nothing
 end
 
-function write_nnkp(
-    filename::AbstractString,
-    params::AbstractDict,
-    format::FileFormat;
-    header=default_header(),
-)
-    open(filename, "w") do io
-        write_nnkp(io, params, format; header)
-    end
-end
-
 function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Toml; header=default_header())
     params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
@@ -409,7 +386,20 @@ function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Toml; header=defaul
     return nothing
 end
 
-function write_nnkp(filename::AbstractString, params::AbstractDict; header=default_header())
+function write_nnkp(
+    filename::AbstractString,
+    params::AbstractDict,
+    format::FileFormat;
+    header=default_header(),
+)
+    open(filename, "w") do io
+        write_nnkp(io, params, format; header)
+    end
+end
+
+function write_nnkp(
+    file::Union{IO,AbstractString}, params::AbstractDict; header=default_header()
+)
     format = Wannier90Text()
-    write_nnkp(filename, params, format; header)
+    write_nnkp(file, params, format; header)
 end

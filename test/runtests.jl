@@ -14,13 +14,13 @@ filter_name = length(ARGS) > 0 ? ARGS[1] : nothing
 if isnothing(filter_name)
     println("Running all tests...")
 
+    @run_package_tests verbose = true
+
     DocMeta.setdocmeta!(WannierIO, :DocTestSetup, :(using WannierIO); recursive=true)
     doctest(
         WannierIO;
         # fix=true,  # update all the output in `jldoctest`
     )
-
-    @run_package_tests verbose = true
 else
     println("Running specific test: $filter_name")
 

@@ -1,10 +1,10 @@
 """
-    read_u_mat(filename)
+    read_u_mat(file)
 
 Read wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 
 # Arguments
-- `filename`: the input file name
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `U`: `Udis` (for disentanglement) or `U` (for maximal localization) matrices
@@ -53,12 +53,12 @@ function read_u_mat(filename::AbstractString)
 end
 
 """
-    write_u_mat(filename, U, kpoints; header=default_header())
+    write_u_mat(file, U, kpoints; header=default_header())
 
 Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 
 # Arguments
-- `filename`: the input file name
+- `file`: The name of the output file, or an `IO`.
 - `U`: `Udis` (for disentanglement) or `U` (for maximal localization) matrices
 - `kpoints`: fractional kpoint coordinates
 

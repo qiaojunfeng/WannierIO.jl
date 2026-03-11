@@ -2,10 +2,13 @@ export read_unk, write_unk
 
 """
     read_unk(filename)
-    read_unk(filename, ::FortranText)
-    read_unk(filename, ::FortranBinary)
+    read_unk(file, ::FortranText)
+    read_unk(file, ::FortranBinary)
 
 Read wannier90 `UNK` file for the periodic part of Bloch wavefunctions.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `ik`: k-point index, start from 1
@@ -84,14 +87,15 @@ end
 
 """
     write_unk(filename, ik, Ψ; binary=false)
-    write_unk(filename, ik, Ψ, ::FortranText)
-    write_unk(filename, ik, Ψ, ::FortranBinary)
+    write_unk(file, ik, Ψ, ::FortranText)
+    write_unk(file, ik, Ψ, ::FortranBinary)
 
 Write `UNK` file for the periodic part of Bloch wavefunctions.
 
 # Arguments
-- ik: at which kpoint? start from 1
-- Ψ: Bloch wavefunctions, `size(Ψ) = (n_gx, n_gy, n_gz, n_bands, n_spin)`
+- `file`: The name of the output file, or an `IO`.
+- `ik`: at which kpoint? start from 1
+- `Ψ`: Bloch wavefunctions, `size(Ψ) = (n_gx, n_gy, n_gz, n_bands, n_spin)`
 
 # Keyword arguments
 - `binary`: write as Fortran unformatted file

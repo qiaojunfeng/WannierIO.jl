@@ -8,6 +8,9 @@ export read_bxsf, write_bxsf
 
 Read `bxsf` file.
 
+# Arguments
+- `file`: The name of the input file, or an `IO`.
+
 # Return
 - `fermi_energy`: Fermi energy in eV
 - `origin`: `3`, Å⁻¹, origin of the grid
@@ -107,6 +110,7 @@ end
 Write `bxsf` file.
 
 # Arguments
+- `file`: The name of the output file, or an `IO`.
 - `fermi_energy`: Fermi energy in eV
 - `origin`: `3`, Å⁻¹, origin of the grid
 - `span_vectors`: `3 * 3`, Å⁻¹, each column is a spanning vector
