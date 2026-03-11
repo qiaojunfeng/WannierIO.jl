@@ -8,6 +8,9 @@ export read_cube, write_cube
 
 Read `cube` file.
 
+# Arguments
+- `file`: The name of the input file, or an `IO`.
+
 !!! note
 
     By default, `cube` use Bohr unit, here all returns are in Cartesian coordinates, Å unit.
@@ -95,6 +98,7 @@ end
 Write `cube` file.
 
 # Arguments
+- `file`: The name of the output file, or an `IO`.
 - `atom_positions`: `3 * n_atoms`, Å, cartesian coordinates
 - `atom_numbers`: `n_atoms`, atomic numbers
 - `origin`: `3`, Å, origin of the grid

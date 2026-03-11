@@ -8,6 +8,9 @@ export read_xsf, write_xsf
 
 Read `xsf` file.
 
+# Arguments
+- `file`: The name of the input file, or an `IO`.
+
 # Return
 - `primvec`: `3 * 3`, Å, each column is a primitive lattice vector
 - `convvec`: `3 * 3`, Å, each column is a conventional lattice vector
@@ -139,6 +142,7 @@ end
 Write `xsf` file.
 
 # Arguments
+- `file`: The name of the output file, or an `IO`.
 - `lattice`: `3 * 3`, Å, each column is a lattice vector
 - `atom_positions`: length-`n_atoms` vector, fractional coordinates
 - `atom_numbers`: `n_atoms`, atomic numbers

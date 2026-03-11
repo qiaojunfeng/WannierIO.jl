@@ -2,10 +2,13 @@ export read_uHu, write_uHu
 
 """
     read_uHu(filename)
-    read_uHu(filename, ::FortranText; transpose_band_indices=true)
-    read_uHu(filename, ::FortranBinary; transpose_band_indices=true)
+    read_uHu(file, ::FortranText; transpose_band_indices=true)
+    read_uHu(file, ::FortranBinary; transpose_band_indices=true)
 
 Read the wannier90 `uHu` file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Keyword Arguments
 - `transpose_band_indices`: QE pw2wannier90.x writes the matrix in a strange
@@ -57,7 +60,7 @@ function read_uHu(io::IO, ::FortranText; transpose_band_indices=true)
 end
 
 function read_uHu(filename::AbstractString, ::FortranText; transpose_band_indices=true)
-    return open("$filename") do io
+    return open(filename) do io
         read_uHu(io, FortranText(); transpose_band_indices)
     end
 end
@@ -122,10 +125,15 @@ end
 
 """
     write_uHu(filename, uHu; binary=false, header)
-    write_uHu(filename, uHu, ::FortranText; header)
-    write_uHu(filename, uHu, ::FortranBinary; header)
+    write_uHu(file, uHu, ::FortranText; header)
+    write_uHu(file, uHu, ::FortranBinary; header)
 
 Write the `uHu` file.
+
+# Arguments
+- `file`: The name of the output file, or an `IO`.
+- `uHu`: a length-`n_kpts` vector, each element is a `n_bvecs * n_bvecs` matrix,
+    then each element is a `n_bands * n_bands` matrix
 
 # Keyword Arguments
 - `transpose_band_indices`: see [`read_uHu`](@ref)

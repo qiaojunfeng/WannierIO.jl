@@ -4,7 +4,7 @@
 Write the real space Hamiltonian to a `prefix_HH_R.dat` file.
 
 # Arguments
-- `filename`: usually `prefix_HH_R.dat`
+- `file`: The name of the output file, or an `IO`.
 - `H`: a `n_wann * n_wann * n_rvecs` array of Hamiltonian
 - `R`: a `n_rvecs * 3` array of integers
 

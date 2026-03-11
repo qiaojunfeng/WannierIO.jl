@@ -7,7 +7,7 @@ The EPW mmn format is different from that of W90. It does not contain the number
 of kpoints/bvectors/bands, so they need to be provided as keyword arguments.
 
 # Arguments
-- `filename`: the mmn file name
+- `file`: The name of the input file, or an `IO`.
 
 # Keyword arguments
 - `n_kpts`: number of kpoints
@@ -102,7 +102,7 @@ end
 Read the EPW `.ukk` file.
 
 # Arguments
-- `filename`: the output file name
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `ukk`: the [`Ukk`](@ref) struct
@@ -209,7 +209,7 @@ end
 Write the EPW `.ukk` file.
 
 # Arguments
-- `filename`: the output file name
+- `file`: The name of the output file, or an `IO`.
 - `ukk`: the [`Ukk`](@ref) struct
 
 # Examples

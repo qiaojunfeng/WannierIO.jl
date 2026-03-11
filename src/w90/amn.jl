@@ -1,11 +1,14 @@
 export read_amn, write_amn
 
 """
-    read_amn(filename)
-    read_amn(filename, ::FortranText)
-    read_amn(filename, ::FortranBinaryStream)
+    read_amn(file)
+    read_amn(file, ::FortranText)
+    read_amn(file, ::FortranBinaryStream)
 
 Read wannier90 `amn` file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `A`: length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix.
@@ -44,7 +47,7 @@ end
 
 function read_amn(io::IO, ::FortranBinaryStream)
     # I use stream io to write amn, so I should use plain julia `open`
-    # io = FortranFile("$filename")
+    # io = FortranFile(filename)
     header_len = 60
     header = read(io, FString{header_len})
     # From FString to String
@@ -72,33 +75,26 @@ function read_amn(io::IO, ::FortranBinaryStream)
 end
 
 function read_amn(filename::AbstractString, format::FileFormat)
-    return open("$filename") do io
+    return open(filename) do io
         read_amn(io, format)
     end
 end
 
-function read_amn(filename::AbstractString)
-    if isbinary(filename)
-        format = FortranBinaryStream()
-    else
-        format = FortranText()
-    end
-    A, header = read_amn(filename, format)
-
-    n_kpts = length(A)
-    n_kpts > 0 || error("A is empty")
+function read_amn(file::Union{IO,AbstractString})
+    format = isbinary(file) ? FortranBinaryStream() : FortranText()
+    A, header = read_amn(file, format)
     return A
 end
 
 """
-    write_amn(filename, A; header=default_header(), binary=false)
-    write_amn(filename, A, ::FortranText; header=default_header())
-    write_amn(filename, A, ::FortranBinaryStream; header=default_header())
+    write_amn(file, A; header=default_header(), binary=false)
+    write_amn(file, A, ::FortranText; header=default_header())
+    write_amn(file, A, ::FortranBinaryStream; header=default_header())
 
 Write wannier90 `amn` file.
 
 # Arguments
-- `filename`: output filename
+- `file`: The name of the output file, or an `IO`.
 - `A`: a length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix
 
 # Keyword arguments
@@ -130,15 +126,6 @@ function write_amn(io::IO, A::AbstractVector, ::FortranText; header=default_head
         end
     end
 
-    return nothing
-end
-
-function write_amn(
-    filename::AbstractString, A::AbstractVector, format::FileFormat; header=default_header()
-)
-    open(filename, "w") do io
-        write_amn(io, A, format; header)
-    end
     return nothing
 end
 
@@ -180,14 +167,17 @@ function write_amn(
 end
 
 function write_amn(
-    filename::AbstractString, A::AbstractVector; header=default_header(), binary=false
+    filename::AbstractString, A::AbstractVector, format::FileFormat; header=default_header()
 )
-    n_kpts = length(A)
-    n_kpts > 0 || throw(ArgumentError("A is empty"))
-    if binary
-        format = FortranBinaryStream()
-    else
-        format = FortranText()
+    open(filename, "w") do io
+        write_amn(io, A, format; header)
     end
-    return write_amn(filename, A, format; header)
+    return nothing
+end
+
+function write_amn(
+    file::Union{IO,AbstractString}, A::AbstractVector; header=default_header(), binary=false
+)
+    format = binary ? FortranBinaryStream() : FortranText()
+    return write_amn(file, A, format; header)
 end

@@ -3,10 +3,13 @@ export read_spn, write_spn
 
 """
     read_spn(filename)
-    read_spn(filename, ::FortranText)
-    read_spn(filename, ::FortranBinary)
+    read_spn(file, ::FortranText)
+    read_spn(file, ::FortranBinary)
 
 Read the wannier90 `spn` file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `Sx`: spin x, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
@@ -50,7 +53,7 @@ function read_spn(io::IO, ::FortranText)
 end
 
 function read_spn(filename::AbstractString, ::FortranText)
-    return open("$filename") do io
+    return open(filename) do io
         read_spn(io, FortranText())
     end
 end
@@ -117,10 +120,16 @@ end
 
 """
     write_spn(filename, Sx, Sy, Sz; binary=false, header)
-    write_spn(filename, Sx, Sy, Sz, ::FortranText; header)
-    write_spn(filename, Sx, Sy, Sz, ::FortranBinary; header)
+    write_spn(file, Sx, Sy, Sz, ::FortranText; header)
+    write_spn(file, Sx, Sy, Sz, ::FortranBinary; header)
 
 Write the `spn` file.
+
+# Arguments
+- `file`: The name of the output file, or an `IO`.
+- `Sx`: spin x, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
+- `Sy`: spin y, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
+- `Sz`: spin z, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
 """
 function write_spn end
 

@@ -1,11 +1,14 @@
 export read_mmn, write_mmn
 
 """
-    read_mmn(filename)
-    read_mmn(filename, ::FortranText)
-    read_mmn(filename, ::FortranBinaryStream)
+    read_mmn(file)
+    read_mmn(file, ::FortranText)
+    read_mmn(file, ::FortranBinaryStream)
 
 Read wannier90 `mmn` file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `M`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector, then
@@ -62,12 +65,6 @@ function read_mmn(io::IO, ::FortranText)
     return (; M, kpb_k, kpb_G, header)
 end
 
-function read_mmn(filename::AbstractString, format::FileFormat)
-    return open(filename) do io
-        read_mmn(io, format)
-    end
-end
-
 function read_mmn(io::IO, ::FortranBinaryStream)
     # I use stream io to write mmn, so I should use plain julia `open`
     header_len = 60
@@ -109,30 +106,30 @@ function read_mmn(io::IO, ::FortranBinaryStream)
     return (; M, kpb_k, kpb_G, header)
 end
 
-function read_mmn(filename::AbstractString)
-    if isbinary(filename)
-        format = FortranBinaryStream()
-    else
-        format = FortranText()
+function read_mmn(filename::AbstractString, format::FileFormat)
+    return open(filename) do io
+        read_mmn(io, format)
     end
-    M, kpb_k, kpb_G, header = read_mmn(filename, format)
+end
 
+function read_mmn(file::Union{IO,AbstractString})
+    format = isbinary(file) ? FortranBinaryStream() : FortranText()
+    M, kpb_k, kpb_G, header = read_mmn(file, format)
     _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-
     # Not returning header since it is printed
     # Note I am returning a Tuple instead of NamedTuple
     return M, kpb_k, kpb_G
 end
 
 """
-    write_mmn(filename; M, kpb_k, kpb_G; header=default_header(), binary=false)
-    write_mmn(filename; M, kpb_k, kpb_G, ::FortranText; header=default_header(), binary=false)
-    write_mmn(filename; M, kpb_k, kpb_G, ::FortranBinaryStream; header=default_header(), binary=false)
+    write_mmn(file, M, kpb_k, kpb_G; header=default_header(), binary=false)
+    write_mmn(file, M, kpb_k, kpb_G, ::FortranText; header=default_header())
+    write_mmn(file, M, kpb_k, kpb_G, ::FortranBinaryStream; header=default_header())
 
 Write wannier90 `mmn` file.
 
 # Arguments
-- `filename`: output file name
+- `file`: The name of the output file, or an `IO`.
 - `M`: length-`n_kpts` vector of `n_bands * n_bands * n_bvecs` arrays
 - `kpb_k`: length-`n_kpts` vector of length-`n_bvecs` vector of integers
 - `kpb_G`: length-`n_kpts` vector of length-`n_bvecs` vector of `Vec3{Int}` for bvectors
@@ -214,21 +211,6 @@ function write_mmn(
     end
     return nothing
 end
-
-function write_mmn(
-    filename::AbstractString,
-    M::AbstractVector,
-    kpb_k::AbstractVector,
-    kpb_G::AbstractVector,
-    format::FileFormat;
-    header=default_header(),
-)
-    open(filename, "w") do io
-        write_mmn(io, M, kpb_k, kpb_G, format; header)
-    end
-    return nothing
-end
-
 function write_mmn(
     io::IO,
     M::AbstractVector,
@@ -279,15 +261,25 @@ function write_mmn(
     filename::AbstractString,
     M::AbstractVector,
     kpb_k::AbstractVector,
+    kpb_G::AbstractVector,
+    format::FileFormat;
+    header=default_header(),
+)
+    open(filename, "w") do io
+        write_mmn(io, M, kpb_k, kpb_G, format; header)
+    end
+    return nothing
+end
+
+function write_mmn(
+    file::Union{IO,AbstractString},
+    M::AbstractVector,
+    kpb_k::AbstractVector,
     kpb_G::AbstractVector;
     header::AbstractString=default_header(),
     binary::Bool=false,
 )
     _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-    if binary
-        format = FortranBinaryStream()
-    else
-        format = FortranText()
-    end
-    write_mmn(filename, M, kpb_k, kpb_G, format; header)
+    format = binary ? FortranBinaryStream() : FortranText()
+    write_mmn(file, M, kpb_k, kpb_G, format; header)
 end

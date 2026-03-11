@@ -153,7 +153,7 @@ default_band_kpt_kweights(kpoints::AbstractVector) = ones(length(kpoints))
 Write `prefix_band.kpt` file.
 
 # Arguments
-- `filename`: filename of `prefix_band.kpt`
+- `file`: The name of the output file, or an `IO`.
 
 # Keyword Arguments
 - `kpoints`: length-`n_kpts` vector, fractional coordinates
@@ -193,7 +193,7 @@ end
 Write `prefix_band.dat` file.
 
 # Arguments
-- `filename`: filename of `prefix_band.dat`
+- `file`: The name of the output file, or an `IO`.
 
 # Keyword Arguments
 - `x`: `n_kpts`, x axis value, in cartesian length

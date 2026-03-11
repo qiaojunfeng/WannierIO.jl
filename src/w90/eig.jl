@@ -35,11 +35,14 @@ Some times there are small noises, use `digits` to set the number of digits for 
 end
 
 """
-    read_eig(filename)
-    read_eig(filename, ::FortranText)
-    read_eig(filename, ::FortranBinaryStream)
+    read_eig(file)
+    read_eig(file, ::FortranText)
+    read_eig(file, ::FortranBinaryStream)
 
 Read the wannier90 `eig` file.
+
+# Arguments
+- `file`: The name of the input file, or an `IO`.
 
 # Return
 - `eigenvalues`: a lenth-`n_kpts` vector, each element is a length-`n_bands` vector
@@ -68,12 +71,6 @@ function read_eig(io::IO, ::FortranText)
     return eigenvalues
 end
 
-function read_eig(filename::AbstractString, format::FileFormat)
-    return open(filename) do io
-        read_eig(io, format)
-    end
-end
-
 function read_eig(io::IO, ::FortranBinaryStream)
     idx_b = Vector{Int}()
     idx_k = Vector{Int}()
@@ -93,27 +90,26 @@ function read_eig(io::IO, ::FortranBinaryStream)
     return eigenvalues
 end
 
-function read_eig(filename::AbstractString)
-    if isbinary(filename)
-        format = FortranBinaryStream()
-    else
-        format = FortranText()
+function read_eig(filename::AbstractString, format::FileFormat)
+    return open(filename) do io
+        read_eig(io, format)
     end
-    eigenvalues = read_eig(filename, format)
+end
 
-    n_kpts = length(eigenvalues)
-    n_kpts > 0 || error("Empty eig file")
-    return eigenvalues
+function read_eig(file::Union{IO,AbstractString})
+    format = isbinary(file) ? FortranBinaryStream() : FortranText()
+    return read_eig(file, format)
 end
 
 """
-    write_eig(filename, eigenvalues; binary=false)
-    write_eig(filename, eigenvalues, ::FortranText)
-    write_eig(filename, eigenvalues, ::FortranBinaryStream)
+    write_eig(file, eigenvalues; binary=false)
+    write_eig(file, eigenvalues, ::FortranText)
+    write_eig(file, eigenvalues, ::FortranBinaryStream)
 
 Write `eig` file.
 
 # Arguments
+- `file`: The name of the output file, or an `IO`.
 - `eigenvalues`: a length-`n_kpts` vector, each element is a length-`n_bands` vector
 
 # Keyword arguments
@@ -130,14 +126,6 @@ function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranText)
         for ib in 1:n_bands
             @printf(io, "%5d%5d%18.12f\n", ib, ik, eigenvalues[ik][ib])
         end
-    end
-end
-
-function write_eig(
-    filename::AbstractString, eigenvalues::AbstractVector, format::FileFormat
-)
-    open(filename, "w") do io
-        write_eig(io, eigenvalues, format)
     end
 end
 
@@ -158,14 +146,17 @@ function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
     end
 end
 
-function write_eig(filename::AbstractString, eigenvalues::AbstractVector; binary=false)
-    if binary
-        format = FortranBinaryStream()
-    else
-        format = FortranText()
+function write_eig(
+    filename::AbstractString, eigenvalues::AbstractVector, format::FileFormat
+)
+    open(filename, "w") do io
+        write_eig(io, eigenvalues, format)
     end
-    write_eig(filename, eigenvalues, format)
+end
 
-    n_kpts = length(eigenvalues)
-    n_kpts > 0 || throw(ArgumentError("Empty eigenvalues"))
+function write_eig(
+    file::Union{IO,AbstractString}, eigenvalues::AbstractVector; binary=false
+)
+    format = binary ? FortranBinaryStream() : FortranText()
+    write_eig(file, eigenvalues, format)
 end
