@@ -114,11 +114,9 @@ end
 
 function read_mmn(file::Union{IO,AbstractString})
     format = isbinary(file) ? FortranBinaryStream() : FortranText()
-    M, kpb_k, kpb_G, header = read_mmn(file, format)
-    _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-    # Not returning header since it is printed
-    # Note I am returning a Tuple instead of NamedTuple
-    return M, kpb_k, kpb_G
+    mmn = read_mmn(file, format)
+    _check_dimensions_M_kpb(mmn.M, mmn.kpb_k, mmn.kpb_G)
+    return mmn
 end
 
 """
@@ -211,6 +209,7 @@ function write_mmn(
     end
     return nothing
 end
+
 function write_mmn(
     io::IO,
     M::AbstractVector,

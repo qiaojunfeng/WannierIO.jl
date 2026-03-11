@@ -1,7 +1,10 @@
 name = "WannierIO"
 uuid = "cb1bc77f-5443-4951-af9f-05b616a3e422"
-authors = ["Junfeng Qiao <qiaojunfeng@outlook.com>"]
 version = "0.3.0"
+authors = ["Junfeng Qiao <qiaojunfeng@outlook.com>"]
+
+[workspace]
+projects = ["test", "docs"]
 
 [deps]
 CrystalBase = "0ae0509d-b425-412a-aec4-62d47edd1221"
@@ -24,6 +27,3 @@ OrderedCollections = "1.8"
 StaticArrays = "1"
 TOML = "1"
 julia = "1.12"
-
-[workspace]
-projects = ["test", "docs"]

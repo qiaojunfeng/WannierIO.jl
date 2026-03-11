@@ -1,6 +1,6 @@
 @testitem "read/write uHu" begin
     using LazyArtifacts
-    uHu = read_uHu(artifact"Fe_soc/test/Fe.uHu.fmt")
+    uHu = read_uHu(artifact"Fe_soc/test/Fe.uHu.fmt").uHu
 
     ref_uHu_end = ComplexF64[
         22.832600673-6.6071280391e-16im 0.00020289010265+0.00033152537834im 0.00015694794962+0.00019375661933im -0.011251642778-0.09153385574im
@@ -17,18 +17,18 @@
     tmpfile = tempname(; cleanup=true)
     write_uHu(tmpfile, uHu; binary=false)
 
-    uHu1 = read_uHu(tmpfile)
+    uHu1 = read_uHu(tmpfile).uHu
     @test uHu ≈ uHu1
 end
 
 @testitem "read/write uHu binary" begin
     using LazyArtifacts
-    uHu = read_uHu(artifact"Fe_soc/test/Fe.uHu")
-    uHu1 = read_uHu(artifact"Fe_soc/test/Fe.uHu.fmt")
+    uHu = read_uHu(artifact"Fe_soc/test/Fe.uHu").uHu
+    uHu1 = read_uHu(artifact"Fe_soc/test/Fe.uHu.fmt").uHu
     @test uHu ≈ uHu1
 
     tmpfile = tempname(; cleanup=true)
     write_uHu(tmpfile, uHu; binary=true)
-    uHu2 = read_uHu(tmpfile)
+    uHu2 = read_uHu(tmpfile).uHu
     @test uHu ≈ uHu2
 end

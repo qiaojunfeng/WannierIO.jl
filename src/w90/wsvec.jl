@@ -94,10 +94,9 @@ function read_w90_wsvec(io::IO)
 end
 
 function read_w90_wsvec(filename::AbstractString)
-    result = open(filename) do io
+    return open(filename) do io
         read_w90_wsvec(io)
     end
-    return result
 end
 
 """

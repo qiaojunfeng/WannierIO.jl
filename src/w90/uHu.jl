@@ -108,19 +108,8 @@ function read_uHu(filename::AbstractString, ::FortranBinary; transpose_band_indi
 end
 
 function read_uHu(filename::AbstractString; kwargs...)
-    if isbinary(filename)
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
-    uHu, header = read_uHu(filename, format; kwargs...)
-
-    n_kpts = length(uHu)
-    n_kpts > 0 || error("empty uHu matrix")
-    n_bvecs = size(uHu[1], 1)
-    n_bvecs > 0 || error("empty uHu matrix")
-    n_bands = size(uHu[1][1, 1], 1)
-    return uHu
+    format = isbinary(filename) ? FortranBinary() : FortranText()
+    return read_uHu(filename, format; kwargs...)
 end
 
 """
@@ -248,16 +237,6 @@ function write_uHu(
     header=default_header(),
     kwargs...,
 )
-    if binary
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
-    n_kpts = length(uHu)
-    n_kpts > 0 || throw(ArgumentError("empty uHu matrix"))
-    n_bvecs = size(uHu[1], 1)
-    n_bvecs > 0 || throw(ArgumentError("empty uHu matrix"))
-    n_bands = size(uHu[1][1, 1], 1)
-
+    format = binary ? FortranBinary() : FortranText()
     return write_uHu(filename, uHu, format; header, kwargs...)
 end

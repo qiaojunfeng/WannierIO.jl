@@ -15,8 +15,8 @@ The package is designed to be minimalistic to allow easy reuse in other packages
 ```julia
 using WannierIO
 
-A = read_amn("silicon.amn")
-write_amn("silicon_2.amn", A)
+amn = read_amn("silicon.amn")
+write_amn("silicon_2.amn", amn.A; amn.header)
 
 chk = read_chk("silicon.chk")
 write_chk("silicon_2.chk", chk; binary=true)

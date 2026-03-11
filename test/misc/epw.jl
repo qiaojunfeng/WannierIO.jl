@@ -1,6 +1,6 @@
 @testitem "read EPW mmn" begin
     using LazyArtifacts
-    M, kpb_k, kpb_G = read_mmn(artifact"BN/BN.mmn")
+    M = read_mmn(artifact"BN/BN.mmn").M
     n_kpts = length(M)
     n_bvecs = length(M[1])
     n_bands = size(M[1][1], 1)

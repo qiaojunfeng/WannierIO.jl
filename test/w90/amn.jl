@@ -1,6 +1,6 @@
 @testitem "read/write amn" begin
     using LazyArtifacts
-    A = read_amn(artifact"Si2_valence/Si2_valence.amn")
+    A = read_amn(artifact"Si2_valence/Si2_valence.amn").A
 
     ref_A215 = ComplexF64[
         0.602605803842+0.466458612517im 0.709819979644+0.096505743176im 0.602605806825+0.466458612235im 0.271333571639+0.662974997524im
@@ -16,18 +16,18 @@
     tmpfile = tempname(; cleanup=true)
     write_amn(tmpfile, A)
 
-    A1 = read_amn(tmpfile)
+    A1 = read_amn(tmpfile).A
     @test A ≈ A1
 end
 
 @testitem "read/write amn binary" begin
     using LazyArtifacts
-    A = read_amn(artifact"Si2_valence/Si2_valence.amn")
-    A1 = read_amn(artifact"Si2_valence/outputs/binary/Si2_valence.amn")
+    A = read_amn(artifact"Si2_valence/Si2_valence.amn").A
+    A1 = read_amn(artifact"Si2_valence/outputs/binary/Si2_valence.amn").A
     @test A ≈ A1
 
     tmpfile = tempname(; cleanup=true)
     write_amn(tmpfile, A; binary=true)
-    A2 = read_amn(tmpfile)
+    A2 = read_amn(tmpfile).A
     @test A ≈ A2
 end

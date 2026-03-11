@@ -46,10 +46,9 @@ function read_u_mat(io::IO)
 end
 
 function read_u_mat(filename::AbstractString)
-    result = open(filename) do io
+    return open(filename) do io
         read_u_mat(io)
     end
-    return result
 end
 
 """

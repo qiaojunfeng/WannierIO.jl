@@ -1,7 +1,10 @@
 
 @testitem "read/write mmn" begin
     using LazyArtifacts
-    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/Si2_valence.mmn")
+    mmn = read_mmn(artifact"Si2_valence/Si2_valence.mmn")
+    M = mmn.M
+    kpb_k = mmn.kpb_k
+    kpb_G = mmn.kpb_G
 
     @test length(M) == 216
     @test length(M[1]) == 8
@@ -33,7 +36,10 @@
 
     tmpfile = tempname(; cleanup=true)
     write_mmn(tmpfile, M, kpb_k, kpb_G)
-    M2, kpb_k2, kpb_G2 = read_mmn(tmpfile)
+    mmn2 = read_mmn(tmpfile)
+    M2 = mmn2.M
+    kpb_k2 = mmn2.kpb_k
+    kpb_G2 = mmn2.kpb_G
 
     @test M ≈ M2
     @test kpb_k ≈ kpb_k2
@@ -42,15 +48,24 @@ end
 
 @testitem "read/write mmn binary" begin
     using LazyArtifacts
-    M, kpb_k, kpb_G = read_mmn(artifact"Si2_valence/Si2_valence.mmn")
-    M1, kpb_k1, kpb_G1 = read_mmn(artifact"Si2_valence/outputs/binary/Si2_valence.mmn")
+    mmn = read_mmn(artifact"Si2_valence/Si2_valence.mmn")
+    M = mmn.M
+    kpb_k = mmn.kpb_k
+    kpb_G = mmn.kpb_G
+    mmn1 = read_mmn(artifact"Si2_valence/outputs/binary/Si2_valence.mmn")
+    M1 = mmn1.M
+    kpb_k1 = mmn1.kpb_k
+    kpb_G1 = mmn1.kpb_G
     @test M ≈ M1
     @test kpb_k ≈ kpb_k1
     @test kpb_G ≈ kpb_G1
 
     tmpfile = tempname(; cleanup=true)
     write_mmn(tmpfile, M, kpb_k, kpb_G; binary=true)
-    M2, kpb_k2, kpb_G2 = read_mmn(tmpfile)
+    mmn2 = read_mmn(tmpfile)
+    M2 = mmn2.M
+    kpb_k2 = mmn2.kpb_k
+    kpb_G2 = mmn2.kpb_G
 
     @test M ≈ M2
     @test kpb_k ≈ kpb_k2

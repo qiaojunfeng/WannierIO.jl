@@ -42,19 +42,8 @@ function read_uIu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
 end
 
 function read_uIu(filename::AbstractString; kwargs...)
-    if isbinary(filename)
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
-    uIu, header = read_uIu(filename, format; kwargs...)
-
-    n_kpts = length(uIu)
-    n_kpts > 0 || error("empty uIu matrix")
-    n_bvecs = size(uIu[1], 1)
-    n_bvecs > 0 || error("empty uIu matrix")
-    n_bands = size(uIu[1][1, 1], 1)
-    return uIu
+    format = isbinary(filename) ? FortranBinary() : FortranText()
+    return read_uIu(filename, format; kwargs...)
 end
 
 """
@@ -121,16 +110,6 @@ function write_uIu(
     header=default_header(),
     kwargs...,
 )
-    if binary
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
-    n_kpts = length(uIu)
-    n_kpts > 0 || throw(ArgumentError("empty uIu matrix"))
-    n_bvecs = size(uIu[1], 1)
-    n_bvecs > 0 || throw(ArgumentError("empty uIu matrix"))
-    n_bands = size(uIu[1][1, 1], 1)
-
+    format = binary ? FortranBinary() : FortranText()
     return write_uIu(filename, uIu, format; header, kwargs...)
 end

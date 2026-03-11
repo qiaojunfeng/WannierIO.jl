@@ -209,10 +209,9 @@ function read_isym(io::IO)
 end
 
 function read_isym(filename::AbstractString)
-    result = open(filename) do io
+    return open(filename) do io
         read_isym(io)
     end
-    return result
 end
 
 """

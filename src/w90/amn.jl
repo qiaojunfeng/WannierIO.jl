@@ -82,8 +82,7 @@ end
 
 function read_amn(file::Union{IO,AbstractString})
     format = isbinary(file) ? FortranBinaryStream() : FortranText()
-    A, header = read_amn(file, format)
-    return A
+    return read_amn(file, format)
 end
 
 """

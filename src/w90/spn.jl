@@ -106,16 +106,8 @@ function read_spn(filename::AbstractString, ::FortranBinary)
 end
 
 function read_spn(filename::AbstractString)
-    if isbinary(filename)
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
-    Sx, Sy, Sz, header = read_spn(filename, format)
-
-    n_kpts = length(Sx)
-    n_kpts > 0 || error("empty spn matrix")
-    return Sx, Sy, Sz
+    format = isbinary(filename) ? FortranBinary() : FortranText()
+    return read_spn(filename, format)
 end
 
 """
@@ -252,11 +244,7 @@ function write_spn(
     binary=false,
     header=default_header(),
 )
-    if binary
-        format = FortranBinary()
-    else
-        format = FortranText()
-    end
     _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
+    format = binary ? FortranBinary() : FortranText()
     return write_spn(filename, Sx, Sy, Sz, format; header)
 end
