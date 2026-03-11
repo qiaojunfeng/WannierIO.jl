@@ -317,7 +317,7 @@ function Ukk(chk::Chk, alat::Real)
     # the centers in chk file is Cartesian coordinates in Å
     # the input arg `alat` should be in Å unit
     centers = chk.r / alat
-    Uchk = get_U(chk)
+    Uchk = gauge_matrices(chk)
 
     return Ukk(
         ibndstart,

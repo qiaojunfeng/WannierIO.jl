@@ -15,7 +15,7 @@ Read wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 
     The `wannier90` output `prefix_u_dis.mat` internally sorts the band indices
     according to the disnentanglement window, therefore it can be different from
-    the original Bloch states, see the code and comments in [`get_Udis`](@ref).
+    the original Bloch states, see the code and comments in [`gauge_matrices_dis`](@ref).
 """
 function read_u_mat(io::IO)
     # strip and read line
@@ -68,7 +68,7 @@ Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 
     The `wannier90` output `prefix_u_dis.mat` internally sorts the band indices
     according to the disnentanglement window, therefore it can be different from
-    the original Bloch states, see the code and comments in [`get_Udis`](@ref).
+    the original Bloch states, see the code and comments in [`gauge_matrices_dis`](@ref).
     This function just writes whatever is inside the input `U` matrix, without
     consider the order of disentanglement window.
 """

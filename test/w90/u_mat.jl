@@ -18,7 +18,7 @@ end
     chk = read_chk(artifact"Si2/outputs/Si2.chk.fmt")
 
     Udismat = WannierIO.read_u_mat(artifact"Si2/outputs/Si2_u_dis.mat")
-    # do not use `get_Udis` since it sorts the band indices, here we want to
+    # do not use `gauge_matrices_dis` since it sorts the band indices, here we want to
     # compare the raw data
     @test Udismat.U ≈ chk.Udis
     @test Udismat.kpoints ≈ chk.kpoints
