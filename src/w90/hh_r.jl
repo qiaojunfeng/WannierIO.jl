@@ -26,7 +26,7 @@ Write the real space Hamiltonian to a `prefix_HH_R.dat` file.
 
 """
 function write_HH_R(
-    filename::AbstractString,
+    io::IO,
     H::AbstractArray{T,3},
     R::AbstractMatrix{IT};
     N::Union{AbstractVector{IT},Nothing}=nothing,
@@ -42,28 +42,49 @@ function write_HH_R(
 
     vec2str(v) = join([@sprintf "%5d" x for x in v], "")
 
-    open(filename, "w") do io
-        write(io, strip(header), "\n")
+    write(io, strip(header), "\n")
 
-        @printf(io, "%d\n", n_wann)
-        @printf(io, "%d\n", n_rvecs)
+    @printf(io, "%d\n", n_wann)
+    @printf(io, "%d\n", n_rvecs)
 
-        for ir in 1:n_rvecs
-            for j in 1:n_wann
-                for i in 1:n_wann
-                    h = H[i, j, ir]
-                    # 12.6f is the wannier90 default, however, I change it to
-                    # 15.8e so that it has the same accuracy as tb.dat file.
-                    @printf(
-                        io,
-                        "%s   %15.8e %15.8e\n",
-                        vec2str([R[:, ir]..., i, j]),
-                        real(h),
-                        imag(h)
-                    )
-                end
+    for ir in 1:n_rvecs
+        for j in 1:n_wann
+            for i in 1:n_wann
+                h = H[i, j, ir]
+                # 12.6f is the wannier90 default, however, I change it to
+                # 15.8e so that it has the same accuracy as tb.dat file.
+                @printf(
+                    io,
+                    "%s   %15.8e %15.8e\n",
+                    vec2str([R[:, ir]..., i, j]),
+                    real(h),
+                    imag(h)
+                )
             end
         end
+    end
+
+    return nothing
+end
+
+function write_HH_R(
+    filename::AbstractString,
+    H::AbstractArray{T,3},
+    R::AbstractMatrix{IT};
+    N::Union{AbstractVector{IT},Nothing}=nothing,
+    header=default_header(),
+) where {T<:Complex,IT<:Integer}
+    n_wann, _, n_rvecs = size(H)
+    size(H, 2) == n_wann ||
+        throw(ArgumentError("H must be a n_wann * n_wann * n_rvecs matrix"))
+    size(R) == (3, n_rvecs) || throw(ArgumentError("R must be a 3 * n_rvecs matrix"))
+    isnothing(N) ||
+        length(N) == n_rvecs ||
+        throw(ArgumentError("N must be a n_rvecs vector"))
+    vec2str(v) = join([@sprintf "%5d" x for x in v], "")
+
+    open(filename, "w") do io
+        write_HH_R(io, H, R; N, header)
     end
     @info "Written to file: $(filename)"
 

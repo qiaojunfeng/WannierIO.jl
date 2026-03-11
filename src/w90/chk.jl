@@ -182,148 +182,150 @@ Read wannier90 `chk` checkpoint file.
 Similar to [`read_amn`](@ref), the 1st version auto detect `chk` file format
 (binary or text) and read it.
 """
-function read_chk(filename::AbstractString, ::FortranText)
-    chk = open(filename) do io
-        # strip and read line
-        srline() = strip(readline(io))
+function read_chk(io::IO, ::FortranText)
+    # strip and read line
+    srline() = strip(readline(io))
 
-        # Read formatted chk file
-        header = String(srline())
+    # Read formatted chk file
+    header = String(srline())
 
-        n_bands = parse(Int, srline())
+    n_bands = parse(Int, srline())
 
-        n_exclude_bands = parse(Int, srline())
+    n_exclude_bands = parse(Int, srline())
 
-        exclude_bands = zeros(Int, n_exclude_bands)
+    exclude_bands = zeros(Int, n_exclude_bands)
 
-        if n_exclude_bands > 0
-            for i in 1:n_exclude_bands
-                exclude_bands[i] = parse(Int, srline())
+    if n_exclude_bands > 0
+        for i in 1:n_exclude_bands
+            exclude_bands[i] = parse(Int, srline())
+        end
+    end
+
+    # Each column is a lattice vector
+    # but W90 writes x components first, then y, z. NOT a1 first, then a2, a3.
+    line = parse.(Float64, split(srline()))
+    lattice = Mat3{Float64}(reshape(line, (3, 3))')
+
+    # Each column is a lattice vector
+    line = parse.(Float64, split(srline()))
+    recip_lattice = Mat3{Float64}(reshape(line, (3, 3))')
+
+    n_kpts = parse(Int, srline())
+
+    kgrid = Vec3{Int}(parse.(Int, split(srline())))
+
+    kpoints = zeros(Vec3{Float64}, n_kpts)
+    for ik in 1:n_kpts
+        kpoints[ik] = Vec3(parse.(Float64, split(srline()))...)
+    end
+
+    n_bvecs = parse(Int, srline())
+
+    n_wann = parse(Int, srline())
+
+    checkpoint = String(srline())
+
+    # 1 -> True, 0 -> False
+    have_disentangled = Bool(parse(Int, srline()))
+
+    if have_disentangled
+        # omega_invariant
+        ΩI = parse(Float64, srline())
+
+        dis_bands = [falses(n_bands) for _ in 1:n_kpts]
+        for ik in 1:n_kpts
+            for ib in 1:n_bands
+                # 1 -> True, 0 -> False
+                dis_bands[ik][ib] = Bool(parse(Int, srline()))
             end
         end
 
-        # Each column is a lattice vector
-        # but W90 writes x components first, then y, z. NOT a1 first, then a2, a3.
-        line = parse.(Float64, split(srline()))
-        lattice = Mat3{Float64}(reshape(line, (3, 3))')
-
-        # Each column is a lattice vector
-        line = parse.(Float64, split(srline()))
-        recip_lattice = Mat3{Float64}(reshape(line, (3, 3))')
-
-        n_kpts = parse(Int, srline())
-
-        kgrid = Vec3{Int}(parse.(Int, split(srline())))
-
-        kpoints = zeros(Vec3{Float64}, n_kpts)
+        n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
-            kpoints[ik] = Vec3(parse.(Float64, split(srline()))...)
+            n_dis[ik] = parse(Int, srline())
+            @assert n_dis[ik] == count(dis_bands[ik])
         end
 
-        n_bvecs = parse(Int, srline())
-
-        n_wann = parse(Int, srline())
-
-        checkpoint = String(srline())
-
-        # 1 -> True, 0 -> False
-        have_disentangled = Bool(parse(Int, srline()))
-
-        if have_disentangled
-            # omega_invariant
-            ΩI = parse(Float64, srline())
-
-            dis_bands = [falses(n_bands) for _ in 1:n_kpts]
-            for ik in 1:n_kpts
+        # u_matrix_opt
+        Udis = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+        for ik in 1:n_kpts
+            for iw in 1:n_wann
                 for ib in 1:n_bands
-                    # 1 -> True, 0 -> False
-                    dis_bands[ik][ib] = Bool(parse(Int, srline()))
+                    vals = parse.(Float64, split(srline()))
+                    Udis[ik][ib, iw] = vals[1] + im * vals[2]
                 end
             end
-
-            n_dis = zeros(Int, n_kpts)
-            for ik in 1:n_kpts
-                n_dis[ik] = parse(Int, srline())
-                @assert n_dis[ik] == count(dis_bands[ik])
-            end
-
-            # u_matrix_opt
-            Udis = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
-            for ik in 1:n_kpts
-                for iw in 1:n_wann
-                    for ib in 1:n_bands
-                        vals = parse.(Float64, split(srline()))
-                        Udis[ik][ib, iw] = vals[1] + im * vals[2]
-                    end
-                end
-            end
-
-        else
-            ΩI = -1.0
-            dis_bands = BitVector[]
-            n_dis = Int[]
-            Udis = Matrix{ComplexF64}[]
         end
 
-        # u_matrix
-        Uml = [zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_kpts]
-        for ik in 1:n_kpts
+    else
+        ΩI = -1.0
+        dis_bands = BitVector[]
+        n_dis = Int[]
+        Udis = Matrix{ComplexF64}[]
+    end
+
+    # u_matrix
+    Uml = [zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_kpts]
+    for ik in 1:n_kpts
+        for iw in 1:n_wann
+            for ib in 1:n_wann
+                vals = parse.(Float64, split(srline()))
+                Uml[ik][ib, iw] = vals[1] + im * vals[2]
+            end
+        end
+    end
+
+    #  m_matrix
+    M = [[zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+    for ik in 1:n_kpts
+        for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
                     vals = parse.(Float64, split(srline()))
-                    Uml[ik][ib, iw] = vals[1] + im * vals[2]
+                    M[ik][inn][ib, iw] = vals[1] + im * vals[2]
                 end
             end
         end
-
-        #  m_matrix
-        M = [[zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_bvecs] for _ in 1:n_kpts]
-        for ik in 1:n_kpts
-            for inn in 1:n_bvecs
-                for iw in 1:n_wann
-                    for ib in 1:n_wann
-                        vals = parse.(Float64, split(srline()))
-                        M[ik][inn][ib, iw] = vals[1] + im * vals[2]
-                    end
-                end
-            end
-        end
-
-        # wannier_centres
-        r = zeros(Vec3{Float64}, n_wann)
-        for iw in 1:n_wann
-            r[iw] = Vec3(parse.(Float64, split(srline()))...)
-        end
-
-        # wannier_spreads
-        ω = zeros(Float64, n_wann)
-        for iw in 1:n_wann
-            ω[iw] = parse(Float64, srline())
-        end
-
-        return Chk(
-            header,
-            exclude_bands,
-            lattice,
-            recip_lattice,
-            kgrid,
-            kpoints,
-            checkpoint,
-            have_disentangled,
-            ΩI,
-            dis_bands,
-            Udis,
-            Uml,
-            M,
-            r,
-            ω,
-        )
     end
-    return chk
+
+    # wannier_centres
+    r = zeros(Vec3{Float64}, n_wann)
+    for iw in 1:n_wann
+        r[iw] = Vec3(parse.(Float64, split(srline()))...)
+    end
+
+    # wannier_spreads
+    ω = zeros(Float64, n_wann)
+    for iw in 1:n_wann
+        ω[iw] = parse(Float64, srline())
+    end
+
+    return Chk(
+        header,
+        exclude_bands,
+        lattice,
+        recip_lattice,
+        kgrid,
+        kpoints,
+        checkpoint,
+        have_disentangled,
+        ΩI,
+        dis_bands,
+        Udis,
+        Uml,
+        M,
+        r,
+        ω,
+    )
 end
 
-function read_chk(filename::AbstractString, ::FortranBinary)
-    io = FortranFile(filename)
+function read_chk(filename::AbstractString, ::FortranText)
+    return open(filename) do io
+        read_chk(io, FortranText())
+    end
+end
+
+function read_chk(io::FortranFile, ::FortranBinary)
 
     # strip and read line
     header_len = 33
@@ -428,6 +430,11 @@ function read_chk(filename::AbstractString, ::FortranBinary)
     )
 end
 
+function read_chk(filename::AbstractString, ::FortranBinary)
+    io = FortranFile(filename)
+    return read_chk(io, FortranBinary())
+end
+
 function read_chk(filename::AbstractString)
     if isbinary(filename)
         format = FortranBinary()
@@ -459,121 +466,125 @@ Similar to [`write_amn`](@ref), the 1st version is a convenience wrapper.
 """
 function write_chk end
 
-function write_chk(filename::AbstractString, chk::Chk, ::FortranText)
-    open(filename, "w") do io
-        n_bands = chk.n_bands
-        n_wann = chk.n_wann
-        n_kpts = chk.n_kpts
-        n_bvecs = chk.n_bvecs
+function write_chk(io::IO, chk::Chk, ::FortranText)
+    n_bands = chk.n_bands
+    n_wann = chk.n_wann
+    n_kpts = chk.n_kpts
+    n_bvecs = chk.n_bvecs
 
-        # Write formatted chk file
-        @printf(io, "%33s\n", chk.header)
+    # Write formatted chk file
+    @printf(io, "%33s\n", chk.header)
 
-        @printf(io, "%d\n", n_bands)
+    @printf(io, "%d\n", n_bands)
 
-        @printf(io, "%d\n", chk.n_exclude_bands)
+    @printf(io, "%d\n", chk.n_exclude_bands)
 
-        if chk.n_exclude_bands > 0
-            for i in 1:(chk.n_exclude_bands)
-                @printf(io, "%d\n", chk.exclude_bands[i])
+    if chk.n_exclude_bands > 0
+        for i in 1:(chk.n_exclude_bands)
+            @printf(io, "%d\n", chk.exclude_bands[i])
+        end
+    end
+
+    # Each column is a lattice vector
+    # but W90 writes x components first, then y, z. Not a1 first, then a2, a3.
+    for v in reshape(chk.lattice', 9)
+        @printf(io, "%25.17f", v)
+    end
+    @printf(io, "\n")
+
+    # Each column is a lattice vector
+    for v in reshape(chk.recip_lattice', 9)
+        @printf(io, "%25.17f", v)
+    end
+    @printf(io, "\n")
+
+    @printf(io, "%d\n", n_kpts)
+
+    @printf(io, "%d %d %d\n", chk.kgrid...)
+
+    for kpt in chk.kpoints
+        @printf(io, "%25.17f %25.17f %25.17f\n", kpt...)
+    end
+
+    @printf(io, "%d\n", n_bvecs)
+
+    @printf(io, "%d\n", n_wann)
+
+    # left-justified
+    @printf(io, "%-20s\n", chk.checkpoint)
+
+    # 1 -> True, 0 -> False
+    # v = chk.have_disentangled ? 1 : 0
+    @printf(io, "%d\n", chk.have_disentangled)
+
+    if chk.have_disentangled
+        # omega_invariant
+        @printf(io, "%25.17f\n", chk.ΩI)
+
+        for ik in 1:n_kpts
+            for ib in 1:n_bands
+                # 1 -> True, 0 -> False
+                @printf(io, "%d\n", chk.dis_bands[ik][ib])
             end
         end
 
-        # Each column is a lattice vector
-        # but W90 writes x components first, then y, z. Not a1 first, then a2, a3.
-        for v in reshape(chk.lattice', 9)
-            @printf(io, "%25.17f", v)
-        end
-        @printf(io, "\n")
-
-        # Each column is a lattice vector
-        for v in reshape(chk.recip_lattice', 9)
-            @printf(io, "%25.17f", v)
-        end
-        @printf(io, "\n")
-
-        @printf(io, "%d\n", n_kpts)
-
-        @printf(io, "%d %d %d\n", chk.kgrid...)
-
-        for kpt in chk.kpoints
-            @printf(io, "%25.17f %25.17f %25.17f\n", kpt...)
+        for ik in 1:n_kpts
+            @printf(io, "%d\n", chk.n_dis[ik])
         end
 
-        @printf(io, "%d\n", n_bvecs)
-
-        @printf(io, "%d\n", n_wann)
-
-        # left-justified
-        @printf(io, "%-20s\n", chk.checkpoint)
-
-        # 1 -> True, 0 -> False
-        # v = chk.have_disentangled ? 1 : 0
-        @printf(io, "%d\n", chk.have_disentangled)
-
-        if chk.have_disentangled
-            # omega_invariant
-            @printf(io, "%25.17f\n", chk.ΩI)
-
-            for ik in 1:n_kpts
-                for ib in 1:n_bands
-                    # 1 -> True, 0 -> False
-                    @printf(io, "%d\n", chk.dis_bands[ik][ib])
-                end
-            end
-
-            for ik in 1:n_kpts
-                @printf(io, "%d\n", chk.n_dis[ik])
-            end
-
-            # u_matrix_opt
-            for ik in 1:n_kpts
-                for iw in 1:n_wann
-                    for ib in 1:n_bands
-                        v = chk.Udis[ik][ib, iw]
-                        @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
-                    end
-                end
-            end
-        end
-
-        # u_matrix
+        # u_matrix_opt
         for ik in 1:n_kpts
             for iw in 1:n_wann
-                for ib in 1:n_wann
-                    v = chk.Uml[ik][ib, iw]
+                for ib in 1:n_bands
+                    v = chk.Udis[ik][ib, iw]
                     @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
         end
+    end
 
-        #  m_matrix
-        for ik in 1:n_kpts
-            for inn in 1:n_bvecs
-                for iw in 1:n_wann
-                    for ib in 1:n_wann
-                        v = chk.M[ik][inn][ib, iw]
-                        @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
-                    end
+    # u_matrix
+    for ik in 1:n_kpts
+        for iw in 1:n_wann
+            for ib in 1:n_wann
+                v = chk.Uml[ik][ib, iw]
+                @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
+            end
+        end
+    end
+
+    #  m_matrix
+    for ik in 1:n_kpts
+        for inn in 1:n_bvecs
+            for iw in 1:n_wann
+                for ib in 1:n_wann
+                    v = chk.M[ik][inn][ib, iw]
+                    @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
         end
-
-        # wannier_centres
-        for iw in 1:n_wann
-            @printf(io, "%25.17f %25.17f %25.17f\n", chk.r[iw]...)
-        end
-
-        # wannier_spreads
-        for iw in 1:n_wann
-            @printf(io, "%25.17f\n", chk.ω[iw])
-        end
     end
+
+    # wannier_centres
+    for iw in 1:n_wann
+        @printf(io, "%25.17f %25.17f %25.17f\n", chk.r[iw]...)
+    end
+
+    # wannier_spreads
+    for iw in 1:n_wann
+        @printf(io, "%25.17f\n", chk.ω[iw])
+    end
+    return nothing
 end
 
-function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
-    io = FortranFile(filename, "w")
+function write_chk(filename::AbstractString, chk::Chk, ::FortranText)
+    open(filename, "w") do io
+        write_chk(io, chk, FortranText())
+    end
+    return nothing
+end
 
+function write_chk(io::FortranFile, chk::Chk, ::FortranBinary)
     n_bands = chk.n_bands
     n_wann = chk.n_wann
     n_kpts = chk.n_kpts
@@ -652,6 +663,11 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
 
     close(io)
     return nothing
+end
+
+function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
+    io = FortranFile(filename, "w")
+    return write_chk(io, chk, FortranBinary())
 end
 
 function write_chk(filename::AbstractString, chk::Chk; binary=false)

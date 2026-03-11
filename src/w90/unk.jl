@@ -14,40 +14,37 @@ Read wannier90 `UNK` file for the periodic part of Bloch wavefunctions.
 """
 function read_unk end
 
-function read_unk(filename::AbstractString, ::FortranText)
-    n_spin = occursin("NC", filename) ? 2 : 1
+function read_unk(io::IO, ::FortranText; n_spin::Integer=1)
+    line = split(strip(readline(io)))
+    n_gx, n_gy, n_gz, ik, n_bands = parse.(Int, line)
 
-    res = open(filename) do io
-        line = split(strip(readline(io)))
-        n_gx, n_gy, n_gz, ik, n_bands = parse.(Int, line)
+    Ψ = zeros(ComplexF64, n_gx, n_gy, n_gz, n_bands, n_spin)
 
-        Ψ = zeros(ComplexF64, n_gx, n_gy, n_gz, n_bands, n_spin)
-
-        for ib in 1:n_bands
-            for is in 1:n_spin
-                for iz in 1:n_gz
-                    for iy in 1:n_gy
-                        for ix in 1:n_gx
-                            line = split(strip(readline(io)))
-                            v1, v2 = parse.(Float64, line)
-                            Ψ[ix, iy, iz, ib, is] = v1 + im * v2
-                        end
+    for ib in 1:n_bands
+        for is in 1:n_spin
+            for iz in 1:n_gz
+                for iy in 1:n_gy
+                    for ix in 1:n_gx
+                        line = split(strip(readline(io)))
+                        v1, v2 = parse.(Float64, line)
+                        Ψ[ix, iy, iz, ib, is] = v1 + im * v2
                     end
                 end
             end
         end
-
-        return ik, Ψ
     end
 
-    return res
+    return ik, Ψ
 end
 
-function read_unk(filename::AbstractString, ::FortranBinary)
+function read_unk(filename::AbstractString, ::FortranText)
     n_spin = occursin("NC", filename) ? 2 : 1
+    return open(filename) do io
+        read_unk(io, FortranText(); n_spin)
+    end
+end
 
-    # unk files are not in Fortran stream io, so I need to open with FortranFile
-    io = FortranFile(filename)
+function read_unk(io::FortranFile, ::FortranBinary; n_spin::Integer=1)
 
     # gfortran default integer is 4 bytes
     Tint = Int32
@@ -58,13 +55,20 @@ function read_unk(filename::AbstractString, ::FortranBinary)
     for ib in 1:n_bands
         for is in 1:n_spin
             record = Record(io)
-            read!(record, view(Ψ, :, :, :, ib, is))
+            read!(record, view(Ψ,:,:,:,ib,is))
             close(record)
         end
     end
 
     close(io)
     return ik, Ψ
+end
+
+function read_unk(filename::AbstractString, ::FortranBinary)
+    n_spin = occursin("NC", filename) ? 2 : 1
+    # unk files are not in Fortran stream io, so I need to open with FortranFile
+    io = FortranFile(filename)
+    return read_unk(io, FortranBinary(); n_spin)
 end
 
 function read_unk(filename::AbstractString)
@@ -97,40 +101,42 @@ Write `UNK` file for the periodic part of Bloch wavefunctions.
 """
 function write_unk end
 
-function write_unk(
-    filename::AbstractString, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranText
-)
+function write_unk(io::IO, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranText)
     n_gx, n_gy, n_gz, n_bands, n_spin = size(Ψ)
 
-    open(filename, "w") do io
-        @printf(io, " %11d %11d %11d %11d %11d\n", n_gx, n_gy, n_gz, ik, n_bands)
+    @printf(io, " %11d %11d %11d %11d %11d\n", n_gx, n_gy, n_gz, ik, n_bands)
 
-        for ib in 1:n_bands
-            for is in 1:n_spin
-                for iz in 1:n_gz
-                    for iy in 1:n_gy
-                        for ix in 1:n_gx
-                            v1 = real(Ψ[ix, iy, iz, ib, is])
-                            v2 = imag(Ψ[ix, iy, iz, ib, is])
-                            @printf(io, " %18.10e %18.10e\n", v1, v2)
-                        end
+    for ib in 1:n_bands
+        for is in 1:n_spin
+            for iz in 1:n_gz
+                for iy in 1:n_gy
+                    for ix in 1:n_gx
+                        v1 = real(Ψ[ix, iy, iz, ib, is])
+                        v2 = imag(Ψ[ix, iy, iz, ib, is])
+                        @printf(io, " %18.10e %18.10e\n", v1, v2)
                     end
                 end
             end
         end
     end
+    return nothing
 end
 
 function write_unk(
-    filename::AbstractString, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranBinary
+    filename::AbstractString, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranText
 )
+    open(filename, "w") do io
+        write_unk(io, ik, Ψ, FortranText())
+    end
+    return nothing
+end
+
+function write_unk(io::FortranFile, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranBinary)
     n_gx, n_gy, n_gz, n_bands, n_spin = size(Ψ)
 
     # gfortran default integer is 4 bytes
     Tint = Int32
 
-    # not Fortran stream IO, so using `FortranFile`
-    io = FortranFile(filename, "w")
     write(io, Tint(n_gx), Tint(n_gy), Tint(n_gz), Tint(ik), Tint(n_bands))
 
     for ib in 1:n_bands
@@ -139,6 +145,14 @@ function write_unk(
         end
     end
     return close(io)
+end
+
+function write_unk(
+    filename::AbstractString, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranBinary
+)
+    # not Fortran stream IO, so using `FortranFile`
+    io = FortranFile(filename, "w")
+    return write_unk(io, ik, Ψ, FortranBinary())
 end
 
 function write_unk(filename::AbstractString, ik, Ψ; binary=false)

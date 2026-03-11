@@ -15,48 +15,44 @@ Read `prefix_wsvec.dat`.
 - `n_wann`: number of WFs
 - `header`: the first line of the file
 """
-function read_w90_wsvec(filename::AbstractString)
-    header, mdrs, Rmn, Tvectors_flat, Tdegens_flat = open(filename) do io
-        header = strip(readline(io))
+function read_w90_wsvec(io::IO)
+    header = strip(readline(io))
 
-        # check `use_ws_distance`
-        mdrs = false
-        mdrs_str = split(header)[end]
-        if occursin("use_ws_distance=", mdrs_str)
-            mdrs_str = lowercase(split(header, "use_ws_distance=")[2])
-            mdrs = parse_bool(mdrs_str)
+    # check `use_ws_distance`
+    mdrs = false
+    mdrs_str = split(header)[end]
+    if occursin("use_ws_distance=", mdrs_str)
+        mdrs_str = lowercase(split(header, "use_ws_distance=")[2])
+        mdrs = parse_bool(mdrs_str)
+    end
+
+    Rmn = Vector{Vector{Int}}()
+    # Tvectors_flat[iRmn][iT] is Vec3 for T-vector, where iRmn is the index for the
+    # combination of Rvector and (m, n), iT is the index of T-vector at iRmn.
+    # Later on we will reorder this flattened vector, i.e., unfold the
+    # iRmn index into (iR, m, n).
+    Tvectors_flat = Vector{Vector{Vec3{Int}}}()
+    Tdegens_flat = Vector{Int}()
+
+    while !eof(io)
+        line = strip(readline(io))
+        # the last line is empty
+        if length(line) == 0
+            continue
         end
 
-        Rmn = Vector{Vector{Int}}()
-        # Tvectors_flat[iRmn][iT] is Vec3 for T-vector, where iRmn is the index for the
-        # combination of Rvector and (m, n), iT is the index of T-vector at iRmn.
-        # Later on we will reorder this flattened vector, i.e., unfold the
-        # iRmn index into (iR, m, n).
-        Tvectors_flat = Vector{Vector{Vec3{Int}}}()
-        Tdegens_flat = Vector{Int}()
+        Rx, Ry, Rz, m, n = parse.(Int, split(line))
+        push!(Rmn, [Rx, Ry, Rz, m, n])
 
-        while !eof(io)
+        n_T = parse(Int, strip(readline(io)))
+        push!(Tdegens_flat, n_T)
+
+        T = zeros(Vec3{Int}, n_T)
+        for iT in 1:n_T
             line = strip(readline(io))
-            # the last line is empty
-            if length(line) == 0
-                continue
-            end
-
-            Rx, Ry, Rz, m, n = parse.(Int, split(line))
-            push!(Rmn, [Rx, Ry, Rz, m, n])
-
-            n_T = parse(Int, strip(readline(io)))
-            push!(Tdegens_flat, n_T)
-
-            T = zeros(Vec3{Int}, n_T)
-            for iT in 1:n_T
-                line = strip(readline(io))
-                T[iT] = Vec3(parse.(Int, split(line))...)
-            end
-            push!(Tvectors_flat, T)
+            T[iT] = Vec3(parse.(Int, split(line))...)
         end
-
-        return header, mdrs, Rmn, Tvectors_flat, Tdegens_flat
+        push!(Tvectors_flat, T)
     end
 
     # get number of WFs
@@ -94,8 +90,16 @@ function read_w90_wsvec(filename::AbstractString)
         end
     end
 
-    @info "Reading wsvec.dat file" filename header mdrs n_wann n_Rvecs
     return (; mdrs, Rvectors, Tvectors, Tdegens, n_wann, header)
+end
+
+function read_w90_wsvec(filename::AbstractString)
+    result = open(filename) do io
+        read_w90_wsvec(io)
+    end
+    n_Rvecs = length(result.Rvectors)
+    @info "Reading wsvec.dat file" filename result.header result.mdrs result.n_wann n_Rvecs
+    return result
 end
 
 """
@@ -112,7 +116,7 @@ Write `prefix_wsvec.dat`.
 Also see the return values of [`read_w90_wsvec`](@ref).
 """
 function write_w90_wsvec(
-    filename::AbstractString;
+    io::IO;
     Rvectors::AbstractVector,
     n_wann::Union{Integer,Nothing}=nothing,
     Tvectors::Union{AbstractVector,Nothing}=nothing,
@@ -134,32 +138,50 @@ function write_w90_wsvec(
     else
         @assert n_wann !== nothing "n_wann must be provided for Wigner-Seitz format"
     end
-    @info "Writing wsvec.dat file" filename header mdrs n_wann n_Rvecs
+    if mdrs
+        println(io, header * "  with use_ws_distance=.true.")
+    else
+        println(io, header * "  with use_ws_distance=.false.")
+    end
 
-    open(filename, "w") do io
-        if mdrs
-            println(io, header * "  with use_ws_distance=.true.")
-        else
-            println(io, header * "  with use_ws_distance=.false.")
-        end
+    for iR in 1:n_Rvecs
+        R = Rvectors[iR]
+        for m in 1:n_wann
+            for n in 1:n_wann
+                @printf(io, "%5d %5d %5d %5d %5d\n", R..., m, n)
 
-        for iR in 1:n_Rvecs
-            R = Rvectors[iR]
-            for m in 1:n_wann
-                for n in 1:n_wann
-                    @printf(io, "%5d %5d %5d %5d %5d\n", R..., m, n)
-
-                    if mdrs
-                        @printf(io, "%5d\n", Tdegens[iR][m, n])
-                        for T in Tvectors[iR][m, n]
-                            @printf(io, "%5d %5d %5d\n", T...)
-                        end
-                    else
-                        @printf(io, "%5d\n", 1)
-                        @printf(io, "%5d %5d %5d\n", 0, 0, 0)
+                if mdrs
+                    @printf(io, "%5d\n", Tdegens[iR][m, n])
+                    for T in Tvectors[iR][m, n]
+                        @printf(io, "%5d %5d %5d\n", T...)
                     end
+                else
+                    @printf(io, "%5d\n", 1)
+                    @printf(io, "%5d %5d %5d\n", 0, 0, 0)
                 end
             end
         end
+    end
+
+    return nothing
+end
+
+function write_w90_wsvec(
+    filename::AbstractString;
+    Rvectors::AbstractVector,
+    n_wann::Union{Integer,Nothing}=nothing,
+    Tvectors::Union{AbstractVector,Nothing}=nothing,
+    Tdegens::Union{AbstractVector,Nothing}=nothing,
+    header=default_header(),
+)
+    mdrs = Tvectors !== nothing
+    n_Rvecs = length(Rvectors)
+    if mdrs && n_wann === nothing
+        n_wann = size(Tvectors[1], 1)
+    end
+    @info "Writing wsvec.dat file" filename header mdrs n_wann n_Rvecs
+
+    open(filename, "w") do io
+        write_w90_wsvec(io; Rvectors, n_wann, Tvectors, Tdegens, header)
     end
 end

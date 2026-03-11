@@ -26,8 +26,16 @@ function read_uIu(filename::AbstractString, ::FortranText; transpose_band_indice
     return read_uHu(filename, FortranText(); transpose_band_indices)
 end
 
+function read_uIu(io::IO, ::FortranText; transpose_band_indices=true)
+    return read_uHu(io, FortranText(); transpose_band_indices)
+end
+
 function read_uIu(filename::AbstractString, ::FortranBinary; transpose_band_indices=true)
     return read_uHu(filename, FortranBinary(); transpose_band_indices)
+end
+
+function read_uIu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
+    return read_uHu(io, FortranBinary(); transpose_band_indices)
 end
 
 function read_uIu(filename::AbstractString; kwargs...)
@@ -70,6 +78,16 @@ function write_uIu(
 end
 
 function write_uIu(
+    io::IO,
+    uIu::AbstractVector,
+    ::FortranText;
+    header=default_header(),
+    transpose_band_indices=true,
+)
+    return write_uHu(io, uIu, FortranText(); header, transpose_band_indices)
+end
+
+function write_uIu(
     filename::AbstractString,
     uIu::AbstractVector,
     ::FortranBinary;
@@ -77,6 +95,16 @@ function write_uIu(
     transpose_band_indices=true,
 )
     return write_uHu(filename, uIu, FortranBinary(); header, transpose_band_indices)
+end
+
+function write_uIu(
+    io::FortranFile,
+    uIu::AbstractVector,
+    ::FortranBinary;
+    header=default_header(),
+    transpose_band_indices=true,
+)
+    return write_uHu(io, uIu, FortranBinary(); header, transpose_band_indices)
 end
 
 function write_uIu(

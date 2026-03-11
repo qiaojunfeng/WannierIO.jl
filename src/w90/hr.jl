@@ -11,30 +11,37 @@ Read `prefix_hr.dat`.
 - `H`: Hamiltonian ``\\mathbf{H}(\\mathbf{R})``
 - `header`: the first line of the file
 """
-function read_w90_hrdat(filename::AbstractString)
-    return open(filename) do io
-        header = strip(readline(io))
-        n_wann = parse(Int, strip(readline(io)))
-        n_Rvecs = parse(Int, strip(readline(io)))
+function read_w90_hrdat(io::IO)
+    header = strip(readline(io))
+    n_wann = parse(Int, strip(readline(io)))
+    n_Rvecs = parse(Int, strip(readline(io)))
 
-        Rdegens = parse_vector(io, Int, n_Rvecs)
-        Rvectors = zeros(Vec3{Int}, n_Rvecs)
-        H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
-        for iR in 1:n_Rvecs
-            for n in 1:n_wann
-                for m in 1:n_wann
-                    line = split(strip(readline(io)))
-                    Rvectors[iR] = parse.(Int, line[1:3])
-                    @assert m == parse(Int, line[4]) line
-                    @assert n == parse(Int, line[5]) line
-                    H[iR][m, n] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
-                end
+    Rdegens = parse_vector(io, Int, n_Rvecs)
+    Rvectors = zeros(Vec3{Int}, n_Rvecs)
+    H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+    for iR in 1:n_Rvecs
+        for n in 1:n_wann
+            for m in 1:n_wann
+                line = split(strip(readline(io)))
+                Rvectors[iR] = parse.(Int, line[1:3])
+                @assert m == parse(Int, line[4]) line
+                @assert n == parse(Int, line[5]) line
+                H[iR][m, n] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
             end
         end
-
-        @info "Reading hr.dat file" filename header n_wann n_Rvecs
-        return (; Rvectors, Rdegens, H, header)
     end
+
+    return (; Rvectors, Rdegens, H, header)
+end
+
+function read_w90_hrdat(filename::AbstractString)
+    result = open(filename) do io
+        read_w90_hrdat(io)
+    end
+    @info "Reading hr.dat file" filename result.header n_wann=size(result.H[1], 1) n_Rvecs=length(
+        result.H
+    )
+    return result
 end
 
 """
@@ -45,6 +52,53 @@ Write `prefix_hr.dat`.
 # Keyword arguments
 See the return values of [`read_w90_hrdat`](@ref).
 """
+function write_w90_hrdat(
+    io::IO;
+    Rvectors::AbstractVector,
+    Rdegens::AbstractVector,
+    H::AbstractVector,
+    header=default_header(),
+)
+    n_Rvecs = length(H)
+    @assert n_Rvecs > 0 "empty H"
+    n_wann = size(H[1], 1)
+
+    println(io, strip(header))
+    @printf(io, "%d\n", n_wann)
+    @printf(io, "%d\n", n_Rvecs)
+
+    n_columns = 15
+    for (iR, degen) in enumerate(Rdegens)
+        @printf(io, "%5d", degen)
+        if mod(iR, n_columns) == 0
+            println(io)
+        end
+    end
+    if mod(n_Rvecs, n_columns) != 0
+        println(io)
+    end
+
+    for iR in 1:n_Rvecs
+        for n in 1:n_wann
+            for m in 1:n_wann
+                reH = real(H[iR][m, n])
+                imH = imag(H[iR][m, n])
+                @printf(
+                    io,
+                    " %4d %4d %4d %4d %4d %11.6f %11.6f\n",
+                    Rvectors[iR]...,
+                    m,
+                    n,
+                    reH,
+                    imH
+                )
+            end
+        end
+    end
+
+    return nothing
+end
+
 function write_w90_hrdat(
     filename::AbstractString;
     Rvectors::AbstractVector,
@@ -57,38 +111,7 @@ function write_w90_hrdat(
     n_wann = size(H[1], 1)
     @info "Writing hr.dat file" filename header n_wann n_Rvecs
 
-    return open(filename, "w") do io
-        println(io, strip(header))
-        @printf(io, "%d\n", n_wann)
-        @printf(io, "%d\n", n_Rvecs)
-
-        n_columns = 15
-        for (iR, degen) in enumerate(Rdegens)
-            @printf(io, "%5d", degen)
-            if mod(iR, n_columns) == 0
-                println(io)
-            end
-        end
-        if mod(n_Rvecs, n_columns) != 0
-            println(io)
-        end
-
-        for iR in 1:n_Rvecs
-            for n in 1:n_wann
-                for m in 1:n_wann
-                    reH = real(H[iR][m, n])
-                    imH = imag(H[iR][m, n])
-                    @printf(
-                        io,
-                        " %4d %4d %4d %4d %4d %11.6f %11.6f\n",
-                        Rvectors[iR]...,
-                        m,
-                        n,
-                        reH,
-                        imH
-                    )
-                end
-            end
-        end
+    open(filename, "w") do io
+        write_w90_hrdat(io; Rvectors, Rdegens, H, header)
     end
 end

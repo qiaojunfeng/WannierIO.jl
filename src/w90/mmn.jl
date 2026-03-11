@@ -24,85 +24,85 @@ The 1st version is a convenience wrapper for the other two.
 """
 function read_mmn end
 
-function read_mmn(filename::AbstractString, ::FortranText)
-    mmn = open(filename) do io
-        header = strip(readline(io))
+function read_mmn(io::IO, ::FortranText)
+    header = strip(readline(io))
 
-        line = readline(io)
-        n_bands, n_kpts, n_bvecs = map(x -> parse(Int, x), split(line))
+    line = readline(io)
+    n_bands, n_kpts, n_bvecs = map(x -> parse(Int, x), split(line))
 
-        # overlap matrix
-        M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
-        # for each point, list of neighbors
-        kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
-        # the translation vector G so that the true bvector
-        # b = kpoints[kpb_k] + kpb_G - kpoints[k]
-        kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+    # overlap matrix
+    M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+    # for each point, list of neighbors
+    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+    # the translation vector G so that the true bvector
+    # b = kpoints[kpb_k] + kpb_G - kpoints[k]
+    kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
 
-        while !eof(io)
-            for ib in 1:n_bvecs
-                line = readline(io)
-                arr = split(line)
-                ik = parse(Int, arr[1])
-                kpb_k[ik][ib] = parse(Int, arr[2])
-                kpb_G[ik][ib] = Vec3(parse.(Int, arr[3:5]))
-                for n in 1:n_bands
-                    for m in 1:n_bands
-                        line = readline(io)
-                        arr = split(line)
-                        o = parse(Float64, arr[1]) + im * parse(Float64, arr[2])
-                        M[ik][ib][m, n] = o
-                    end
+    while !eof(io)
+        for ib in 1:n_bvecs
+            line = readline(io)
+            arr = split(line)
+            ik = parse(Int, arr[1])
+            kpb_k[ik][ib] = parse(Int, arr[2])
+            kpb_G[ik][ib] = Vec3(parse.(Int, arr[3:5]))
+            for n in 1:n_bands
+                for m in 1:n_bands
+                    line = readline(io)
+                    arr = split(line)
+                    o = parse(Float64, arr[1]) + im * parse(Float64, arr[2])
+                    M[ik][ib][m, n] = o
                 end
             end
         end
-
-        @assert all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M)
-        return (; M, kpb_k, kpb_G, header)
     end
-    return mmn
+
+    @assert all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M)
+    return (; M, kpb_k, kpb_G, header)
 end
 
-function read_mmn(filename::AbstractString, ::FortranBinaryStream)
+function read_mmn(filename::AbstractString, format::FileFormat)
+    return open(filename) do io
+        read_mmn(io, format)
+    end
+end
+
+function read_mmn(io::IO, ::FortranBinaryStream)
     # I use stream io to write mmn, so I should use plain julia `open`
-    mmn = open(filename) do io
-        header_len = 60
-        header = read(io, FString{header_len})
-        # from FString to String
-        header = strip(String(header))
+    header_len = 60
+    header = read(io, FString{header_len})
+    # from FString to String
+    header = strip(String(header))
 
-        # gfortran default integer size = 4
-        # https://gcc.gnu.org/onlinedocs/gfortran/KIND-Type-Parameters.html
-        Tint = Int32
-        n_bands = read(io, Tint)
-        n_kpts = read(io, Tint)
-        n_bvecs = read(io, Tint)
+    # gfortran default integer size = 4
+    # https://gcc.gnu.org/onlinedocs/gfortran/KIND-Type-Parameters.html
+    Tint = Int32
+    n_bands = read(io, Tint)
+    n_kpts = read(io, Tint)
+    n_bvecs = read(io, Tint)
 
-        # overlap matrix
-        M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
-        # for each point, list of neighbors, (K) representation
-        kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
-        kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+    # overlap matrix
+    M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+    # for each point, list of neighbors, (K) representation
+    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+    kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
 
-        while !eof(io)
-            for ib in 1:n_bvecs
-                ik = read(io, Tint)
-                kpb_k[ik][ib] = read(io, Tint)
-                kpb_G[ik][ib] = Vec3{Int}(read(io, Tint), read(io, Tint), read(io, Tint))
-                for n in 1:n_bands
-                    for m in 1:n_bands
-                        r = read(io, Float64)
-                        i = read(io, Float64)
-                        M[ik][ib][m, n] = r + im * i
-                    end
+    while !eof(io)
+        for ib in 1:n_bvecs
+            ik = read(io, Tint)
+            kpb_k[ik][ib] = read(io, Tint)
+            kpb_G[ik][ib] = Vec3{Int}(read(io, Tint), read(io, Tint), read(io, Tint))
+            for n in 1:n_bands
+                for m in 1:n_bands
+                    r = read(io, Float64)
+                    i = read(io, Float64)
+                    M[ik][ib][m, n] = r + im * i
                 end
             end
         end
-
-        @assert all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M)
-        return (; M, kpb_k, kpb_G, header)
     end
-    return mmn
+
+    @assert all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M)
+    return (; M, kpb_k, kpb_G, header)
 end
 
 function read_mmn(filename::AbstractString)
@@ -177,7 +177,7 @@ end
 end
 
 function write_mmn(
-    filename::AbstractString,
+    io::IO,
     M::AbstractVector,
     kpb_k::AbstractVector,
     kpb_G::AbstractVector,
@@ -189,29 +189,42 @@ function write_mmn(
     n_bvecs = length(M[1])
     n_bands = size(M[1][1], 1)
 
-    open(filename, "w") do io
-        header = strip(header)
-        write(io, header, "\n")
+    header = strip(header)
+    write(io, header, "\n")
 
-        @printf(io, "    %d   %d    %d \n", n_bands, n_kpts, n_bvecs)
+    @printf(io, "    %d   %d    %d \n", n_bands, n_kpts, n_bvecs)
 
-        for ik in 1:n_kpts
-            for ib in 1:n_bvecs
-                @printf(io, "%d %d %d %d %d\n", ik, kpb_k[ik][ib], kpb_G[ik][ib]...)
+    for ik in 1:n_kpts
+        for ib in 1:n_bvecs
+            @printf(io, "%d %d %d %d %d\n", ik, kpb_k[ik][ib], kpb_G[ik][ib]...)
 
-                for n in 1:n_bands
-                    for m in 1:n_bands
-                        o = M[ik][ib][m, n]
-                        @printf(io, "  %16.12f  %16.12f\n", real(o), imag(o))
-                    end
+            for n in 1:n_bands
+                for m in 1:n_bands
+                    o = M[ik][ib][m, n]
+                    @printf(io, "  %16.12f  %16.12f\n", real(o), imag(o))
                 end
             end
         end
     end
+    return nothing
 end
 
 function write_mmn(
     filename::AbstractString,
+    M::AbstractVector,
+    kpb_k::AbstractVector,
+    kpb_G::AbstractVector,
+    format::FileFormat;
+    header=default_header(),
+)
+    open(filename, "w") do io
+        write_mmn(io, M, kpb_k, kpb_G, format; header)
+    end
+    return nothing
+end
+
+function write_mmn(
+    io::IO,
     M::AbstractVector,
     kpb_k::AbstractVector,
     kpb_G::AbstractVector,
@@ -226,35 +239,34 @@ function write_mmn(
     # gfortran default integer size = 4
     Tint = Int32
     # I use stream io to write mmn, so I should use plain julia `open`
-    open(filename, "w") do io
-        header_len = 60
-        header = FString(header_len, String(strip(header)))
-        write(io, header)
+    header_len = 60
+    header = FString(header_len, String(strip(header)))
+    write(io, header)
 
-        write(io, Tint(n_bands))
-        write(io, Tint(n_kpts))
-        write(io, Tint(n_bvecs))
+    write(io, Tint(n_bands))
+    write(io, Tint(n_kpts))
+    write(io, Tint(n_bvecs))
 
-        for ik in 1:n_kpts
-            kpb_k_ik = kpb_k[ik]
-            kpb_G_ik = kpb_G[ik]
-            for ib in 1:n_bvecs
-                write(io, Tint(ik))
-                write(io, Tint(kpb_k_ik[ib]))
-                write(io, Tint(kpb_G_ik[ib][1]))
-                write(io, Tint(kpb_G_ik[ib][2]))
-                write(io, Tint(kpb_G_ik[ib][3]))
+    for ik in 1:n_kpts
+        kpb_k_ik = kpb_k[ik]
+        kpb_G_ik = kpb_G[ik]
+        for ib in 1:n_bvecs
+            write(io, Tint(ik))
+            write(io, Tint(kpb_k_ik[ib]))
+            write(io, Tint(kpb_G_ik[ib][1]))
+            write(io, Tint(kpb_G_ik[ib][2]))
+            write(io, Tint(kpb_G_ik[ib][3]))
 
-                for n in 1:n_bands
-                    for m in 1:n_bands
-                        o = M[ik][ib][m, n]
-                        write(io, Float64(real(o)))
-                        write(io, Float64(imag(o)))
-                    end
+            for n in 1:n_bands
+                for m in 1:n_bands
+                    o = M[ik][ib][m, n]
+                    write(io, Float64(real(o)))
+                    write(io, Float64(imag(o)))
                 end
             end
         end
     end
+    return nothing
 end
 
 function write_mmn(

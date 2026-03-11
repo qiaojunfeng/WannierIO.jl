@@ -96,119 +96,125 @@ A named tuple with the following fields:
 - `repmat_wann::Vector{RepMatWann{n_wann}}`: Representation matrices for symmetry operations
   acting on the Wannier functions.
 """
-function read_isym(filename::AbstractString)
-    return open(filename) do io
-        header = readline(io)
-        header = strip(header)
+function read_isym(io::IO)
+    header = readline(io)
+    header = strip(header)
 
-        line = split(strip(readline(io)))
-        n_symops = parse(Int64, line[1])
-        spinors = parse_bool(line[2])
+    line = split(strip(readline(io)))
+    n_symops = parse(Int64, line[1])
+    spinors = parse_bool(line[2])
 
-        # Read all symmetry operations
-        R = zeros(Int64, 3, 3)
-        t = zeros(Float64, 3)
-        u = zeros(ComplexF64, 2, 2)
-        symops = Vector{SymOp}(undef, n_symops)
+    # Read all symmetry operations
+    R = zeros(Int64, 3, 3)
+    t = zeros(Float64, 3)
+    u = zeros(ComplexF64, 2, 2)
+    symops = Vector{SymOp}(undef, n_symops)
 
-        for isym in 1:n_symops
-            comment = strip(readline(io))
-            for j in 1:3
-                line = split(readline(io))
-                R[j, :] = parse.(Int64, line)
-            end
+    for isym in 1:n_symops
+        comment = strip(readline(io))
+        for j in 1:3
             line = split(readline(io))
-            t .= parse.(Float64, line)
-            t_rev = parse_bool(readline(io))
-            if spinors
-                for j in 1:2, i in 1:2
-                    a, b = parse.(Float64, readline(io))
-                    u[i, j] = complex(a, b)
-                end
-            else
-                u .= I(2)
+            R[j, :] = parse.(Int64, line)
+        end
+        line = split(readline(io))
+        t .= parse.(Float64, line)
+        t_rev = parse_bool(readline(io))
+        if spinors
+            for j in 1:2, i in 1:2
+                a, b = parse.(Float64, readline(io))
+                u[i, j] = complex(a, b)
             end
-            isym_inv = parse(Int64, readline(io))
-
-            symops[isym] = SymOp(comment, R, t, t_rev, u, isym, isym_inv)
+        else
+            u .= I(2)
         end
+        isym_inv = parse(Int64, readline(io))
 
-        # Read IBZ kpoints
-        # Two empty lines
-        readline(io)
-        readline(io)  # usually is " K points"
-
-        nkpts_ibz = parse(Int64, strip(readline(io)))
-        # IBZ kpoints in fractional coordinates
-        kpoints_ibz = Vector{Vec3{Float64}}(undef, nkpts_ibz)
-
-        for ik in 1:nkpts_ibz
-            kpoints_ibz[ik] = parse.(Float64, split(readline(io)))
-        end
-
-        # Read little group symmetry operations, the dₘₙ(ĥ, k)
-        # Two empty lines
-        readline(io)
-        readline(io)  # usually is " Representation matrix of G_k"
-
-        # n_repmat_band is the total number of symmetry operations in the
-        # little groups of all the IBZ kpoints, ĥ k = k, where k ∈ IBZ
-        n_bands, n_repmat_band = parse.(Int64, split(readline(io)))
-
-        repmat_band = Vector{RepMatBand{n_bands}}(undef, n_repmat_band)
-        d = zeros(ComplexF64, n_bands, n_bands)
-
-        for irep in 1:n_repmat_band
-            ik_ibz, isym, n_elems = parse.(Int64, split(readline(io)))
-            # Fill all non-zero elements of the representation matrix
-            d .= 0
-            for _ in 1:n_elems
-                line = split(readline(io))
-                m, n = parse.(Int64, line[1:2])
-                a, b = parse.(Float64, line[3:4])
-                d[m, n] = a + im * b
-            end
-            repmat_band[irep] = RepMatBand{n_bands}(ik_ibz, isym, d)
-        end
-
-        # Read rotation matrix Dₘₙ(ĝ) for Wannier functions
-        # Two empty lines
-        readline(io)
-        readline(io)  # usually is " Rotation matrix of Wannier functions"
-
-        n_wann = parse(Int64, readline(io))
-
-        repmat_wann = Vector{RepMatWann{n_wann}}(undef, n_symops)
-        D = zeros(ComplexF64, n_wann, n_wann)
-
-        for _ in 1:n_symops
-            isym, n_elems = parse.(Int64, split(readline(io)))
-            # Fill all the non-zero elements of the rotation matrix
-            D .= 0
-            for _ in 1:n_elems
-                line = split(readline(io))
-                m, n = parse.(Int64, line[1:2])
-                a, b = parse.(Float64, line[3:4])
-                D[m, n] = a + im * b
-            end
-            repmat_wann[isym] = RepMatWann{n_wann}(isym, D)
-        end
-
-        @info "Read isym file" filename n_symops nkpts_ibz n_bands n_wann
-        return (;
-            header,
-            n_symops,
-            spinors,
-            symops,
-            nkpts_ibz,
-            kpoints_ibz,
-            n_bands,
-            n_repmat_band,
-            repmat_band,
-            n_wann,
-            repmat_wann,
-        )
+        symops[isym] = SymOp(comment, R, t, t_rev, u, isym, isym_inv)
     end
+
+    # Read IBZ kpoints
+    # Two empty lines
+    readline(io)
+    readline(io)  # usually is " K points"
+
+    nkpts_ibz = parse(Int64, strip(readline(io)))
+    # IBZ kpoints in fractional coordinates
+    kpoints_ibz = Vector{Vec3{Float64}}(undef, nkpts_ibz)
+
+    for ik in 1:nkpts_ibz
+        kpoints_ibz[ik] = parse.(Float64, split(readline(io)))
+    end
+
+    # Read little group symmetry operations, the dₘₙ(ĥ, k)
+    # Two empty lines
+    readline(io)
+    readline(io)  # usually is " Representation matrix of G_k"
+
+    # n_repmat_band is the total number of symmetry operations in the
+    # little groups of all the IBZ kpoints, ĥ k = k, where k ∈ IBZ
+    n_bands, n_repmat_band = parse.(Int64, split(readline(io)))
+
+    repmat_band = Vector{RepMatBand{n_bands}}(undef, n_repmat_band)
+    d = zeros(ComplexF64, n_bands, n_bands)
+
+    for irep in 1:n_repmat_band
+        ik_ibz, isym, n_elems = parse.(Int64, split(readline(io)))
+        # Fill all non-zero elements of the representation matrix
+        d .= 0
+        for _ in 1:n_elems
+            line = split(readline(io))
+            m, n = parse.(Int64, line[1:2])
+            a, b = parse.(Float64, line[3:4])
+            d[m, n] = a + im * b
+        end
+        repmat_band[irep] = RepMatBand{n_bands}(ik_ibz, isym, d)
+    end
+
+    # Read rotation matrix Dₘₙ(ĝ) for Wannier functions
+    # Two empty lines
+    readline(io)
+    readline(io)  # usually is " Rotation matrix of Wannier functions"
+
+    n_wann = parse(Int64, readline(io))
+
+    repmat_wann = Vector{RepMatWann{n_wann}}(undef, n_symops)
+    D = zeros(ComplexF64, n_wann, n_wann)
+
+    for _ in 1:n_symops
+        isym, n_elems = parse.(Int64, split(readline(io)))
+        # Fill all the non-zero elements of the rotation matrix
+        D .= 0
+        for _ in 1:n_elems
+            line = split(readline(io))
+            m, n = parse.(Int64, line[1:2])
+            a, b = parse.(Float64, line[3:4])
+            D[m, n] = a + im * b
+        end
+        repmat_wann[isym] = RepMatWann{n_wann}(isym, D)
+    end
+
+    @info "Read isym file" n_symops nkpts_ibz n_bands n_wann
+    return (;
+        header,
+        n_symops,
+        spinors,
+        symops,
+        nkpts_ibz,
+        kpoints_ibz,
+        n_bands,
+        n_repmat_band,
+        repmat_band,
+        n_wann,
+        repmat_wann,
+    )
+end
+
+function read_isym(filename::AbstractString)
+    result = open(filename) do io
+        read_isym(io)
+    end
+    @info "Read isym file" filename result.n_symops result.nkpts_ibz result.n_bands result.n_wann
+    return result
 end
 
 """

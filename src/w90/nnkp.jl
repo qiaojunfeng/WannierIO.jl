@@ -63,121 +63,125 @@ The 1st version auto detects the format and parse it.
 """
 function read_nnkp end
 
-function read_nnkp(filename::AbstractString, ::Wannier90Text)
-    return open(filename) do io
-        read_array(type::Type) = map(x -> parse(type, x), split(readline(io)))
+function read_nnkp(io::IO, ::Wannier90Text)
+    read_array(type::Type) = map(x -> parse(type, x), split(readline(io)))
 
-        lattice = zeros(Float64, 3, 3)
-        recip_lattice = zeros(Float64, 3, 3)
+    lattice = zeros(Float64, 3, 3)
+    recip_lattice = zeros(Float64, 3, 3)
 
-        n_kpts = nothing
-        kpoints = nothing
-        projections = nothing
-        auto_projections = nothing
-        kpb_k = nothing
-        kpb_G = nothing
+    n_kpts = nothing
+    kpoints = nothing
+    projections = nothing
+    auto_projections = nothing
+    kpb_k = nothing
+    kpb_G = nothing
 
-        while !eof(io)
-            line = readline(io)
+    while !eof(io)
+        line = readline(io)
 
-            if occursin("begin real_lattice", line)
-                for i in 1:3
-                    lattice[:, i] = read_array(Float64)
-                end
-
-                line = strip(readline(io))
-                @assert line == "end real_lattice" "`end real_lattice` not found"
-
-            elseif occursin("begin recip_lattice", line)
-                for i in 1:3
-                    recip_lattice[:, i] = read_array(Float64)
-                end
-
-                line = strip(readline(io))
-                @assert line == "end recip_lattice" "`end recip_lattice` not found"
-
-            elseif occursin("begin kpoints", line)
-                n_kpts = parse(Int, readline(io))
-                kpoints = zeros(Vec3{Float64}, n_kpts)
-
-                for i in 1:n_kpts
-                    kpoints[i] = Vec3(read_array(Float64))
-                end
-
-                line = strip(readline(io))
-                @assert line == "end kpoints" "`end kpoints` not found"
-
-            elseif occursin("begin projections", line)
-                n_projs = parse(Int, readline(io))
-                projections = Vector{HydrogenOrbital}(undef, n_projs)
-                for i in 1:n_projs
-                    sline = split(readline(io))
-                    center = Vec3(parse.(Float64, sline[1:3]))
-                    l, m, n = parse.(Int, sline[4:6])
-                    sline = split(readline(io))
-                    zaxis = Vec3(parse.(Float64, sline[1:3]))
-                    xaxis = Vec3(parse.(Float64, sline[4:6]))
-                    α = parse(Float64, sline[7])
-                    projections[i] = HydrogenOrbital(center, n, l, m, α, zaxis, xaxis)
-                end
-
-                line = strip(readline(io))
-                @assert line == "end projections" "`end projections` not found"
-
-            elseif occursin("begin auto_projections", line)
-                # number of WFs
-                auto_projections = parse(Int, readline(io))
-                # magic number, useless
-                i = parse(Int, readline(io))
-                i == 0 || error("in `auto_projections`, expected 0, got $i")
-                line = strip(readline(io))
-                @assert line == "end auto_projections" "`end auto_projections` not found"
-
-            elseif occursin("begin nnkpts", line)
-                @assert n_kpts !== nothing "no `kpoints` block before `nnkpts` block?"
-
-                n_bvecs = parse(Int, readline(io))
-                kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
-                kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
-
-                for ik in 1:n_kpts
-                    for ib in 1:n_bvecs
-                        arr = read_array(Int)
-                        @assert ik == arr[1] "expected ik = $ik, got $(arr[1])"
-                        kpb_k[ik][ib] = arr[2]
-                        kpb_G[ik][ib] = Vec3(arr[3:end])
-                    end
-                end
-
-                line = strip(readline(io))
-                @assert line == "end nnkpts" "`end nnkpts` not found"
+        if occursin("begin real_lattice", line)
+            for i in 1:3
+                lattice[:, i] = read_array(Float64)
             end
+
+            line = strip(readline(io))
+            @assert line == "end real_lattice" "`end real_lattice` not found"
+
+        elseif occursin("begin recip_lattice", line)
+            for i in 1:3
+                recip_lattice[:, i] = read_array(Float64)
+            end
+
+            line = strip(readline(io))
+            @assert line == "end recip_lattice" "`end recip_lattice` not found"
+
+        elseif occursin("begin kpoints", line)
+            n_kpts = parse(Int, readline(io))
+            kpoints = zeros(Vec3{Float64}, n_kpts)
+
+            for i in 1:n_kpts
+                kpoints[i] = Vec3(read_array(Float64))
+            end
+
+            line = strip(readline(io))
+            @assert line == "end kpoints" "`end kpoints` not found"
+
+        elseif occursin("begin projections", line)
+            n_projs = parse(Int, readline(io))
+            projections = Vector{HydrogenOrbital}(undef, n_projs)
+            for i in 1:n_projs
+                sline = split(readline(io))
+                center = Vec3(parse.(Float64, sline[1:3]))
+                l, m, n = parse.(Int, sline[4:6])
+                sline = split(readline(io))
+                zaxis = Vec3(parse.(Float64, sline[1:3]))
+                xaxis = Vec3(parse.(Float64, sline[4:6]))
+                α = parse(Float64, sline[7])
+                projections[i] = HydrogenOrbital(center, n, l, m, α, zaxis, xaxis)
+            end
+
+            line = strip(readline(io))
+            @assert line == "end projections" "`end projections` not found"
+
+        elseif occursin("begin auto_projections", line)
+            # number of WFs
+            auto_projections = parse(Int, readline(io))
+            # magic number, useless
+            i = parse(Int, readline(io))
+            i == 0 || error("in `auto_projections`, expected 0, got $i")
+            line = strip(readline(io))
+            @assert line == "end auto_projections" "`end auto_projections` not found"
+
+        elseif occursin("begin nnkpts", line)
+            @assert n_kpts !== nothing "no `kpoints` block before `nnkpts` block?"
+
+            n_bvecs = parse(Int, readline(io))
+            kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+            kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+
+            for ik in 1:n_kpts
+                for ib in 1:n_bvecs
+                    arr = read_array(Int)
+                    @assert ik == arr[1] "expected ik = $ik, got $(arr[1])"
+                    kpb_k[ik][ib] = arr[2]
+                    kpb_G[ik][ib] = Vec3(arr[3:end])
+                end
+            end
+
+            line = strip(readline(io))
+            @assert line == "end nnkpts" "`end nnkpts` not found"
         end
+    end
 
-        @assert !iszero(lattice) "`real_lattice` not found"
-        @assert !iszero(recip_lattice) "`recip_lattice` not found"
-        @assert kpoints !== nothing "`kpoints` not found"
-        @assert kpb_k !== nothing "`nnkpts` not found"
-        @assert kpb_G !== nothing "`nnkpts` not found"
+    @assert !iszero(lattice) "`real_lattice` not found"
+    @assert !iszero(recip_lattice) "`recip_lattice` not found"
+    @assert kpoints !== nothing "`kpoints` not found"
+    @assert kpb_k !== nothing "`nnkpts` not found"
+    @assert kpb_G !== nothing "`nnkpts` not found"
 
-        lattice = Mat3(lattice)
-        recip_lattice = Mat3(recip_lattice)
-        # note I keep the order here: projections first, then auto_projections, ...
-        res = OrderedDict{String,Any}()
-        isnothing(projections) || (res["projections"] = projections)
-        isnothing(auto_projections) || (res["auto_projections"] = auto_projections)
-        res["lattice"] = lattice
-        res["recip_lattice"] = recip_lattice
-        res["kpoints"] = kpoints
-        res["kpb_k"] = kpb_k
-        res["kpb_G"] = kpb_G
-        return res
+    lattice = Mat3(lattice)
+    recip_lattice = Mat3(recip_lattice)
+    # note I keep the order here: projections first, then auto_projections, ...
+    res = OrderedDict{String,Any}()
+    isnothing(projections) || (res["projections"] = projections)
+    isnothing(auto_projections) || (res["auto_projections"] = auto_projections)
+    res["lattice"] = lattice
+    res["recip_lattice"] = recip_lattice
+    res["kpoints"] = kpoints
+    res["kpb_k"] = kpb_k
+    res["kpb_G"] = kpb_G
+    return res
+end
+
+function read_nnkp(filename::AbstractString, format::FileFormat)
+    return open(filename) do io
+        read_nnkp(io, format)
     end
 end
 
-function read_nnkp(filename::AbstractString, ::Wannier90Toml)
+function read_nnkp(io::IO, ::Wannier90Toml)
     # I can just reuse the read_win function, without fix win inputs
-    nnkp = read_win(filename, Wannier90Toml(); standardize=false)
+    nnkp = read_win(io, Wannier90Toml(); standardize=false)
 
     # Need to set value to Any, otherwise value type can be too narrow and then
     # I cannot assign Mat3 to it.
@@ -209,16 +213,25 @@ function read_nnkp(filename::AbstractString, ::Wannier90Toml)
     return nnkp
 end
 
-function read_nnkp(filename::AbstractString)
+function read_nnkp(io::IO)
+    content = read(io, String)
     format = Wannier90Text()
     try
-        TOML.parsefile(filename)
+        TOML.parse(content)
     catch err
         err isa TOML.ParserError || rethrow()
     else
         format = Wannier90Toml()
     end
-    nnkp = read_nnkp(filename, format)
+    nnkp = read_nnkp(IOBuffer(content), format)
+
+    return nnkp
+end
+
+function read_nnkp(filename::AbstractString)
+    nnkp = open(filename) do io
+        read_nnkp(io)
+    end
 
     n_kpts = length(nnkp["kpb_k"])
     @assert n_kpts > 0 "no kpoints found"
@@ -272,9 +285,7 @@ The following keys are optional:
 """
 function write_nnkp end
 
-function write_nnkp(
-    filename::AbstractString, params::AbstractDict, ::Wannier90Text; header=default_header()
-)
+function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Text; header=default_header())
     params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
 
@@ -292,7 +303,6 @@ function write_nnkp(
 
     n_kpts = length(kpoints)
     n_bvecs = length(kpb_k[1])
-    @info "Writing nnkp file" filename n_kpts n_bvecs
 
     @assert size(recip_lattice) == (3, 3) "size(recip_lattice) != (3, 3)"
     _check_dimensions_kpb(kpb_k, kpb_G)
@@ -300,101 +310,106 @@ function write_nnkp(
     @assert size(lattice) == (3, 3) "size(lattice) != (3, 3)"
     @assert size(recip_lattice) == (3, 3) "size(recip_lattice) != (3, 3)"
 
-    open(filename, "w") do io
-        @printf(io, "%s\n", header)
-        @printf(io, "\n")
-        # mysterious line, seems not used in W90
-        @printf(io, "calc_only_A  :  F\n")
-        @printf(io, "\n")
+    @printf(io, "%s\n", header)
+    @printf(io, "\n")
+    # mysterious line, seems not used in W90
+    @printf(io, "calc_only_A  :  F\n")
+    @printf(io, "\n")
 
-        @printf(io, "begin real_lattice\n")
-        for v in eachcol(lattice)
-            @printf(io, "%12.7f %12.7f %12.7f\n", v...)
-        end
-        @printf(io, "end real_lattice\n")
-        @printf(io, "\n")
+    @printf(io, "begin real_lattice\n")
+    for v in eachcol(lattice)
+        @printf(io, "%12.7f %12.7f %12.7f\n", v...)
+    end
+    @printf(io, "end real_lattice\n")
+    @printf(io, "\n")
 
-        @printf(io, "begin recip_lattice\n")
-        for v in eachcol(recip_lattice)
-            @printf(io, "%12.7f %12.7f %12.7f\n", v...)
-        end
-        @printf(io, "end recip_lattice\n")
-        @printf(io, "\n")
+    @printf(io, "begin recip_lattice\n")
+    for v in eachcol(recip_lattice)
+        @printf(io, "%12.7f %12.7f %12.7f\n", v...)
+    end
+    @printf(io, "end recip_lattice\n")
+    @printf(io, "\n")
 
-        @printf(io, "begin kpoints\n")
-        @printf(io, "%d\n", n_kpts)
-        for kpt in kpoints
-            @printf(io, "%14.8f %14.8f %14.8f\n", kpt...)
-        end
-        @printf(io, "end kpoints\n")
-        @printf(io, "\n")
+    @printf(io, "begin kpoints\n")
+    @printf(io, "%d\n", n_kpts)
+    for kpt in kpoints
+        @printf(io, "%14.8f %14.8f %14.8f\n", kpt...)
+    end
+    @printf(io, "end kpoints\n")
+    @printf(io, "\n")
 
-        if !isnothing(projections)
-            @printf(io, "begin projections\n")
-            n_projs = length(projections)
-            @printf(io, "%d\n", n_projs)
-            for p in projections
-                @printf(
-                    io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n
-                )
-                @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
-                @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
-                @printf(io, "%8.4f\n", p.α)
-            end
-            @printf(io, "end projections\n")
-            @printf(io, "\n")
+    if !isnothing(projections)
+        @printf(io, "begin projections\n")
+        n_projs = length(projections)
+        @printf(io, "%d\n", n_projs)
+        for p in projections
+            @printf(io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n)
+            @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
+            @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
+            @printf(io, "%8.4f\n", p.α)
         end
-
-        if !isnothing(auto_projections)
-            @printf(io, "begin auto_projections\n")
-            @printf(io, "%d\n", auto_projections)
-            @printf(io, "%d\n", 0)  # magic number, useless
-            @printf(io, "end auto_projections\n")
-            @printf(io, "\n")
-        end
-
-        @printf(io, "begin nnkpts\n")
-        @printf(io, "%d\n", n_bvecs)
-        for ik in 1:n_kpts
-            for ib in 1:n_bvecs
-                @printf(io, "%6d %6d %6d %6d %6d\n", ik, kpb_k[ik][ib], kpb_G[ik][ib]...)
-            end
-        end
-        @printf(io, "end nnkpts\n")
-        @printf(io, "\n")
-
-        @printf(io, "begin exclude_bands\n")
-        if exclude_bands === nothing
-            @printf(io, "%d\n", 0)
-        else
-            @printf(io, "%d\n", length(exclude_bands))
-            for b in exclude_bands
-                @printf(io, "%d\n", b)
-            end
-        end
-        @printf(io, "end exclude_bands\n")
+        @printf(io, "end projections\n")
         @printf(io, "\n")
     end
+
+    if !isnothing(auto_projections)
+        @printf(io, "begin auto_projections\n")
+        @printf(io, "%d\n", auto_projections)
+        @printf(io, "%d\n", 0)  # magic number, useless
+        @printf(io, "end auto_projections\n")
+        @printf(io, "\n")
+    end
+
+    @printf(io, "begin nnkpts\n")
+    @printf(io, "%d\n", n_bvecs)
+    for ik in 1:n_kpts
+        for ib in 1:n_bvecs
+            @printf(io, "%6d %6d %6d %6d %6d\n", ik, kpb_k[ik][ib], kpb_G[ik][ib]...)
+        end
+    end
+    @printf(io, "end nnkpts\n")
+    @printf(io, "\n")
+
+    @printf(io, "begin exclude_bands\n")
+    if exclude_bands === nothing
+        @printf(io, "%d\n", 0)
+    else
+        @printf(io, "%d\n", length(exclude_bands))
+        for b in exclude_bands
+            @printf(io, "%d\n", b)
+        end
+    end
+    @printf(io, "end exclude_bands\n")
+    @printf(io, "\n")
+    return nothing
 end
 
 function write_nnkp(
-    filename::AbstractString, params::AbstractDict, ::Wannier90Toml; header=default_header()
+    filename::AbstractString,
+    params::AbstractDict,
+    format::FileFormat;
+    header=default_header(),
 )
+    n_kpts = length(params["kpoints"])
+    n_bvecs = length(params["kpb_k"][1])
+    @info "Writing nnkp file" filename n_kpts n_bvecs
+
+    open(filename, "w") do io
+        write_nnkp(io, params, format; header)
+    end
+end
+
+function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Toml; header=default_header())
     params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
     kpb_k = params["kpb_k"]
     _check_dimensions_kpb(kpb_k, params["kpb_G"])
-    n_kpts = length(kpb_k)
-    n_bvecs = length(kpb_k[1])
-    @info "Writing nnkp file" filename n_kpts n_bvecs
-
-    open(filename, "w") do io
-        println(io, header, "\n")
-        # Note that this requires https://github.com/JuliaLang/julia/pull/57584
-        # otherwise it will fail at writing toml file when the `projections`
-        # block exists. I.e., this works for julia >= v"1.11.4".
-        write_toml(io, params)
-    end
+    println(io, header, "\n")
+    # Note that this requires https://github.com/JuliaLang/julia/pull/57584
+    # otherwise it will fail at writing toml file when the `projections`
+    # block exists. I.e., this works for julia >= v"1.11.4".
+    write_toml(io, params)
+    return nothing
 end
 
 function write_nnkp(filename::AbstractString, params::AbstractDict; header=default_header())

@@ -24,9 +24,7 @@ Read `xsf` file.
 
     Only support reading 1 datagrid in `BLOCK_DATAGRID_3D`.
 """
-function read_xsf(filename::AbstractString)
-    io = open(filename)
-
+function read_xsf(io::IO)
     primvec = nothing
     convvec = nothing
     atoms = nothing
@@ -126,6 +124,12 @@ function read_xsf(filename::AbstractString)
     return (; primvec, convvec, atoms, atom_positions, origin, span_vectors, X, Y, Z, W)
 end
 
+function read_xsf(filename::AbstractString)
+    return open(filename) do io
+        read_xsf(io)
+    end
+end
+
 """
     $(SIGNATURES)
 
@@ -140,7 +144,7 @@ Write `xsf` file.
 - `W`: `nx * ny * nz`, volumetric data
 """
 function write_xsf(
-    filename::AbstractString,
+    io::IO,
     lattice::AbstractMatrix{T},
     atom_positions::Vector{Vec3{T}},
     atom_numbers::AbstractVector{Int},
@@ -154,9 +158,6 @@ function write_xsf(
     isnothing(span_vectors) ||
         size(span_vectors) == (3, 3) ||
         error("incompatible span_vectors")
-
-    @info "Writing xsf file: " filename
-    io = open(filename, "w")
 
     # header
     @printf(io, "%s\n", default_header())
@@ -209,6 +210,21 @@ function write_xsf(
         @printf(io, "END_BLOCK_DATAGRID_3D\n")
     end
 
-    close(io)
+    return nothing
+end
+
+function write_xsf(
+    filename::AbstractString,
+    lattice::AbstractMatrix{T},
+    atom_positions::Vector{Vec3{T}},
+    atom_numbers::AbstractVector{Int},
+    origin::Union{AbstractVector{T},Nothing}=nothing,
+    span_vectors::Union{AbstractMatrix{T},Nothing}=nothing,
+    W::Union{AbstractArray{T,3},Nothing}=nothing,
+) where {T<:Real}
+    @info "Writing xsf file: " filename
+    open(filename, "w") do io
+        write_xsf(io, lattice, atom_positions, atom_numbers, origin, span_vectors, W)
+    end
     return nothing
 end

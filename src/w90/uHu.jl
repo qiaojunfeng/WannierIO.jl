@@ -22,42 +22,45 @@ Read the wannier90 `uHu` file.
 """
 function read_uHu end
 
-function read_uHu(filename::AbstractString, ::FortranText; transpose_band_indices=true)
-    return open("$filename") do io
-        header = readline(io)
+function read_uHu(io::IO, ::FortranText; transpose_band_indices=true)
+    header = readline(io)
 
-        arr = split(readline(io))
-        n_bands, n_kpts, n_bvecs = parse.(Int64, arr[1:3])
+    arr = split(readline(io))
+    n_bands, n_kpts, n_bvecs = parse.(Int64, arr[1:3])
 
-        uHu = map(1:n_kpts) do _
-            map(CartesianIndices((n_bvecs, n_bvecs))) do _
-                zeros(ComplexF64, n_bands, n_bands)
-            end
+    uHu = map(1:n_kpts) do _
+        map(CartesianIndices((n_bvecs, n_bvecs))) do _
+            zeros(ComplexF64, n_bands, n_bands)
         end
+    end
 
-        for ik in 1:n_kpts
-            for ib2 in 1:n_bvecs
-                for ib1 in 1:n_bvecs
-                    for n in 1:n_bands
-                        for m in 1:n_bands
-                            line = split(readline(io))
-                            x, y = parse.(Float64, line)
-                            uHu[ik][ib1, ib2][m, n] = x + im * y
-                        end
+    for ik in 1:n_kpts
+        for ib2 in 1:n_bvecs
+            for ib1 in 1:n_bvecs
+                for n in 1:n_bands
+                    for m in 1:n_bands
+                        line = split(readline(io))
+                        x, y = parse.(Float64, line)
+                        uHu[ik][ib1, ib2][m, n] = x + im * y
                     end
-                    if transpose_band_indices
-                        uHu[ik][ib1, ib2] .= transpose(uHu[ik][ib1, ib2])
-                    end
+                end
+                if transpose_band_indices
+                    uHu[ik][ib1, ib2] .= transpose(uHu[ik][ib1, ib2])
                 end
             end
         end
-        @assert eof(io)
-        return (; uHu, header)
+    end
+    @assert eof(io)
+    return (; uHu, header)
+end
+
+function read_uHu(filename::AbstractString, ::FortranText; transpose_band_indices=true)
+    return open("$filename") do io
+        read_uHu(io, FortranText(); transpose_band_indices)
     end
 end
 
-function read_uHu(filename::AbstractString, ::FortranBinary; transpose_band_indices=true)
-    io = FortranFile(filename)
+function read_uHu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
 
     # strip and read line
     header_len = 60
@@ -92,6 +95,11 @@ function read_uHu(filename::AbstractString, ::FortranBinary; transpose_band_indi
     return (; uHu, header)
 end
 
+function read_uHu(filename::AbstractString, ::FortranBinary; transpose_band_indices=true)
+    io = FortranFile(filename)
+    return read_uHu(io, FortranBinary(); transpose_band_indices)
+end
+
 function read_uHu(filename::AbstractString; kwargs...)
     if isbinary(filename)
         format = FortranBinary()
@@ -122,7 +130,7 @@ Write the `uHu` file.
 function write_uHu end
 
 function write_uHu(
-    filename::AbstractString,
+    io::IO,
     uHu::AbstractVector,
     ::FortranText;
     header=default_header(),
@@ -134,33 +142,45 @@ function write_uHu(
     @assert n_bvecs > 0 "empty uHu matrix"
     n_bands = size(uHu[1][1, 1], 1)
 
-    open(filename, "w") do io
-        header = strip(header)
-        write(io, header, "\n")
-        @printf(io, "%3d %4d %4d\n", n_bands, n_kpts, n_bvecs)
+    header = strip(header)
+    write(io, header, "\n")
+    @printf(io, "%3d %4d %4d\n", n_bands, n_kpts, n_bvecs)
 
-        for ik in 1:n_kpts
-            for ib2 in 1:n_bvecs
-                for ib1 in 1:n_bvecs
-                    if transpose_band_indices
-                        out_uHu = transpose(uHu[ik][ib1, ib2])
-                    else
-                        out_uHu = uHu[ik][ib1, ib2]
-                    end
-                    for n in 1:n_bands
-                        for m in 1:n_bands
-                            u = out_uHu[m, n]
-                            @printf(io, "%20.10e  %20.10e\n", real(u), imag(u))
-                        end
+    for ik in 1:n_kpts
+        for ib2 in 1:n_bvecs
+            for ib1 in 1:n_bvecs
+                if transpose_band_indices
+                    out_uHu = transpose(uHu[ik][ib1, ib2])
+                else
+                    out_uHu = uHu[ik][ib1, ib2]
+                end
+                for n in 1:n_bands
+                    for m in 1:n_bands
+                        u = out_uHu[m, n]
+                        @printf(io, "%20.10e  %20.10e\n", real(u), imag(u))
                     end
                 end
             end
         end
     end
+    return nothing
 end
 
 function write_uHu(
     filename::AbstractString,
+    uHu::AbstractVector,
+    ::FortranText;
+    header=default_header(),
+    transpose_band_indices=true,
+)
+    open(filename, "w") do io
+        write_uHu(io, uHu, FortranText(); header, transpose_band_indices)
+    end
+    return nothing
+end
+
+function write_uHu(
+    io::FortranFile,
     uHu::AbstractVector,
     ::FortranBinary;
     header=default_header(),
@@ -171,8 +191,6 @@ function write_uHu(
     n_bvecs = size(uHu[1], 1)
     @assert n_bvecs > 0 "empty uHu matrix"
     n_bands = size(uHu[1][1, 1], 1)
-
-    io = FortranFile(filename, "w")
 
     header_len = 60
     write(io, FString(header_len, string(strip(header))))
@@ -199,6 +217,17 @@ function write_uHu(
     end
     close(io)
     return nothing
+end
+
+function write_uHu(
+    filename::AbstractString,
+    uHu::AbstractVector,
+    ::FortranBinary;
+    header=default_header(),
+    transpose_band_indices=true,
+)
+    io = FortranFile(filename, "w")
+    return write_uHu(io, uHu, FortranBinary(); header, transpose_band_indices)
 end
 
 function write_uHu(
