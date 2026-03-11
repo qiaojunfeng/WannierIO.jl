@@ -174,14 +174,14 @@ a_3     2.715265   2.715265   0.000000
 ```
 """
 function _parse_wout_lattice(lines)
-    @assert length(lines) == 4 "wrong number of lines for lattice"
+    length(lines) == 4 || error("wrong number of lines for lattice")
     ang_unit = occursin("Lattice Vectors (Ang)", lines[1])
-    @assert ang_unit "wout unit is not Angstrom, not supported yet"
+    ang_unit || error("wout unit is not Angstrom, not supported yet")
     lattice = zeros(Float64, 3, 3)
 
     for (i, line) in enumerate(lines[2:end])
         line = split(line)
-        @assert line[1] == "a_$i"
+        line[1] == "a_$i" || error("line does not start with a_$i")
         lattice[:, i] = parse_float.(line[2:end])
     end
     return lattice
@@ -197,13 +197,14 @@ b_3     1.157011   1.157011  -1.157011
 ```
 """
 function _parse_wout_recip_lattice(lines)
-    @assert length(lines) == 4 "wrong number of lines for reciprocal lattice"
-    @assert occursin("Reciprocal-Space Vectors", lines[1])
+    length(lines) == 4 || error("wrong number of lines for reciprocal lattice")
+    occursin("Reciprocal-Space Vectors", lines[1]) ||
+        error("Reciprocal-Space Vectors not found in line")
     recip_lattice = zeros(Float64, 3, 3)
 
     for (i, line) in enumerate(lines[2:end])
         line = split(line)
-        @assert line[1] == "b_$i"
+        line[1] == "b_$i" || error("line does not start with b_$i")
         recip_lattice[:, i] = parse_float.(line[2:end])
     end
     return recip_lattice
@@ -226,7 +227,7 @@ function _parse_wout_atoms(lines)
     atom_positions = zeros(Vec3{Float64}, n_atom)
     for (i, line) in enumerate(lines)
         line = split(line)
-        @assert line[1] == "|" line
+        line[1] == "|" || error("line does not start with |")
         push!(atom_labels, line[2])
         # cartesian
         # atom_positions[i] = Vec3(parse_float.(line[8:10]))

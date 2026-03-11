@@ -80,7 +80,7 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
     read_line() = strip(readline(io))
     function remove_comments(line::AbstractString)
         i = findfirst(r"!|#", line)
-        if i !== nothing
+        if !isnothing(i)
             line = strip(line[1:(i.start - 1)])
         end
         return line
@@ -96,7 +96,7 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
             end
         end
         # end of line reached
-        if block_name !== nothing
+        if !isnothing(block_name)
             # in the middle of a block, raise error
             error("end of file reached while parsing block `$block_name`")
         end
@@ -110,7 +110,7 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
 
     while !eof(io)
         line = read_line_until_nonempty()
-        line === nothing && break
+        isnothing(line) && break
 
         # first handle special cases, e.g., blocks
         if occursin(r"^begin\s+unit_cell_cart", line)
@@ -128,7 +128,8 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
                 unit_cell[:, i] = parse_array(line)
                 line = read_line_until_nonempty(; block_name)
             end
-            @assert occursin(r"^end\s+unit_cell_cart", line) "error parsing $block_name: `end $block_name` not found"
+            occursin(r"^end\s+unit_cell_cart", line) ||
+                error("error parsing $block_name: `end $block_name` not found")
             if startswith(unit, "b")
                 # convert to angstrom
                 unit_cell .*= Bohr
@@ -389,11 +390,11 @@ See also [`read_win`](@ref).
 """
 function standardize_win!(params::AbstractDict)
     !haskey(params, "num_wann") && error("num_wann not found")
-    params["num_wann"] > 0 || error("num_wann must be positive")
+    params["num_wann"] > 0 || throw(ArgumentError("num_wann must be positive"))
 
     # add num_bands if not found
     !haskey(params, "num_bands") && push!(params, "num_bands" => params["num_wann"])
-    params["num_bands"] > 0 || error("num_bands must be positive")
+    params["num_bands"] > 0 || throw(ArgumentError("num_bands must be positive"))
 
     if haskey(params, "mp_grid")
         length(params["mp_grid"]) != 3 && error("mp_grid has wrong length")
@@ -502,7 +503,7 @@ function write_win end
 @inline function _check_win_required_params(kwargs)
     required_keys = ["num_wann", "unit_cell_cart", "mp_grid", "kpoints"]
     for k in required_keys
-        @assert haskey(kwargs, k) "Required parameter $k not found"
+        haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
     end
     atoms_cart_frac = haskey.(Ref(kwargs), ["atoms_cart", "atoms_frac"])
     if all(atoms_cart_frac)
@@ -646,7 +647,7 @@ function write_win(
     num_wann = get(params, "num_wann", nothing)
     num_bands = get(params, "num_bands", nothing)
     mp_grid = get(params, "mp_grid", nothing)
-    mp_grid !== nothing && (mp_grid = Tuple(mp_grid))
+    !isnothing(mp_grid) && (mp_grid = Tuple(mp_grid))
     @info "Writing win file" filename num_wann num_bands mp_grid
 
     open(filename, "w") do io

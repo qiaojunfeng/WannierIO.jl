@@ -50,7 +50,9 @@ function read_uHu(io::IO, ::FortranText; transpose_band_indices=true)
             end
         end
     end
-    @assert eof(io)
+    eof(io) || error(
+        "Did not reach the end of the file, maybe the file is corrupted or not in the correct format",
+    )
     return (; uHu, header)
 end
 
@@ -90,7 +92,9 @@ function read_uHu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
             end
         end
     end
-    @assert eof(io)
+    eof(io) || error(
+        "Did not reach the end of the file, maybe the file is corrupted or not in the correct format",
+    )
     close(io)
     return (; uHu, header)
 end
@@ -109,9 +113,9 @@ function read_uHu(filename::AbstractString; kwargs...)
     uHu, header = read_uHu(filename, format; kwargs...)
 
     n_kpts = length(uHu)
-    @assert n_kpts > 0 "empty uHu matrix"
+    n_kpts > 0 || error("empty uHu matrix")
     n_bvecs = size(uHu[1], 1)
-    @assert n_bvecs > 0 "empty uHu matrix"
+    n_bvecs > 0 || error("empty uHu matrix")
     n_bands = size(uHu[1][1, 1], 1)
     @info "Reading uHu file" filename header n_kpts n_bvecs n_bands
     return uHu
@@ -137,9 +141,9 @@ function write_uHu(
     transpose_band_indices=true,
 )
     n_kpts = length(uHu)
-    @assert n_kpts > 0 "empty uHu matrix"
+    n_kpts > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bvecs = size(uHu[1], 1)
-    @assert n_bvecs > 0 "empty uHu matrix"
+    n_bvecs > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bands = size(uHu[1][1, 1], 1)
 
     header = strip(header)
@@ -187,9 +191,9 @@ function write_uHu(
     transpose_band_indices=true,
 )
     n_kpts = length(uHu)
-    @assert n_kpts > 0 "empty uHu matrix"
+    n_kpts > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bvecs = size(uHu[1], 1)
-    @assert n_bvecs > 0 "empty uHu matrix"
+    n_bvecs > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bands = size(uHu[1][1, 1], 1)
 
     header_len = 60
@@ -243,9 +247,9 @@ function write_uHu(
         format = FortranText()
     end
     n_kpts = length(uHu)
-    @assert n_kpts > 0 "empty uHu matrix"
+    n_kpts > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bvecs = size(uHu[1], 1)
-    @assert n_bvecs > 0 "empty uHu matrix"
+    n_bvecs > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bands = size(uHu[1][1, 1], 1)
     @info "Writing uHu file" filename header n_kpts n_bands n_bvecs
 

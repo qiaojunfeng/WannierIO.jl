@@ -56,7 +56,9 @@ function read_mmn(io::IO, ::FortranText)
         end
     end
 
-    @assert all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M)
+    all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M) || error(
+        "Some elements in M are NaN, maybe the file is corrupted or not in the correct format",
+    )
     return (; M, kpb_k, kpb_G, header)
 end
 
@@ -101,7 +103,9 @@ function read_mmn(io::IO, ::FortranBinaryStream)
         end
     end
 
-    @assert all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M)
+    all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M) || error(
+        "Some elements in M are NaN, maybe the file is corrupted or not in the correct format",
+    )
     return (; M, kpb_k, kpb_G, header)
 end
 
@@ -150,15 +154,18 @@ Check the dimensions between the quantities are consistent.
 """
 @inline function _check_dimensions_kpb(kpb_k, kpb_G)
     n_kpts = length(kpb_k)
-    @assert n_kpts > 0 "Empty kpb_k, n_kpts = 0"
+    n_kpts > 0 || throw(ArgumentError("Empty kpb_k, n_kpts = 0"))
     n_bvecs = length(kpb_k[1])
-    @assert n_bvecs > 0 "Empty kpb_k, n_bvecs = 0"
+    n_bvecs > 0 || throw(ArgumentError("Empty kpb_k, n_bvecs = 0"))
 
-    @assert length(kpb_k) == n_kpts "kpb_k has wrong n_kpts"
-    @assert length(kpb_G) == n_kpts "kpb_G has wrong n_kpts"
-    @assert all(length.(kpb_k) .== n_bvecs) "kpb_k has different n_bvecs among kpts"
-    @assert all(length.(kpb_G) .== n_bvecs) "kpb_G has different n_bvecs among kpts"
-    @assert all(all(length.(Gk) .== 3) for Gk in kpb_G) "kpb_G[ib][ib] are not 3-vectors"
+    length(kpb_k) == n_kpts || throw(DimensionMismatch("kpb_k has wrong n_kpts"))
+    length(kpb_G) == n_kpts || throw(DimensionMismatch("kpb_G has wrong n_kpts"))
+    all(length.(kpb_k) .== n_bvecs) ||
+        throw(DimensionMismatch("kpb_k has different n_bvecs among kpts"))
+    all(length.(kpb_G) .== n_bvecs) ||
+        throw(DimensionMismatch("kpb_G has different n_bvecs among kpts"))
+    all(all(length.(Gk) .== 3) for Gk in kpb_G) ||
+        throw(DimensionMismatch("kpb_G[ib][ib] are not 3-vectors"))
 end
 
 """
@@ -167,13 +174,16 @@ end
 @inline function _check_dimensions_M_kpb(M, kpb_k, kpb_G)
     _check_dimensions_kpb(kpb_k, kpb_G)
 
-    @assert length(M) == length(kpb_k) "M and kpb_k have different n_kpts"
+    length(M) == length(kpb_k) ||
+        throw(DimensionMismatch("M and kpb_k have different n_kpts"))
     n_bvecs = length(kpb_k[1])
-    @assert all(length.(M) .== n_bvecs) "M and kpb_k have different n_bvecs"
+    all(length.(M) .== n_bvecs) ||
+        throw(DimensionMismatch("M and kpb_k have different n_bvecs"))
 
     n_bands = size(M[1][1], 1)
-    @assert n_bands > 0 "Empty M, n_bands = 0"
-    @assert all(all(size.(Mk) .== Ref((n_bands, n_bands))) for Mk in M) "M[ik][ib] are not square matrices"
+    n_bands > 0 || throw(ArgumentError("Empty M, n_bands = 0"))
+    all(all(size.(Mk) .== Ref((n_bands, n_bands))) for Mk in M) ||
+        throw(DimensionMismatch("M[ik][ib] are not square matrices"))
 end
 
 function write_mmn(

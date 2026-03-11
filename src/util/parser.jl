@@ -71,7 +71,7 @@ function parse_vector(io::IO, T::Type, n_elements::Integer)
 
     counter = 0
     while counter < n_elements
-        @assert !eof(io) "unexpected end of file"
+        !eof(io) || error("unexpected end of file")
         line = strip(readline(io))
         splitted = split(line)
         n_splitted = length(splitted)

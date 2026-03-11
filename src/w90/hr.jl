@@ -24,8 +24,8 @@ function read_w90_hrdat(io::IO)
             for m in 1:n_wann
                 line = split(strip(readline(io)))
                 Rvectors[iR] = parse.(Int, line[1:3])
-                @assert m == parse(Int, line[4]) line
-                @assert n == parse(Int, line[5]) line
+                m == parse(Int, line[4]) || error(line)
+                n == parse(Int, line[5]) || error(line)
                 H[iR][m, n] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
             end
         end
@@ -60,7 +60,7 @@ function write_w90_hrdat(
     header=default_header(),
 )
     n_Rvecs = length(H)
-    @assert n_Rvecs > 0 "empty H"
+    n_Rvecs > 0 || throw(ArgumentError("empty H"))
     n_wann = size(H[1], 1)
 
     println(io, strip(header))
@@ -107,7 +107,7 @@ function write_w90_hrdat(
     header=default_header(),
 )
     n_Rvecs = length(H)
-    @assert n_Rvecs > 0 "empty H"
+    n_Rvecs > 0 || throw(ArgumentError("empty H"))
     n_wann = size(H[1], 1)
     @info "Writing hr.dat file" filename header n_wann n_Rvecs
 

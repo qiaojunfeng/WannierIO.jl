@@ -85,7 +85,7 @@ function read_nnkp(io::IO, ::Wannier90Text)
             end
 
             line = strip(readline(io))
-            @assert line == "end real_lattice" "`end real_lattice` not found"
+            line == "end real_lattice" || error("`end real_lattice` not found")
 
         elseif occursin("begin recip_lattice", line)
             for i in 1:3
@@ -93,7 +93,7 @@ function read_nnkp(io::IO, ::Wannier90Text)
             end
 
             line = strip(readline(io))
-            @assert line == "end recip_lattice" "`end recip_lattice` not found"
+            line == "end recip_lattice" || error("`end recip_lattice` not found")
 
         elseif occursin("begin kpoints", line)
             n_kpts = parse(Int, readline(io))
@@ -104,7 +104,7 @@ function read_nnkp(io::IO, ::Wannier90Text)
             end
 
             line = strip(readline(io))
-            @assert line == "end kpoints" "`end kpoints` not found"
+            line == "end kpoints" || error("`end kpoints` not found")
 
         elseif occursin("begin projections", line)
             n_projs = parse(Int, readline(io))
@@ -121,7 +121,7 @@ function read_nnkp(io::IO, ::Wannier90Text)
             end
 
             line = strip(readline(io))
-            @assert line == "end projections" "`end projections` not found"
+            line == "end projections" || error("`end projections` not found")
 
         elseif occursin("begin auto_projections", line)
             # number of WFs
@@ -130,10 +130,10 @@ function read_nnkp(io::IO, ::Wannier90Text)
             i = parse(Int, readline(io))
             i == 0 || error("in `auto_projections`, expected 0, got $i")
             line = strip(readline(io))
-            @assert line == "end auto_projections" "`end auto_projections` not found"
+            line == "end auto_projections" || error("`end auto_projections` not found")
 
         elseif occursin("begin nnkpts", line)
-            @assert n_kpts !== nothing "no `kpoints` block before `nnkpts` block?"
+            !isnothing(n_kpts) || error("no `kpoints` block before `nnkpts` block?")
 
             n_bvecs = parse(Int, readline(io))
             kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
@@ -142,22 +142,22 @@ function read_nnkp(io::IO, ::Wannier90Text)
             for ik in 1:n_kpts
                 for ib in 1:n_bvecs
                     arr = read_array(Int)
-                    @assert ik == arr[1] "expected ik = $ik, got $(arr[1])"
+                    ik == arr[1] || error("expected ik = $ik, got $(arr[1])")
                     kpb_k[ik][ib] = arr[2]
                     kpb_G[ik][ib] = Vec3(arr[3:end])
                 end
             end
 
             line = strip(readline(io))
-            @assert line == "end nnkpts" "`end nnkpts` not found"
+            line == "end nnkpts" || error("`end nnkpts` not found")
         end
     end
 
-    @assert !iszero(lattice) "`real_lattice` not found"
-    @assert !iszero(recip_lattice) "`recip_lattice` not found"
-    @assert kpoints !== nothing "`kpoints` not found"
-    @assert kpb_k !== nothing "`nnkpts` not found"
-    @assert kpb_G !== nothing "`nnkpts` not found"
+    !iszero(lattice) || error("`real_lattice` not found")
+    !iszero(recip_lattice) || error("`recip_lattice` not found")
+    !isnothing(kpoints) || error("`kpoints` not found")
+    !isnothing(kpb_k) || error("`nnkpts` not found")
+    !isnothing(kpb_G) || error("`nnkpts` not found")
 
     lattice = Mat3(lattice)
     recip_lattice = Mat3(recip_lattice)
@@ -234,7 +234,7 @@ function read_nnkp(filename::AbstractString)
     end
 
     n_kpts = length(nnkp["kpb_k"])
-    @assert n_kpts > 0 "no kpoints found"
+    n_kpts > 0 || error("no kpoints found")
     n_bvecs = length(nnkp["kpb_k"][1])
     @info "Reading nnkp file" filename n_kpts n_bvecs
 
@@ -247,7 +247,7 @@ end
 @inline function _check_nnkp_required_params(kwargs)
     required_keys = ["lattice", "recip_lattice", "kpoints", "kpb_k", "kpb_G"]
     for k in required_keys
-        @assert haskey(kwargs, k) "Required parameter $k not found"
+        haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
     end
 end
 
@@ -296,7 +296,8 @@ function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Text; header=defaul
     kpb_G = params["kpb_G"]
     projections = get(params, "projections", nothing)
     isnothing(projections) ||
-        @assert projections isa AbstractVector{<:HydrogenOrbital} "projections should be a vector of HydrogenOrbital"
+        projections isa AbstractVector{<:HydrogenOrbital} ||
+        throw(ArgumentError("projections should be a vector of HydrogenOrbital"))
 
     auto_projections = get(params, "auto_projections", nothing)
     exclude_bands = get(params, "exclude_bands", nothing)
@@ -304,11 +305,14 @@ function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Text; header=defaul
     n_kpts = length(kpoints)
     n_bvecs = length(kpb_k[1])
 
-    @assert size(recip_lattice) == (3, 3) "size(recip_lattice) != (3, 3)"
+    size(recip_lattice) == (3, 3) ||
+        throw(DimensionMismatch("size(recip_lattice) != (3, 3)"))
     _check_dimensions_kpb(kpb_k, kpb_G)
-    @assert n_kpts == length(kpb_k) "kpoints and kpb_k have different length"
-    @assert size(lattice) == (3, 3) "size(lattice) != (3, 3)"
-    @assert size(recip_lattice) == (3, 3) "size(recip_lattice) != (3, 3)"
+    n_kpts == length(kpb_k) ||
+        throw(DimensionMismatch("kpoints and kpb_k have different length"))
+    size(lattice) == (3, 3) || throw(DimensionMismatch("size(lattice) != (3, 3)"))
+    size(recip_lattice) == (3, 3) ||
+        throw(DimensionMismatch("size(recip_lattice) != (3, 3)"))
 
     @printf(io, "%s\n", header)
     @printf(io, "\n")
@@ -371,7 +375,7 @@ function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Text; header=defaul
     @printf(io, "\n")
 
     @printf(io, "begin exclude_bands\n")
-    if exclude_bands === nothing
+    if isnothing(exclude_bands)
         @printf(io, "%d\n", 0)
     else
         @printf(io, "%d\n", length(exclude_bands))

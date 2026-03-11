@@ -83,8 +83,8 @@ function write_u_mat(
     header::AbstractString=default_header(),
 )
     nkpts = length(U)
-    @assert nkpts > 0 "U is empty"
-    @assert nkpts == length(kpoints) "inconsistent number of kpoints"
+    nkpts > 0 || throw(ArgumentError("U is empty"))
+    nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
     nbands, nwann = size(U[1])
 
     write(io, header, "\n")
@@ -113,8 +113,8 @@ function write_u_mat(
     header::AbstractString=default_header(),
 )
     nkpts = length(U)
-    @assert nkpts > 0 "U is empty"
-    @assert nkpts == length(kpoints) "inconsistent number of kpoints"
+    nkpts > 0 || throw(ArgumentError("U is empty"))
+    nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
     nbands, nwann = size(U[1])
 
     @info "Writing u_mat file" filename header nkpts nbands nwann

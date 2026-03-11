@@ -87,7 +87,8 @@ function read_xsf(io::IO)
             comment = line  # current line is a comment
             line = strip(readline(io))
             # I only read the 1st data grid, others are ignored
-            @assert startswith(line, "BEGIN_DATAGRID_3D")
+            startswith(line, "BEGIN_DATAGRID_3D") ||
+                error("BEGIN_DATAGRID_3D not found in line: $line")
             # identifier = chopprefix(line, "BEGIN_DATAGRID_3D_")
             ngx, ngy, ngz = parse.(Int, split(strip(readline(io))))
             origin = parse.(Float64, split(strip(readline(io))))
@@ -106,8 +107,10 @@ function read_xsf(io::IO)
                 W[idx:(idx + ncol - 1)] = parse.(Float64, line)
                 idx += ncol
             end
-            @assert occursin("END_DATAGRID_3D", strip(readline(io)))
-            @assert strip(readline(io)) == "END_BLOCK_DATAGRID_3D"
+            occursin("END_DATAGRID_3D", strip(readline(io))) ||
+                error("END_DATAGRID_3D not found in line: $line")
+            strip(readline(io)) == "END_BLOCK_DATAGRID_3D" ||
+                error("END_BLOCK_DATAGRID_3D not found in line: $line")
             block_datagrid = false
         else
             error("Unexpected block: $line")
@@ -153,11 +156,11 @@ function write_xsf(
     W::Union{AbstractArray{T,3},Nothing}=nothing,
 ) where {T<:Real}
     n_atoms = length(atom_numbers)
-    length(atom_positions) == n_atoms || error("incompatible n_atoms")
-    size(lattice) == (3, 3) || error("incompatible lattice")
+    length(atom_positions) == n_atoms || throw(DimensionMismatch("incompatible n_atoms"))
+    size(lattice) == (3, 3) || throw(DimensionMismatch("incompatible lattice"))
     isnothing(span_vectors) ||
         size(span_vectors) == (3, 3) ||
-        error("incompatible span_vectors")
+        throw(DimensionMismatch("incompatible span_vectors"))
 
     # header
     @printf(io, "%s\n", default_header())

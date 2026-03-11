@@ -47,9 +47,9 @@ function read_uIu(filename::AbstractString; kwargs...)
     uIu, header = read_uIu(filename, format; kwargs...)
 
     n_kpts = length(uIu)
-    @assert n_kpts > 0 "empty uIu matrix"
+    n_kpts > 0 || error("empty uIu matrix")
     n_bvecs = size(uIu[1], 1)
-    @assert n_bvecs > 0 "empty uIu matrix"
+    n_bvecs > 0 || error("empty uIu matrix")
     n_bands = size(uIu[1][1, 1], 1)
     @info "Reading uIu file" filename header n_kpts n_bvecs n_bands
     return uIu
@@ -120,9 +120,9 @@ function write_uIu(
         format = FortranText()
     end
     n_kpts = length(uIu)
-    @assert n_kpts > 0 "empty uIu matrix"
+    n_kpts > 0 || throw(ArgumentError("empty uIu matrix"))
     n_bvecs = size(uIu[1], 1)
-    @assert n_bvecs > 0 "empty uIu matrix"
+    n_bvecs > 0 || throw(ArgumentError("empty uIu matrix"))
     n_bands = size(uIu[1][1, 1], 1)
     @info "Writing uIu file" filename header n_kpts n_bands n_bvecs
 

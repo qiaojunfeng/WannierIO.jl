@@ -169,11 +169,12 @@ function write_w90_band_kpt(
     kweights::AbstractVector=default_band_kpt_kweights(kpoints),
 )
     n_kpts = length(kpoints)
-    length(kweights) == n_kpts || error("kweights must have same length as kpoints")
+    length(kweights) == n_kpts ||
+        throw(DimensionMismatch("kweights must have same length as kpoints"))
 
     @printf(io, "       %5d\n", n_kpts)
     for (k, w) in zip(kpoints, kweights)
-        length(k) == 3 || error("kpoint must be 3-vector")
+        length(k) == 3 || throw(DimensionMismatch("kpoint must be 3-vector"))
         @printf(io, "  %10.6f  %10.6f  %10.6f   %10.6f\n", k..., w)
     end
     return nothing
@@ -213,9 +214,9 @@ function write_w90_band_dat(
     extras::Union{AbstractVector,Nothing}=nothing,
 )
     n_kpts = length(eigenvalues)
-    @assert n_kpts > 0 "eigenvalues is empty"
+    n_kpts > 0 || throw(ArgumentError("eigenvalues is empty"))
     n_bands = length(eigenvalues[1])
-    length(x) == n_kpts || error("x must has same length as eigenvalues")
+    length(x) == n_kpts || throw(DimensionMismatch("x must has same length as eigenvalues"))
 
     for ib in 1:n_bands
         for ik in 1:n_kpts
@@ -257,12 +258,12 @@ function write_w90_band_labelinfo(
 )
     n_symm = length(symm_point_indices)
     n_symm == length(symm_point_labels) ||
-        error("symm_idx and symm_label must have same length")
+        throw(DimensionMismatch("symm_idx and symm_label must have same length"))
 
     for i in 1:n_symm
         idx = symm_point_indices[i]
         kpt = kpoints[idx]
-        length(kpt) == 3 || error("kpoint must be 3-vector")
+        length(kpt) == 3 || throw(DimensionMismatch("kpoint must be 3-vector"))
         @printf(
             io,
             "%2s %31d %20.10f %17.10f %17.10f %17.10f\n",
@@ -314,12 +315,14 @@ function write_w90_band(
     symm_point_labels::AbstractVector,
 )
     n_kpts = length(kpoints)
-    length(eigenvalues) == n_kpts || error("kpoints and eigenvalues have different n_kpts")
-    length(kweights) == n_kpts || error("kpoints and kweights have different n_kpts")
-    length(x) == n_kpts || error("kpoints and x have different n_kpts")
+    length(eigenvalues) == n_kpts ||
+        throw(DimensionMismatch("kpoints and eigenvalues have different n_kpts"))
+    length(kweights) == n_kpts ||
+        throw(DimensionMismatch("kpoints and kweights have different n_kpts"))
+    length(x) == n_kpts || throw(DimensionMismatch("kpoints and x have different n_kpts"))
     n_symm = length(symm_point_indices)
     n_symm == length(symm_point_labels) ||
-        error("symm_idx and symm_label must have same length")
+        throw(DimensionMismatch("symm_idx and symm_label must have same length"))
 
     band_kpt = "$(prefix)_band.kpt"
     band_dat = "$(prefix)_band.dat"

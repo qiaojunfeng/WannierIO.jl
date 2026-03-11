@@ -102,7 +102,7 @@ function read_eig(filename::AbstractString)
     eigenvalues = read_eig(filename, format)
 
     n_kpts = length(eigenvalues)
-    @assert n_kpts > 0 "Empty eig file"
+    n_kpts > 0 || error("Empty eig file")
     n_bands = length(eigenvalues[1])
     @info "Reading eig file" filename n_kpts n_bands
 
@@ -126,7 +126,7 @@ function write_eig end
 
 function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranText)
     n_kpts = length(eigenvalues)
-    @assert n_kpts > 0 "Empty eigenvalues"
+    n_kpts > 0 || throw(ArgumentError("Empty eigenvalues"))
     n_bands = length(eigenvalues[1])
 
     for ik in 1:n_kpts
@@ -146,7 +146,7 @@ end
 
 function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
     n_kpts = length(eigenvalues)
-    @assert n_kpts > 0 "Empty eigenvalues"
+    n_kpts > 0 || throw(ArgumentError("Empty eigenvalues"))
     n_bands = length(eigenvalues[1])
 
     # gfortran integer is 4 bytes
@@ -170,7 +170,7 @@ function write_eig(filename::AbstractString, eigenvalues::AbstractVector; binary
     write_eig(filename, eigenvalues, format)
 
     n_kpts = length(eigenvalues)
-    @assert n_kpts > 0 "Empty eigenvalues"
+    n_kpts > 0 || throw(ArgumentError("Empty eigenvalues"))
     n_bands = length(eigenvalues[1])
     @info "Writing eig file" filename n_kpts n_bands
 end
