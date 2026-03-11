@@ -7,11 +7,11 @@ using Documenter
 #     joinpath(Sys.homedir(), "git/WannierDatasets/datasets", path)
 # end
 
-# Get filter string from command line arguments if provided
-# Usage: julia --project test/runtests.jl "Name of Test"
-filter_name = length(ARGS) > 0 ? ARGS[1] : nothing
+# Get filter strings from command line arguments if provided
+# Usage: julia --project test/runtests.jl "w90/amn.jl" "util/parser.jl"
+filter_names = isempty(ARGS) ? nothing : ARGS
 
-if isnothing(filter_name)
+if isnothing(filter_names)
     println("Running all tests...")
 
     @run_package_tests verbose = true
@@ -22,7 +22,8 @@ if isnothing(filter_name)
         # fix=true,  # update all the output in `jldoctest`
     )
 else
-    println("Running specific test: $filter_name")
+    println("Running specific tests: $(join(filter_names, ", "))")
 
-    @run_package_tests verbose = true filter = ti -> endswith(ti.filename, filter_name)
+    @run_package_tests verbose = true filter =
+        ti -> any(name -> endswith(ti.filename, name), filter_names)
 end

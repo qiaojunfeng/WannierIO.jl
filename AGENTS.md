@@ -4,17 +4,18 @@
 - These instructions apply to the entire repository.
 
 ## Dev environment tips
-- Use latest version of Julia
-- From repo root, instantiate once with:
+- Use the latest stable version of Julia.
+- From the repo root, instantiate once with:
   - `julia --project -e 'using Pkg; Pkg.instantiate()'`
 - Keep local dependencies in sync after dependency changes:
   - `julia --project -e 'using Pkg; Pkg.resolve(); Pkg.instantiate()'`
 - Run a focused test while iterating on a feature:
-  - `julia --project=test tests/runtests.jl <test file name>`
+  - `julia --project=test test/runtests.jl <test file name>...`
+  - Example: `julia --project=test test/runtests.jl w90/win.jl`
 - This repo uses workspace projects for `test` and `docs`; run commands with the matching `--project` when needed.
 
 ## Testing instructions
-- Run package tests from repo root:
+- Run package tests from the repo root:
   - `julia --project -e 'using Pkg; Pkg.test()'`
 - If you change docs content or APIs, also ensure docs build succeeds:
   - `julia --project=docs docs/make.jl`
@@ -28,8 +29,8 @@
 ## PR checklist
 - Recommended PR title format: `<short summary>`
 - Ensure CI-equivalent checks pass locally:
-  - package tests
-  - docs build when docs/public APIs changed
+  - Package tests
+  - Docs build when docs/public APIs changed
 - Keep changes focused; avoid unrelated refactors in the same PR.
 - Summarize user-visible API changes in PR description and update README/docs examples when relevant.
 - Confirm examples and snippets still run when changing user-facing API behavior.

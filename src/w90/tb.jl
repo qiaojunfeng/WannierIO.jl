@@ -16,15 +16,12 @@ Read `prefix_tb.dat`.
 - `header`: the first line of the file
 """
 function read_w90_tbdat(io::IO)
-    # convenice function
-    ssrline(io) = split(strip(readline(io)))
-
     header = strip(readline(io))
 
     # Å unit
-    a1 = parse.(Float64, ssrline(io))
-    a2 = parse.(Float64, ssrline(io))
-    a3 = parse.(Float64, ssrline(io))
+    a1 = parse_vector(readstrip(io))
+    a2 = parse_vector(readstrip(io))
+    a3 = parse_vector(readstrip(io))
     # column-major
     lattice = Mat3{Float64}(hcat(a1, a2, a3))
 
@@ -39,11 +36,11 @@ function read_w90_tbdat(io::IO)
     for iR in 1:n_Rvecs
         line = strip(readline(io))  # empty line
         line == "" || error("line is not empty")
-        Rvectors[iR] = Vec3(parse.(Int, ssrline(io))...)
+        Rvectors[iR] = vec3(parse_vector(readstrip(io), Int))
 
         for n in 1:n_wann
             for m in 1:n_wann
-                line = ssrline(io)
+                line = split(readstrip(io))
                 m == parse(Int, line[1]) || error(line)
                 n == parse(Int, line[2]) || error(line)
 
@@ -61,10 +58,11 @@ function read_w90_tbdat(io::IO)
     for iR in 1:n_Rvecs
         line = strip(readline(io))  # empty line
         line == "" || error("line is not empty")
-        Rvectors[iR] == Vec3(parse.(Int, ssrline(io))...) || error("different R vector")
+        Rvectors[iR] == vec3(parse_vector(readstrip(io), Int)) ||
+            error("different R vector")
         for n in 1:n_wann
             for m in 1:n_wann
-                line = ssrline(io)
+                line = split(readstrip(io))
                 m == parse(Int, line[1]) || error("inconsistent m index")
                 n == parse(Int, line[2]) || error("inconsistent n index")
 

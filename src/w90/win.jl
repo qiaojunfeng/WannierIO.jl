@@ -23,8 +23,246 @@ Read wannier90 input `win` file.
 function read_win end
 
 function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
-    # The win file uses "num_wann", so I keep it as is, and not using "n_wann".
-    keys_int = [
+    params = OrderedDict{String,Any}()
+
+    while !eof(io)
+        line = nextline(io)
+        isempty(line) && break
+
+        isblock, content = _win_check_line(line)
+        if isblock
+            push!(params, _win_parse_block(io, content))
+        else
+            push!(params, _win_parse_keyval(content))
+        end
+    end
+
+    _win_convert_keyval_types!(params)
+    standardize && standardize_win!(params)
+
+    return params
+end
+
+function read_win(io::IO, ::Wannier90Toml; standardize::Bool=true)
+    win = read_toml(io)
+    standardize && standardize_win!(win)
+    return win
+end
+
+function read_win(filename::AbstractString, format::FileFormat; standardize::Bool=true)
+    return open(filename) do io
+        read_win(io, format; standardize)
+    end
+end
+
+function read_win(file::Union{IO,AbstractString}; standardize::Bool=true)
+    format = istoml(file) ? Wannier90Toml() : Wannier90Text()
+    win = read_win(file, format; standardize)
+    return win
+end
+
+function _win_block_nextline(io::IO, block_name; kwargs...)
+    # win file is case-insensitive, I will lowercase lines by default, but
+    # for some blocks, e.g., atoms_frac, I need to keep the original case for
+    # atomic labels. So I allow kwargs to control this behavior.
+    lower = get(kwargs, :lower, true)
+    line = nextline(io; kwargs..., lower)
+    if isempty(line)
+        error("Error parsing block `$block_name`: unexpected end of file")
+    end
+    return line
+end
+
+@inline function _win_block_isend(
+    line::AbstractString, block_name::AbstractString; lower::Bool=true
+)
+    block_name = lower ? lowercase(block_name) : block_name
+    line = lower ? lowercase(line) : line
+    return occursin(r"^end\s+" * block_name, line)
+end
+
+@inline function _win_block_mustend(
+    line::AbstractString, block_name::AbstractString; lower::Bool=true
+)
+    isend = _win_block_isend(line, block_name; lower)
+    isend || error("Error parsing $block_name: `end $block_name` not found")
+end
+
+function _win_parse_block_unit_cell_cart(io::IO)
+    block_name = "unit_cell_cart"
+    unit_cell = zeros(Float64, 3, 3)
+
+    unit = _win_block_nextline(io, block_name)
+    if !startswith(unit, "b") && !startswith(unit, "a")
+        line = unit
+        unit = "ang"
+    else
+        line = _win_block_nextline(io, block_name)
+    end
+
+    for i in 1:3
+        # in win file, each line is a lattice vector, here it is stored as column vec
+        unit_cell[:, i] = parse_vector(line)
+        line = _win_block_nextline(io, block_name)
+    end
+    _win_block_mustend(line, block_name)
+
+    if startswith(unit, "b")
+        # convert to angstrom
+        unit_cell .*= Bohr
+    end
+    return mat3(unit_cell)
+end
+
+function _win_parse_block_atoms(io::IO, block_name::AbstractString)
+    block_name == "atoms_frac" ||
+        block_name == "atoms_cart" ||
+        error("Invalid atoms block: $block_name")
+    iscart = block_name == "atoms_cart"
+    # do not lowercase due to atomic label
+    line = _win_block_nextline(io, block_name; lower=false)
+
+    if iscart
+        unit = lowercase(line)
+        if !startswith(unit, "b") && !startswith(unit, "a")
+            unit = "ang"
+        else
+            # do not lowercase due to atomic label
+            line = _win_block_nextline(io, block_name; lower=false)
+        end
+    end
+
+    lines = String[]
+    while !_win_block_isend(line, block_name)
+        push!(lines, line)
+        line = _win_block_nextline(io, block_name; lower=false)
+    end
+
+    atoms = StringVec3{Float64}[]
+    for l in lines
+        s = split(l)
+        atom = s[1]
+        frac = parse_vector(s[2:end])
+        push!(atoms, stringvec3(atom, frac))
+    end
+
+    if iscart
+        if startswith(unit, "b")
+            # convert to angstrom
+            atoms = map(atoms) do (atom, pos)
+                stringvec3(atom, pos .* Bohr)
+            end
+        end
+        return "atoms_cart" => atoms
+    end
+    return "atoms_frac" => atoms
+end
+
+function _win_parse_block_kpoints(io::IO)
+    block_name = "kpoints"
+    lines = String[]
+    line = _win_block_nextline(io, block_name)
+    while !_win_block_isend(line, block_name)
+        push!(lines, line)
+        line = _win_block_nextline(io, block_name)
+    end
+
+    kpoints = zeros(Vec3{Float64}, length(lines))
+    for i in eachindex(lines)
+        # There might be weight at 4th column, but we don't use it.
+        kpoints[i] = vec3(parse_vector(lines[i])[1:3])
+    end
+    return kpoints
+end
+
+function _win_parse_block_kpoint_path(io::IO)
+    block_name = "kpoint_path"
+    kpoint_path = Vector{Vector{StringVec3{Float64}}}()
+
+    # allow uppercase
+    line = _win_block_nextline(io, block_name; lower=false)
+    while !_win_block_isend(line, block_name)
+        l = split(line)
+        length(l) == 8 || error("Invalid kpoint_path line: $line")
+        # start kpoint
+        start_label = l[1]
+        start_kpt = vec3(parse_vector(l[2:4]))
+        # end kpoint
+        end_label = l[5]
+        end_kpt = vec3(parse_vector(l[6:8]))
+        push!(kpoint_path, [start_label => start_kpt, end_label => end_kpt])
+
+        line = _win_block_nextline(io, block_name; lower=false)
+    end
+    return kpoint_path
+end
+
+function _win_parse_block_explicit_kpath(io::IO)
+    block_name = "explicit_kpath"
+    explicit_kpath = Vec3{Float64}[]
+
+    line = _win_block_nextline(io, block_name)
+    while !_win_block_isend(line, block_name)
+        l = split(line)
+        length(l) >= 3 || error("Invalid $block_name line: $line")
+        push!(explicit_kpath, vec3(parse_vector(l[1:3])))
+        line = _win_block_nextline(io, block_name)
+    end
+    return explicit_kpath
+end
+
+function _win_parse_block_explicit_kpath_labels(io::IO)
+    block_name = "explicit_kpath_labels"
+    explicit_kpath_labels = StringVec3{Float64}[]
+
+    # allow uppercase
+    line = _win_block_nextline(io, block_name; lower=false)
+    while !_win_block_isend(line, block_name)
+        l = split(line)
+        length(l) == 4 || error("Invalid $block_name line: $line")
+        label = l[1]
+        kpt = vec3(parse_vector(l[2:4]))
+        push!(explicit_kpath_labels, label => kpt)
+        line = _win_block_nextline(io, block_name; lower=false)
+    end
+    return explicit_kpath_labels
+end
+
+function _win_parse_block_string(io::IO, block_name::AbstractString)
+    block_content = String[]
+    # allow uppercase
+    line = _win_block_nextline(io, block_name; lower=false)
+    while !_win_block_isend(line, block_name)
+        push!(block_content, line)
+        line = _win_block_nextline(io, block_name; lower=false)
+    end
+    return block_content
+end
+
+function _win_parse_block(io::IO, block_name::AbstractString)
+    if block_name == "unit_cell_cart"
+        return "unit_cell_cart" => _win_parse_block_unit_cell_cart(io)
+    elseif block_name == "atoms_frac" || block_name == "atoms_cart"
+        return _win_parse_block_atoms(io, block_name)
+    elseif block_name == "projections"
+        return "projections" => _win_parse_block_string(io, "projections")
+    elseif block_name == "kpoints"
+        return "kpoints" => _win_parse_block_kpoints(io)
+    elseif block_name == "kpoint_path"
+        return "kpoint_path" => _win_parse_block_kpoint_path(io)
+    elseif block_name == "explicit_kpath"
+        return "explicit_kpath" => _win_parse_block_explicit_kpath(io)
+    elseif block_name == "explicit_kpath_labels"
+        return "explicit_kpath_labels" => _win_parse_block_explicit_kpath_labels(io)
+    end
+    # Treat unknown blocks as Vector{String}.
+    return block_name => _win_parse_block_string(io, block_name)
+end
+
+function _win_keyval_types()
+    key_types = Dict{String,Symbol}()
+
+    for key in [
         "num_wann",
         "num_bands",
         "num_iter",
@@ -40,8 +278,14 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
         "num_guide_cycles",
         "num_no_guide_iter",
     ]
-    keys_int3 = ["mp_grid", "wannier_plot_supercell"]
-    keys_float = [
+        key_types[key] = :int
+    end
+
+    for key in ["mp_grid", "wannier_plot_supercell"]
+        key_types[key] = :int3
+    end
+
+    for key in [
         "kmesh_tol",
         "conv_tol",
         "dis_froz_min",
@@ -56,7 +300,10 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
         "fermi_energy_step",
         "ws_distance_tol",
     ]
-    keys_bool = [
+        key_types[key] = :float
+    end
+
+    for key in [
         "use_ws_distance",
         "wannier_plot",
         "bands_plot",
@@ -73,286 +320,62 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
         "auto_projections",
         "restart",
     ]
-    keys_indices = ["exclude_bands", "select_projections"]
-
-    params = OrderedDict{String,Any}()
-
-    read_line() = strip(readline(io))
-    function remove_comments(line::AbstractString)
-        i = findfirst(r"!|#", line)
-        if !isnothing(i)
-            line = strip(line[1:(i.start - 1)])
-        end
-        return line
-    end
-    # handle case insensitive win files (relic of Fortran)
-    function read_line_until_nonempty(; lower=true, block_name=nothing)
-        while !eof(io)
-            line = read_line()
-            lower && (line = lowercase(line))
-            line = remove_comments(line)
-            if !isempty(line)
-                return line
-            end
-        end
-        # end of line reached
-        if !isnothing(block_name)
-            # in the middle of a block, raise error
-            error("end of file reached while parsing block `$block_name`")
-        end
-        # else, outside of blocks, should be fine reaching end of file
-        return nothing
-    end
-    function parse_array(line::AbstractString; T=Float64)
-        return map(x -> parse(T, x), split(line))
-    end
-    read_array(f::IOStream) = parse_array(readline(f))
-
-    while !eof(io)
-        line = read_line_until_nonempty()
-        isnothing(line) && break
-
-        # first handle special cases, e.g., blocks
-        if occursin(r"^begin\s+unit_cell_cart", line)
-            block_name = "unit_cell_cart"
-            unit_cell = zeros(Float64, 3, 3)
-            unit = read_line_until_nonempty(; block_name)
-            if !startswith(unit, "b") && !startswith(unit, "a")
-                line = unit
-                unit = "ang"
-            else
-                line = read_line_until_nonempty(; block_name)
-            end
-            for i in 1:3
-                # in win file, each line is a lattice vector, here it is stored as column vec
-                unit_cell[:, i] = parse_array(line)
-                line = read_line_until_nonempty(; block_name)
-            end
-            occursin(r"^end\s+unit_cell_cart", line) ||
-                error("error parsing $block_name: `end $block_name` not found")
-            if startswith(unit, "b")
-                # convert to angstrom
-                unit_cell .*= Bohr
-            end
-            unit_cell = Mat3{Float64}(unit_cell)
-            push!(params, "unit_cell_cart" => unit_cell)
-        elseif occursin(r"^begin\s+atoms_(frac|cart)", line)
-            iscart = occursin("cart", line)
-            block_name = "atoms_$(iscart ? "cart" : "frac")"
-            # do not lowercase due to atomic label
-            line = read_line_until_nonempty(; lower=false, block_name)
-
-            if iscart
-                unit = lowercase(line)
-                if !startswith(unit, "b") && !startswith(unit, "a")
-                    unit = "ang"
-                else
-                    # do not lowercase due to atomic label
-                    line = read_line_until_nonempty(; lower=false, block_name)
-                end
-            end
-
-            # I need to read all lines and get n_atoms
-            lines = Vector{String}()
-            while !occursin(Regex("^end\\s+" * block_name), lowercase(line))
-                push!(lines, line)
-                line = read_line_until_nonempty(; lower=false, block_name)
-            end
-            n_atoms = length(lines)
-            atoms_frac = StringVec3{Float64}[]
-            for i in 1:n_atoms
-                l = split(lines[i])
-                atom = l[1]
-                frac = Vec3(parse_float.(l[2:end])...)
-                push!(atoms_frac, stringvec3(atom, frac))
-            end
-
-            if iscart
-                if startswith(unit, "b")
-                    # convert to angstrom
-                    atoms_frac = map(atoms_frac) do (atom, pos)
-                        stringvec3(atom, pos .* Bohr)
-                    end
-                end
-                push!(params, "atoms_cart" => atoms_frac)
-            else
-                push!(params, "atoms_frac" => atoms_frac)
-            end
-        elseif occursin(r"^begin\s+projections", line)
-            block_name = "projections"
-            projections = Vector{String}()
-            line = read_line_until_nonempty(; lower=false, block_name)
-            while !occursin(r"^end\s+projections", lowercase(line))
-                push!(projections, line)
-                line = read_line_until_nonempty(; lower=false, block_name)
-            end
-            push!(params, "projections" => projections)
-        elseif occursin(r"^begin\s+kpoints", line)
-            block_name = "kpoints"
-            line = read_line_until_nonempty(; block_name)
-            # I need to read all lines and get n_kpts
-            lines = Vector{String}()
-            while !occursin(r"^end\s+kpoints", line)
-                push!(lines, line)
-                line = read_line_until_nonempty(; block_name)
-            end
-
-            n_kpts = length(lines)
-            kpoints = zeros(Vec3{Float64}, n_kpts)
-            for i in 1:n_kpts
-                # There might be weight at 4th column, but we don't use it.
-                kpoints[i] = Vec3(parse_array(lines[i])[1:3])
-            end
-            push!(params, "kpoints" => kpoints)
-        elseif occursin(r"^begin\s+kpoint_path", line)
-            block_name = "kpoint_path"
-            kpoint_path = Vector{Vector{StringVec3{Float64}}}()
-
-            # allow uppercase
-            line = read_line_until_nonempty(; lower=false, block_name)
-            while !occursin(r"^end\s+kpoint_path", lowercase(line))
-                l = split(line)
-                length(l) == 8 || error("Invalid kpoint_path line: $line")
-                # start kpoint
-                start_label = l[1]
-                start_kpt = Vec3{Float64}(parse.(Float64, l[2:4]))
-                # end kpoint
-                end_label = l[5]
-                end_kpt = Vec3{Float64}(parse.(Float64, l[6:8]))
-                # push to kpath
-                push!(kpoint_path, [start_label => start_kpt, end_label => end_kpt])
-
-                line = read_line_until_nonempty(; lower=false, block_name)
-            end
-            push!(params, "kpoint_path" => kpoint_path)
-        elseif occursin(r"^begin\s+explicit_kpath$", line)
-            block_name = "explicit_kpath"
-            explicit_kpath = Vec3{Float64}[]
-
-            line = read_line_until_nonempty(; block_name)
-            while !occursin(r"^end\s+explicit_kpath$", line)
-                l = split(line)
-                length(l) >= 3 || error("Invalid $block_name line: $line")
-                kpt = Vec3{Float64}(parse_float.(l[1:3]))
-                push!(explicit_kpath, kpt)
-
-                line = read_line_until_nonempty(; block_name)
-            end
-            push!(params, "explicit_kpath" => explicit_kpath)
-        elseif occursin(r"^begin\s+explicit_kpath_labels$", line)
-            block_name = "explicit_kpath_labels"
-            explicit_kpath_labels = StringVec3{Float64}[]
-
-            # allow uppercase
-            line = read_line_until_nonempty(; lower=false, block_name)
-            while !occursin(r"^end\s+explicit_kpath_labels$", lowercase(line))
-                l = split(line)
-                length(l) == 4 || error("Invalid $block_name line: $line")
-                label = l[1]
-                kpt = Vec3{Float64}(parse_float.(l[2:4]))
-                push!(explicit_kpath_labels, label => kpt)
-
-                line = read_line_until_nonempty(; lower=false, block_name)
-            end
-            push!(params, "explicit_kpath_labels" => explicit_kpath_labels)
-        elseif occursin(r"^begin\s+(.+)", line)
-            # treat all remaining unknown blocks as Vector of String
-            block_name = match(r"^begin\s+(.+)", line).captures[1]
-            block_content = Vector{String}()
-            # allow uppercase
-            line = read_line_until_nonempty(; lower=false, block_name)
-            while !occursin(Regex("^end\\s+" * block_name), lowercase(line))
-                push!(block_content, line)
-                line = read_line_until_nonempty(; lower=false, block_name)
-            end
-            push!(params, block_name => block_content)
-        else
-            # now treat remaining lines as key-value pairs
-            line = strip(replace(line, "=" => " ", ":" => " "))
-            key, value = split(line; limit=2)
-            value = strip(value)  # remove leading whitespaces
-            if key in keys_int
-                value = parse(Int, value)
-            elseif key in keys_int3
-                value = strip(replace(value, "," => " "))
-                value = parse_array(value; T=Int)
-                if length(value) == 1
-                    value = value[1]
-                end
-            elseif key in keys_float
-                value = parse_float(value)
-            elseif key in keys_bool
-                value = parse_bool(value)
-            elseif key in keys_indices
-                value = parse_indices(value)
-            end
-            push!(params, key => value)
-        end
+        key_types[key] = :bool
     end
 
-    standardize && standardize_win!(params)
+    for key in ["exclude_bands", "select_projections"]
+        key_types[key] = :indices
+    end
 
+    return key_types
+end
+
+function _win_parse_keyval(line::AbstractString)
+    normalized_line = strip(replace(line, '=' => ' ', ':' => ' '))
+    parts = split(normalized_line; limit=2)
+    length(parts) == 2 || error("Invalid key-value line: $line")
+
+    key, value = parts
+    return key => strip(value)  # remove leading whitespaces
+end
+
+function _win_convert_keyval_type(value::AbstractString, value_type::Symbol)
+    if value_type == :int
+        return parse(Int, value)
+    elseif value_type == :int3
+        parsed = parse_vector(strip(replace(value, "," => " ")), Int)
+        return length(parsed) == 1 ? parsed[1] : parsed
+    elseif value_type == :float
+        return parse_float(value)
+    elseif value_type == :bool
+        return parse_bool(value)
+    elseif value_type == :indices
+        return parse_indices(value)
+    end
+    return value
+end
+
+function _win_convert_keyval_types!(params::AbstractDict)
+    key_types = _win_keyval_types()
+    for (key, value) in pairs(params)
+        value_type = get(key_types, key, nothing)
+        isnothing(value_type) && continue
+        isa(value, AbstractString) || continue
+        params[key] = _win_convert_keyval_type(value, value_type)
+    end
     return params
 end
 
-"""
-I store atoms_frac and kpoint_path as Vector of StringVec3.
-However, TOML.print does not accept Pair (specifically, StringVec3);
-instead, I convert StringVec3 to Dict in write_win with toml format.
-On reading I convert it back.
-"""
-function _to_StringVec3(d::AbstractDict)
-    # StringVec3 are converted to Dict of length 1 when writing
-    if length(d) == 1
-        k, v = only(d)
-        if isa(k, AbstractString) && isa(v, AbstractVector{<:Real})
-            return stringvec3(k, v)
-        end
+function _win_check_line(line::AbstractString)
+    isblock = false
+    content = line
+    if startswith(line, "begin ")
+        block_name = strip(line[7:end])
+        isempty(block_name) && error("Invalid block line: $line")
+        isblock = true
+        content = block_name
     end
-
-    # Need to do the conversion recursively
-    for (k, v) in pairs(d)
-        d[k] = _to_StringVec3(v)
-    end
-    return d
-end
-
-_to_StringVec3(v::AbstractVector) = map(_to_StringVec3, v)
-
-"""Fallback to doing nothing."""
-_to_StringVec3(x) = x
-
-function read_win(io::IO, ::Wannier90Toml; standardize::Bool=true)
-    win = TOML.parse(read(io, String))
-    win = _to_StringVec3(win)
-
-    win = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(win))
-
-    standardize && standardize_win!(win)
-
-    # Vector{Vector} -> Mat3
-    if haskey(win, "unit_cell_cart")
-        win["unit_cell_cart"] = mat3(win["unit_cell_cart"])
-    end
-
-    # Vector{Vector} -> Vector{Vec3}
-    if haskey(win, "kpoints")
-        win["kpoints"] = [vec3(k) for k in win["kpoints"]]
-    end
-
-    return win
-end
-
-function read_win(filename::AbstractString, format::FileFormat; standardize::Bool=true)
-    return open(filename) do io
-        read_win(io, format; standardize)
-    end
-end
-
-function read_win(file::Union{IO,AbstractString}; standardize::Bool=true)
-    format = istoml(file) ? Wannier90Toml() : Wannier90Text()
-    win = read_win(file, format; standardize)
-    return win
+    return isblock, content
 end
 
 """
@@ -469,24 +492,8 @@ write_win("silicon.win", params)
 """
 function write_win end
 
-"""
-    $(SIGNATURES)
-"""
-@inline function _check_win_required_params(kwargs)
-    required_keys = ["num_wann", "unit_cell_cart", "mp_grid", "kpoints"]
-    for k in required_keys
-        haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
-    end
-    atoms_cart_frac = haskey.(Ref(kwargs), ["atoms_cart", "atoms_frac"])
-    if all(atoms_cart_frac)
-        error("Both atoms_cart and atoms_frac are found")
-    elseif !any(atoms_cart_frac)
-        error("Both atoms_frac and atoms_cart are missing")
-    end
-end
-
 function write_win(io::IO, params::AbstractDict, ::Wannier90Text; header=default_header())
-    _check_win_required_params(params)
+    _win_check_required_params(params)
 
     # Copy params to an OrderedDict, to avoid modifying the input `params`.
     # Here we use OrderedDict to keep the order if the input is a OrderedDict.
@@ -500,118 +507,29 @@ function write_win(io::IO, params::AbstractDict, ::Wannier90Text; header=default
     kpoint_path = pop!(params, "kpoint_path", nothing)
     explicit_kpath = pop!(params, "explicit_kpath", nothing)
     explicit_kpath_labels = pop!(params, "explicit_kpath_labels", nothing)
-    kpoints = pop!(params, "kpoints")
+    kpoints = pop!(params, "kpoints", nothing)
 
-    if !isnothing(header)
-        startswith(lstrip(header), "#") || (header = "# $header")
-        # an additional new line to separate from the rest
-        println(io, "$(header)\n")
-    end
-
-    for (key, value) in pairs(params)
-        ismissing(value) && continue
-        # @printf io "%-20s = %-30s\n" string(key) value
-        if key == "mp_grid"
-            @printf io "%s = %d  %d  %d\n" string(key) value...
-        elseif key == "exclude_bands"
-            if !isempty(value)
-                @printf io "%s = %s\n" string(key) format_indices(value)
-            end
-        else
-            @printf io "%s = %s\n" string(key) value
-        end
-    end
+    # an additional new line to separate from the rest
+    isnothing(header) || _win_write_comment(io, header * "\n")
+    _win_write_keyvals(io, params)
     # a new line to separate from the rest
     println(io)
 
-    # Lattice vectors are in rows in Wannier90
-    println(io, "begin unit_cell_cart\nangstrom")
-    # for floats, e.g., unit_cell, kpoints, I need to write enough digits
-    # to avoid rounding errors in finding bvectors
-    for vec in eachcol(unit_cell_cart)
-        @printf io "%14.8f  %14.8f  %14.8f\n" vec...
-    end
-    println(io, "end unit_cell_cart\n")
-
-    if !isnothing(atoms_frac)
-        println(io, "begin atoms_frac")
-        # label width is dynamic, e.g. 3 to accommodate "Si1"
-        n = maximum(p -> length(string(first(p))), atoms_frac)
-        fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
-        for (element, position) in atoms_frac
-            Printf.format(io, fmt, string(element), position...)
-        end
-        println(io, "end atoms_frac\n")
-    end
-
-    if !isnothing(atoms_cart)
-        println(io, "begin atoms_cart")
-        # unit is angstrom
-        println(io, "angstrom")
-        # label width is dynamic, e.g. 3 to accommodate "Si1"
-        n = maximum(p -> length(string(first(p))), atoms_cart)
-        fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
-        for (element, position) in atoms_cart
-            Printf.format(io, fmt, string(element), position...)
-        end
-        println(io, "end atoms_cart\n")
-    end
-
-    if !isnothing(projections)
-        println(io, "begin projections")
-        for proj in projections
-            println(io, proj)
-        end
-        println(io, "end projections\n")
-    end
-
-    if !isnothing(kpoint_path)
-        println(io, "begin kpoint_path")
-        # label width is dynamic, e.g. 5 to accommodate "Gamma"
-        n = maximum(maximum(p -> length(string(first(p))), seg) for seg in kpoint_path)
-        fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f    ")
-        for segment in kpoint_path
-            line = ""
-            for (label, kpt) in segment
-                seg = Printf.format(fmt, string(label), kpt...)
-                line *= seg
-            end
-            line = rstrip(line)
-            println(io, line)
-        end
-        println(io, "end kpoint_path\n")
-    end
-
-    if !isnothing(explicit_kpath_labels)
-        println(io, "begin explicit_kpath_labels")
-        # label width is dynamic, e.g. 5 to accommodate "Gamma"
-        n = maximum(p -> length(string(first(p))), explicit_kpath_labels)
-        fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
-        for (label, kpt) in explicit_kpath_labels
-            Printf.format(io, fmt, string(label), kpt...)
-        end
-        println(io, "end explicit_kpath_labels\n")
-    end
-
-    if !isnothing(explicit_kpath)
-        println(io, "begin explicit_kpath")
-        for kpt in explicit_kpath
-            @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
-        end
-        println(io, "end explicit_kpath\n")
-    end
-
-    println(io, "begin kpoints")
-    for kpt in kpoints
-        @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
-    end
-    println(io, "end kpoints\n")
+    _win_write_block_unit_cell_cart(io, unit_cell_cart)
+    isnothing(atoms_frac) || _win_write_block_atoms_frac(io, atoms_frac)
+    isnothing(atoms_cart) || _win_write_block_atoms_cart(io, atoms_cart)
+    isnothing(projections) || _win_write_block_projections(io, projections)
+    isnothing(kpoint_path) || _win_write_block_kpoint_path(io, kpoint_path)
+    isnothing(explicit_kpath_labels) ||
+        _win_write_block_explicit_kpath_labels(io, explicit_kpath_labels)
+    isnothing(explicit_kpath) || _win_write_block_explicit_kpath(io, explicit_kpath)
+    isnothing(kpoints) || _win_write_block_kpoints(io, kpoints)
 
     return nothing
 end
 
 function write_win(io::IO, params::AbstractDict, ::Wannier90Toml; header=default_header())
-    _check_win_required_params(params)
+    _win_check_required_params(params)
     isnothing(header) || println(io, header, "\n")
     write_toml(io, params)
     return nothing
@@ -631,5 +549,143 @@ end
 function write_win(
     file::Union{IO,AbstractString}, params::AbstractDict; header=default_header()
 )
-    write_win(file, params, Wannier90Text(); header)
+    return write_win(file, params, Wannier90Text(); header)
+end
+
+"""
+    $(SIGNATURES)
+"""
+@inline function _win_check_required_params(kwargs)
+    required_keys = ["num_wann", "unit_cell_cart", "mp_grid"]
+    for k in required_keys
+        haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
+    end
+    atoms_cart_frac = haskey.(Ref(kwargs), ["atoms_cart", "atoms_frac"])
+    if all(atoms_cart_frac)
+        error("Both atoms_cart and atoms_frac are found")
+    elseif !any(atoms_cart_frac)
+        error("Both atoms_frac and atoms_cart are missing")
+    end
+end
+
+function _win_write_comment(io::IO, comment)
+    if !isnothing(comment)
+        startswith(lstrip(comment), "#") || (comment = "# $comment")
+        println(io, comment)
+    end
+end
+
+function _win_format_keyval(key::AbstractString, value, value_type::Union{Symbol,Nothing})
+    if value_type == :int3
+        # Unpack 3-element vector/tuple into separate integers
+        return join(value, "  ")
+    elseif value_type == :indices
+        # Use format_indices for index arrays
+        return isempty(value) ? "" : format_indices(value)
+    else
+        # Default: convert to string
+        return string(value)
+    end
+end
+
+function _win_write_keyvals(io::IO, params::AbstractDict)
+    key_types = _win_keyval_types()
+    for (key, value) in pairs(params)
+        ismissing(value) && continue
+        # Skip empty indices
+        if haskey(key_types, key) && key_types[key] == :indices && isempty(value)
+            continue
+        end
+
+        value_type = get(key_types, key, nothing)
+        formatted_value = _win_format_keyval(key, value, value_type)
+        @printf io "%s = %s\n" string(key) formatted_value
+    end
+end
+
+function _win_write_block_unit_cell_cart(io::IO, unit_cell_cart)
+    # Lattice vectors are in rows in Wannier90
+    println(io, "begin unit_cell_cart\nangstrom")
+    # for floats, e.g., unit_cell, kpoints, I need to write enough digits
+    # to avoid rounding errors in finding bvectors
+    for vec in eachcol(unit_cell_cart)
+        @printf io "%14.8f  %14.8f  %14.8f\n" vec...
+    end
+    println(io, "end unit_cell_cart\n")
+end
+
+function _win_write_block_atoms_frac(io::IO, atoms_frac)
+    println(io, "begin atoms_frac")
+    # label width is dynamic, e.g. 3 to accommodate "Si1"
+    n = maximum(p -> length(string(first(p))), atoms_frac)
+    fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
+    for (element, position) in atoms_frac
+        Printf.format(io, fmt, string(element), position...)
+    end
+    println(io, "end atoms_frac\n")
+end
+
+function _win_write_block_atoms_cart(io::IO, atoms_cart)
+    println(io, "begin atoms_cart")
+    # unit is angstrom
+    println(io, "angstrom")
+    # label width is dynamic, e.g. 3 to accommodate "Si1"
+    n = maximum(p -> length(string(first(p))), atoms_cart)
+    fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
+    for (element, position) in atoms_cart
+        Printf.format(io, fmt, string(element), position...)
+    end
+    println(io, "end atoms_cart\n")
+end
+
+function _win_write_block_projections(io::IO, projections)
+    println(io, "begin projections")
+    for proj in projections
+        println(io, proj)
+    end
+    println(io, "end projections\n")
+end
+
+function _win_write_block_kpoint_path(io::IO, kpoint_path)
+    println(io, "begin kpoint_path")
+    # label width is dynamic, e.g. 5 to accommodate "Gamma"
+    n = maximum(maximum(p -> length(string(first(p))), seg) for seg in kpoint_path)
+    fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f    ")
+    for segment in kpoint_path
+        line = ""
+        for (label, kpt) in segment
+            seg = Printf.format(fmt, string(label), kpt...)
+            line *= seg
+        end
+        line = rstrip(line)
+        println(io, line)
+    end
+    println(io, "end kpoint_path\n")
+end
+
+function _win_write_block_explicit_kpath_labels(io::IO, explicit_kpath_labels)
+    println(io, "begin explicit_kpath_labels")
+    # label width is dynamic, e.g. 5 to accommodate "Gamma"
+    n = maximum(p -> length(string(first(p))), explicit_kpath_labels)
+    fmt = Printf.Format("%-$(n)s  %14.8f  %14.8f  %14.8f\n")
+    for (label, kpt) in explicit_kpath_labels
+        Printf.format(io, fmt, string(label), kpt...)
+    end
+    println(io, "end explicit_kpath_labels\n")
+end
+
+function _win_write_block_explicit_kpath(io::IO, explicit_kpath)
+    println(io, "begin explicit_kpath")
+    for kpt in explicit_kpath
+        @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
+    end
+    println(io, "end explicit_kpath\n")
+end
+
+function _win_write_block_kpoints(io::IO, kpoints)
+    println(io, "begin kpoints")
+    for kpt in kpoints
+        @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
+    end
+    println(io, "end kpoints\n")
 end

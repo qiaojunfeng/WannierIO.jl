@@ -1,5 +1,28 @@
 export read_wout
 
+const WOUT_MARKS = (;
+    lattice="Lattice Vectors (",
+    recip="Reciprocal-Space Vectors (",
+    atom_start="|   Site       Fractional Coordinate          Cartesian Coordinate",
+    atom_end="*----------------------------------------------------------------------------*",
+    kgrid="Grid size =",
+    finalstate_start="Final State",
+    finalstate_end="Sum of centres and spreads",
+    ΩI="Omega I      =",
+    ΩD="Omega D      =",
+    ΩOD="Omega OD     =",
+    Ωtotal="Omega Total  =",
+    phase="Phase Factor =",
+    imre="Maximum Im/Re Ratio =",
+    dis_start="Extraction of optimally-connected subspace",
+    dis_end="Time to disentangle bands",
+    dis_iter="<-- DIS",
+    maxloc_start="| Iter  Delta Spread     RMS Gradient      Spread (Ang^2)      Time  |<-- CONV",
+    maxloc_end="Final State",
+    maxloc_wf_c_s="WF centre and spread",
+    maxloc_sum_c_s="Sum of centres and spreads",
+)
+
 """
     $(SIGNATURES)
 
@@ -27,131 +50,52 @@ Parse wannier90 `wout` file.
     only parsed when kwarg `iterations=true`
 """
 function read_wout(io::IO; iterations::Bool=false)
-    mark_lattice = "Lattice Vectors ("
-    mark_recip = "Reciprocal-Space Vectors ("
-    mark_atom_start = "|   Site       Fractional Coordinate          Cartesian Coordinate"
-    mark_atom_end = "*----------------------------------------------------------------------------*"
-    mark_kgrid = "Grid size ="
-    mark_finalstate_start = "Final State"
-    mark_finalstate_end = "Sum of centres and spreads"
-    mark_ΩI = "Omega I      ="
-    mark_ΩD = "Omega D      ="
-    mark_ΩOD = "Omega OD     ="
-    mark_Ωtotal = "Omega Total  ="
-    mark_phase = "Phase Factor ="
-    mark_imre = "Maximum Im/Re Ratio ="
-    # convergence history
-    mark_dis_start = "Extraction of optimally-connected subspace"
-    mark_dis_end = "Time to disentangle bands"
-    mark_maxloc_start = "| Iter  Delta Spread     RMS Gradient      Spread (Ang^2)      Time  |<-- CONV"
-    mark_maxloc_end = mark_finalstate_start
     # parsed results
-    results = Dict{String,Any}()
-    iters = Dict{String,Any}()
-
-    srline() = strip(readline(io))
+    results = OrderedDict{String,Any}()
+    iters = OrderedDict{String,Any}()
 
     while !eof(io)
-        line = srline()
-        if occursin(mark_lattice, line)
-            lines = String[line]
-            append!(lines, srline() for _ in 1:3)
-            push!(results, "lattice" => Mat3(_parse_wout_lattice(lines)))
-            continue
-        end
-        if occursin(mark_recip, line)
-            lines = String[line]
-            append!(lines, srline() for _ in 1:3)
-            push!(results, "recip_lattice" => Mat3(_parse_wout_recip_lattice(lines)))
-            continue
-        end
-        if occursin(mark_atom_start, line)
-            lines = String[line]
-            while line != mark_atom_end
-                line = srline()
-                push!(lines, line)
-            end
-            atom_labels, atom_positions = _parse_wout_atoms(lines)
-            push!(results, "atom_labels" => atom_labels, "atom_positions" => atom_positions)
-            continue
-        end
-        if occursin(mark_kgrid, line)
-            #  parse line `Grid size =  9 x  9 x  9      Total points =  729`
-            line = split(line)[[4, 6, 8]]
-            push!(results, "kgrid" => parse.(Int, line))
-            continue
-        end
-        if iterations
-            if occursin(mark_dis_start, line)
-                lines = String[line]
-                while !occursin(mark_dis_end, line)
-                    line = srline()
-                    push!(lines, line)
-                end
-                push!(iters, "disentangle" => _parse_wout_disentangle(lines))
-                continue
-            end
-            if occursin(mark_maxloc_start, line)
-                lines = String[line]
-                while !occursin(mark_maxloc_end, line)
-                    line = srline()
-                    push!(lines, line)
-                end
-                push!(iters, "wannierize" => _parse_wout_wannierize(lines))
-                # Do not continue: we use the same "Final State" mark for
-                # checking both the end of max localization and the start of
-                # final spread. Therefore, we need to proceed with the next
-                # if block on parsing final state.
-            end
-        end
-        if occursin(mark_finalstate_start, line)
-            line = srline()
-            lines = String[line]
-            while !occursin(mark_finalstate_end, line)
-                line = srline()
-                push!(lines, line)
-            end
-            c, s, sc, ss = _parse_wout_wf_center_spread(lines)
-            push!(
-                results,
-                "centers" => c,
-                "spreads" => s,
-                "sum_centers" => sc,
-                "sum_spreads" => ss,
-            )
-            continue
-        end
-        if occursin(mark_ΩI, line)
-            push!(results, "ΩI" => parse_float(split(line, mark_ΩI)[2]))
-            line = srline()
-            push!(results, "ΩD" => parse_float(split(line, mark_ΩD)[2]))
-            line = srline()
-            push!(results, "ΩOD" => parse_float(split(line, mark_ΩOD)[2]))
-            line = srline()
-            push!(results, "Ωtotal" => parse_float(split(line, mark_Ωtotal)[2]))
-            continue
-        end
-        if occursin(mark_phase, line)
-            phases = ComplexF64[]
-            while occursin(mark_phase, line)
-                s = split(line, "=")
-                v = parse(ComplexF64, s[end])
-                push!(phases, v)
-                line = srline()  # there is an empty line after phase block
-            end
-            push!(results, "phase_factors" => phases)
-            continue
-        end
-        if occursin(mark_imre, line)
-            imre = Float64[]
-            while occursin(mark_imre, line)
-                s = split(line, "=")
-                v = parse(Float64, s[end])
-                push!(imre, v)
-                line = srline()  # there is an empty line after im/re block
-            end
-            push!(results, "im_re_ratios" => imre)
-            continue
+        line = readstrip(io)
+        line_kind = _wout_line_kind(line; iterations)
+
+        if line_kind == :lattice
+            results["lattice"] = _wout_parse_lattice(io)
+        elseif line_kind == :recip_lattice
+            results["recip_lattice"] = _wout_parse_recip_lattice(io)
+        elseif line_kind == :atoms
+            atom_labels, atom_positions = _wout_parse_atoms(io)
+            results["atom_labels"] = atom_labels
+            results["atom_positions"] = atom_positions
+        elseif line_kind == :kgrid
+            results["kgrid"] = _wout_parse_kgrid(line)
+        elseif line_kind == :disentangle
+            iters["disentangle"] = _wout_parse_disentangle(io)
+        elseif line_kind == :wannierize
+            iters["wannierize"] = _wout_parse_wannierize(io)
+            # _wout_parse_wannierize use "Final State" as the marker,
+            # this line is already consumed, we need to parse final state
+            # immediately after that.
+            wf = _wout_parse_final_state(io)
+            results["centers"] = wf.centers
+            results["spreads"] = wf.spreads
+            results["sum_centers"] = wf.sum_centers
+            results["sum_spreads"] = wf.sum_spreads
+        elseif line_kind == :final_state
+            wf = _wout_parse_final_state(io)
+            results["centers"] = wf.centers
+            results["spreads"] = wf.spreads
+            results["sum_centers"] = wf.sum_centers
+            results["sum_spreads"] = wf.sum_spreads
+        elseif line_kind == :omega
+            omega = _wout_parse_Ω(io, line)
+            results["ΩI"] = omega.ΩI
+            results["ΩD"] = omega.ΩD
+            results["ΩOD"] = omega.ΩOD
+            results["Ωtotal"] = omega.Ωtotal
+        elseif line_kind == :phase
+            results["phase_factors"] = _wout_parse_phase_factor(io, line)
+        elseif line_kind == :imre
+            results["im_re_ratios"] = _wout_parse_im_re_ratio(io, line)
         end
     end
     iterations && push!(results, "iterations" => iters)
@@ -164,6 +108,99 @@ function read_wout(filename::AbstractString; iterations::Bool=false)
     end
 end
 
+function _wout_line_kind(line::AbstractString; iterations::Bool=false)
+    if occursin(WOUT_MARKS.lattice, line)
+        return :lattice
+    elseif occursin(WOUT_MARKS.recip, line)
+        return :recip_lattice
+    elseif occursin(WOUT_MARKS.atom_start, line)
+        return :atoms
+    elseif occursin(WOUT_MARKS.kgrid, line)
+        return :kgrid
+    elseif iterations && occursin(WOUT_MARKS.dis_start, line)
+        return :disentangle
+    elseif iterations && occursin(WOUT_MARKS.maxloc_start, line)
+        return :wannierize
+    elseif occursin(WOUT_MARKS.finalstate_start, line)
+        return :final_state
+    elseif occursin(WOUT_MARKS.ΩI, line)
+        return :omega
+    elseif occursin(WOUT_MARKS.phase, line)
+        return :phase
+    elseif occursin(WOUT_MARKS.imre, line)
+        return :imre
+    end
+    return :none
+end
+
+"""
+Parse line `Grid size =  9 x  9 x  9      Total points =  729`
+"""
+function _wout_parse_kgrid(line::AbstractString)
+    sline = split(line)[[4, 6, 8]]
+    return parse_vector(sline, Int)
+end
+
+"""
+`line` is the 1st, remaining lines will be read from `io`.
+```
+         Spreads (Ang^2)       Omega I      =     3.956862958
+        ================       Omega D      =     0.008030049
+                               Omega OD     =     0.501987969
+    Final Spread (Ang^2)       Omega Total  =     4.466880976
+```
+"""
+function _wout_parse_Ω(io::IO, line::AbstractString)
+    ΩI = parse_float(split(line, WOUT_MARKS.ΩI)[2])
+    line = readstrip(io)
+    ΩD = parse_float(split(line, WOUT_MARKS.ΩD)[2])
+    line = readstrip(io)
+    ΩOD = parse_float(split(line, WOUT_MARKS.ΩOD)[2])
+    line = readstrip(io)
+    Ωtotal = parse_float(split(line, WOUT_MARKS.Ωtotal)[2])
+    return (; ΩI, ΩD, ΩOD, Ωtotal)
+end
+
+"""
+Parse blocks like
+```
+      Wannier Function Num:    1       Phase Factor =    0.996157  +0.087588i
+      Wannier Function Num:    2       Phase Factor =    0.996157  +0.087588i
+      Wannier Function Num:    3       Phase Factor =    0.996157  +0.087588i
+      Wannier Function Num:    4       Phase Factor =    0.998869  +0.047543i
+
+```
+or
+```
+      Wannier Function Num:    1       Maximum Im/Re Ratio =    4.566451
+      Wannier Function Num:    2       Maximum Im/Re Ratio =    4.566481
+      Wannier Function Num:    3       Maximum Im/Re Ratio =    4.566335
+      Wannier Function Num:    4       Maximum Im/Re Ratio =    2.154381
+
+```
+The `line` contains the 1st, the remaining lines will be read from `io`.
+The last line should be an empty line.
+"""
+function _wout_parse_repeated_equals(
+    io::IO, line::AbstractString, marker::AbstractString, ::Type{T}
+) where {T}
+    values = T[]
+    while occursin(marker, line)
+        s = split(line, "=")
+        push!(values, parse(T, s[end]))
+        line = readstrip(io)  # there is an empty line after this block
+    end
+    return values
+end
+
+function _wout_parse_phase_factor(io::IO, line::AbstractString)
+    return _wout_parse_repeated_equals(io, line, WOUT_MARKS.phase, ComplexF64)
+end
+
+function _wout_parse_im_re_ratio(io::IO, line::AbstractString)
+    return _wout_parse_repeated_equals(io, line, WOUT_MARKS.imre, Float64)
+end
+
 """
 Parse block
 ```
@@ -173,18 +210,15 @@ a_2     2.715265   0.000000   2.715265
 a_3     2.715265   2.715265   0.000000
 ```
 """
-function _parse_wout_lattice(lines)
-    length(lines) == 4 || error("wrong number of lines for lattice")
-    ang_unit = occursin("Lattice Vectors (Ang)", lines[1])
-    ang_unit || error("wout unit is not Angstrom, not supported yet")
+function _wout_parse_lattice(io::IO)
     lattice = zeros(Float64, 3, 3)
 
-    for (i, line) in enumerate(lines[2:end])
-        line = split(line)
-        line[1] == "a_$i" || error("line does not start with a_$i")
-        lattice[:, i] = parse_float.(line[2:end])
+    for i in 1:3
+        parts = split(readstrip(io))
+        parts[1] == "a_$i" || error("line does not start with a_$i")
+        lattice[:, i] = parse_float.(parts[2:end])
     end
-    return lattice
+    return mat3(lattice)
 end
 
 """
@@ -196,18 +230,15 @@ b_2     1.157011  -1.157011   1.157011
 b_3     1.157011   1.157011  -1.157011
 ```
 """
-function _parse_wout_recip_lattice(lines)
-    length(lines) == 4 || error("wrong number of lines for reciprocal lattice")
-    occursin("Reciprocal-Space Vectors", lines[1]) ||
-        error("Reciprocal-Space Vectors not found in line")
+function _wout_parse_recip_lattice(io::IO)
     recip_lattice = zeros(Float64, 3, 3)
 
-    for (i, line) in enumerate(lines[2:end])
-        line = split(line)
-        line[1] == "b_$i" || error("line does not start with b_$i")
-        recip_lattice[:, i] = parse_float.(line[2:end])
+    for i in 1:3
+        parts = split(readstrip(io))
+        parts[1] == "b_$i" || error("line does not start with b_$i")
+        recip_lattice[:, i] = parse_float.(parts[2:end])
     end
-    return recip_lattice
+    return mat3(recip_lattice)
 end
 
 """
@@ -220,19 +251,18 @@ Parse block
 *----------------------------------------------------------------------------*
 ```
 """
-function _parse_wout_atoms(lines)
-    lines = lines[3:(end - 1)]
-    n_atom = length(lines)
-    atom_labels = Vector{String}()
-    atom_positions = zeros(Vec3{Float64}, n_atom)
-    for (i, line) in enumerate(lines)
-        line = split(line)
-        line[1] == "|" || error("line does not start with |")
-        push!(atom_labels, line[2])
-        # cartesian
-        # atom_positions[i] = Vec3(parse_float.(line[8:10]))
-        # fractional
-        atom_positions[i] = Vec3(parse_float.(line[4:6]))
+function _wout_parse_atoms(io::IO)
+    readstrip(io) # separator line
+
+    atom_labels = String[]
+    atom_positions = Vec3{Float64}[]
+    while !eof(io)
+        line = readstrip(io)
+        line == WOUT_MARKS.atom_end && break
+        parts = split(line)
+        parts[1] == "|" || error("line does not start with |")
+        push!(atom_labels, parts[2])
+        push!(atom_positions, vec3(parse_float.(parts[4:6])))
     end
     return atom_labels, atom_positions
 end
@@ -263,22 +293,23 @@ Parse block
 Time to disentangle bands      2.546 (sec)
 ```
 """
-function _parse_wout_disentangle(lines)
-    mark_iter = "<-- DIS"
+function _wout_parse_disentangle(io::IO)
     iter = Int[]
     ΩI_previous = Float64[]
     ΩI_current = Float64[]
     ΔΩI = Float64[]
 
-    i_start = 6
-    for line in lines[i_start:end]
-        occursin(mark_iter, line) || continue
+    while !eof(io)
+        line = readstrip(io)
+        occursin(WOUT_MARKS.dis_end, line) && break
+        occursin(WOUT_MARKS.dis_iter, line) || continue
 
-        line = split(line)
-        push!(iter, parse(Int, line[1]))
-        push!(ΩI_previous, parse(Float64, line[2]))
-        push!(ΩI_current, parse(Float64, line[3]))
-        push!(ΔΩI, parse(Float64, line[4]))
+        parts = split(line)
+        isnothing(tryparse(Int, parts[1])) && continue
+        push!(iter, parse(Int, parts[1]))
+        push!(ΩI_previous, parse(Float64, parts[2]))
+        push!(ΩI_current, parse(Float64, parts[3]))
+        push!(ΔΩI, parse(Float64, parts[4]))
     end
     return OrderedDict{String,Any}(
         "iter" => iter,
@@ -302,28 +333,34 @@ WF centre and spread    8  (  1.357620,  1.357617,  1.357694 )     3.19460833
 Sum of centres and spreads (  5.430528,  5.430529,  5.430534 )    24.29446759
 ```
 """
-function _parse_wout_wf_center_spread(lines)
-    mark_wf = "WF centre and spread"
-    mark_sum = "Sum of centres and spreads"
+function _wout_parse_wf_center_spread(io::IO)
     centers = Vec3{Float64}[]
     spreads = Float64[]
     sum_centers = nothing
     sum_spreads = nothing
-    for line in lines
-        if occursin(mark_wf, line)
+    line = readstrip(io)
+
+    while true
+        if occursin(WOUT_MARKS.maxloc_wf_c_s, line)
             sline = split(line, r"[ ,()]"; keepempty=false)
             idx = parse(Int, sline[5])
             push!(centers, Vec3(parse_float.(sline[6:8])))
             push!(spreads, parse_float(sline[9]))
             (idx != length(centers)) && error("WF index mismatch at $line")
         end
-        if occursin(mark_sum, line)
+        if occursin(WOUT_MARKS.maxloc_sum_c_s, line)
             sline = split(line, r"[ ,()]"; keepempty=false)
             sum_centers = Vec3(parse_float.(sline[6:8]))
             sum_spreads = parse_float(sline[9])
         end
+        occursin(WOUT_MARKS.finalstate_end, line) && break
+        line = readstrip(io)
     end
-    return centers, spreads, sum_centers, sum_spreads
+    return (; centers, spreads, sum_centers, sum_spreads)
+end
+
+@inline function _wout_parse_final_state(io::IO)
+    _wout_parse_wf_center_spread(io)
 end
 
 """
@@ -387,11 +424,7 @@ Delta: O_D=  0.2557594E-06 O_OD= -0.2559458E-06 O_TOT= -0.1863789E-09 <-- DLTA
            <<< Wannierisation convergence criteria satisfied >>>
 ```
 """
-function _parse_wout_wannierize(lines)
-    mark_init = "Initial State"
-    mark_cycle = "Cycle:"
-    mark_sprd = "<-- SPRD"
-
+function _wout_parse_wannierize(io::IO)
     iter = Int[]
     centers = Vector{Vector{Vec3{Float64}}}()
     spreads = Vector{Vector{Float64}}()
@@ -401,57 +434,40 @@ function _parse_wout_wannierize(lines)
     ΩOD = Float64[]
     Ωtotal = Float64[]
 
-    """
-    i_start: line number of "WF centre and spread    1"
-    i_end: line number of "<-- SPRD"
-    """
-    function append_iter!(i_start, i_end)
-        (i_end > i_start) || error("Invalid range $i_start:$i_end")
-        c, s, sc, ss = _parse_wout_wf_center_spread(lines[i_start:(i_end - 3)])
+    function append_iter!(idx::Int)
+        c, s, sc, ss = _wout_parse_wf_center_spread(io)
         push!(centers, c)
         push!(spreads, s)
         push!(sum_centers, sc)
         push!(sum_spreads, ss)
-        sline = split(lines[i_end])
+        push!(iter, idx)
+        sprd_line = ""
+        while !eof(io)
+            sprd_line = readstrip(io)
+            occursin("<-- SPRD", sprd_line) && break
+        end
+        occursin("<-- SPRD", sprd_line) || error("No `<-- SPRD` found")
+        sline = split(sprd_line)
         push!(ΩD, parse_float(sline[2]))
         push!(ΩOD, parse_float(sline[4]))
         push!(Ωtotal, parse_float(sline[6]))
         return nothing
     end
 
-    # Initial State
-    i_start = i_end = -1
-    for (i, line) in enumerate(lines)
-        if occursin(mark_init, line)
-            i_start = i + 1
-            continue
-        end
-        if occursin(mark_sprd, line)
-            i_end = i
+    while !eof(io)
+        line = readstrip(io)
+        if occursin(WOUT_MARKS.maxloc_end, line)
+            # If not converged, w90 won't print
+            # `<<< Wannierisation convergence criteria satisfied >>>`,
+            # instead, it directly print "Final State".
+            # Therefore, we use "Final State" as the marker
+            # for the end of max loc iterations.
             break
+        elseif occursin("Initial State", line)
+            append_iter!(0)
+        elseif occursin("Cycle:", line)
+            append_iter!(parse(Int, split(line)[2]))
         end
-    end
-    (i_start > 0) || error("No `$mark_init` found")
-    (i_end > i_start) || error("No `$mark_sprd` found")
-    push!(iter, 0)
-    append_iter!(i_start, i_end)
-
-    # Remaining cycles
-    # for each iteration: from `Cycle` to horizontal line, inclusive
-    n_lines_block = i_end - i_start + 4
-    i = i_end + 1
-    while i <= length(lines)
-        line = lines[i]
-        if occursin(mark_cycle, line)
-            idx = parse(Int, split(line)[2])
-            push!(iter, idx)
-            i_start = i + 1
-            i_end = i + n_lines_block - 3
-            append_iter!(i_start, i_end)
-            i += n_lines_block
-            continue
-        end
-        i += 1
     end
     return OrderedDict{String,Any}(
         "iter" => iter,

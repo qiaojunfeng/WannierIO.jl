@@ -8,7 +8,7 @@
 
     test_data = read_win(artifact"Si2_valence/outputs/Si2_valence.win.toml")
     # TOML files are unordered
-    @test Dict(pairs(win)) == Dict(pairs(test_data))
+    @test Dict(win) == Dict(test_data)
 end
 
 @testitem "read/write win" begin
@@ -19,7 +19,7 @@ end
     write_win(tmpfile, win)
     win2 = read_win(tmpfile)
     # Compare without order
-    @test Dict(pairs(win)) == Dict(pairs(win2))
+    @test Dict(win) == Dict(win2)
 end
 
 @testitem "read/write win toml" begin
@@ -31,7 +31,7 @@ end
     write_win(tmpfile, win, WannierIO.Wannier90Toml())
     win2 = read_win(tmpfile, WannierIO.Wannier90Toml())
     # Compare without order
-    @test Dict(pairs(win)) == Dict(pairs(win2))
+    @test Dict(win) == Dict(win2)
 end
 
 @testitem "read win: special cases" begin
@@ -48,7 +48,7 @@ end
     windir = joinpath(@__DIR__, "win_testfiles")
     win = read_win(joinpath(windir, "unknown_blocks.win"))
 
-    @test win["unknown_a"] == ["A1", "A2"]
+    @test win["unknown_A"] == ["A1", "A2"]
     @test win["unknown_b"] == ["B1 B2"]
 end
 
@@ -74,7 +74,7 @@ end
     toml_path = artifact"GaAs/GaAs.win"
     win = read_win(toml_path)
 
-    @test win["explicit_kpath_labels"] == [
+    @test win["explicit_kpath_labels"] == WannierIO.StringVec3{Float64}[
         "L" => [0.5, 0.5, 0.5],
         "G" => [0.0, 0.0, 0.0],
         "X" => [0.5, 0.0, 0.5],
@@ -88,20 +88,18 @@ end
     write_win(tmpfile, win)
     win2 = read_win(tmpfile)
     # compare without order
-    @test Dict(pairs(win)) == Dict(pairs(win2))
+    @test Dict(win) == Dict(win2)
 end
 
-@testitem "write win: OrderedDict" begin
-    using LazyArtifacts, OrderedCollections
+@testitem "write win" begin
+    using LazyArtifacts
     win = read_win(artifact"GaAs/GaAs.win")
 
-    # convert to OrderedDict
-    win = OrderedDict(pairs(win))
     tmpfile = tempname(; cleanup=true)
     write_win(tmpfile, win)
     win2 = read_win(tmpfile)
     # compare without order
-    @test Dict(pairs(win)) == Dict(pairs(win2))
+    @test Dict(win) == Dict(win2)
 end
 
 @testitem "read/write win order" begin
