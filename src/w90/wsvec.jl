@@ -123,20 +123,27 @@ function write_w90_wsvec(
     Tdegens::Union{AbstractVector,Nothing}=nothing,
     header=default_header(),
 )
-    @assert (Tvectors !== nothing && Tdegens !== nothing) ||
-        (Tvectors === nothing && Tdegens === nothing) "Tvectors and Tdegens must be both nothing or both not nothing"
-    mdrs = Tvectors !== nothing
+    (
+        (!isnothing(Tvectors) && !isnothing(Tdegens)) ||
+        (isnothing(Tvectors) && isnothing(Tdegens))
+    ) || throw(
+        ArgumentError("Tvectors and Tdegens must be both nothing or both not nothing")
+    )
+    mdrs = !isnothing(Tvectors)
     n_Rvecs = length(Rvectors)
-    @assert n_Rvecs > 0 "empty Rvectors"
+    n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
     if mdrs
-        @assert length(Tvectors) == length(Tdegens) == n_Rvecs "different n_Rvecs in Rvectors, Tvectors, and Tdegens"
-        if n_wann === nothing
+        length(Tvectors) == length(Tdegens) == n_Rvecs ||
+            throw(DimensionMismatch("different n_Rvecs in Rvectors, Tvectors, and Tdegens"))
+        if isnothing(n_wann)
             n_wann = size(Tvectors[1], 1)
         else
-            @assert n_wann == size(Tvectors[1], 1) "different n_wann in Tvectors and n_wann"
+            n_wann == size(Tvectors[1], 1) ||
+                throw(DimensionMismatch("different n_wann in Tvectors and n_wann"))
         end
     else
-        @assert n_wann !== nothing "n_wann must be provided for Wigner-Seitz format"
+        !isnothing(n_wann) ||
+            throw(ArgumentError("n_wann must be provided for Wigner-Seitz format"))
     end
     if mdrs
         println(io, header * "  with use_ws_distance=.true.")
@@ -174,9 +181,9 @@ function write_w90_wsvec(
     Tdegens::Union{AbstractVector,Nothing}=nothing,
     header=default_header(),
 )
-    mdrs = Tvectors !== nothing
+    mdrs = !isnothing(Tvectors)
     n_Rvecs = length(Rvectors)
-    if mdrs && n_wann === nothing
+    if mdrs && isnothing(n_wann)
         n_wann = size(Tvectors[1], 1)
     end
     @info "Writing wsvec.dat file" filename header mdrs n_wann n_Rvecs

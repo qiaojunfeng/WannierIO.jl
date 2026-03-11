@@ -36,15 +36,17 @@ function read_bxsf(io::IO)
             while isempty(line) || startswith(line, '#')
                 line = strip(readline(io))
             end
-            @assert startswith(line, "Fermi Energy:")
+            startswith(line, "Fermi Energy:") ||
+                error("Fermi Energy not found in line: $line")
             fermi_energy = parse(Float64, split(line, ':')[2])
             line = strip(readline(io))
-            @assert line == "END_INFO"
+            line == "END_INFO" || error("END_INFO not found after BEGIN_INFO")
         elseif occursin("BEGIN_BLOCK_BANDGRID_3D", line)
             comment = strip(readline(io))
             line = strip(readline(io))
             # There should be only one data grid
-            @assert startswith(line, "BEGIN_BANDGRID_3D")
+            startswith(line, "BEGIN_BANDGRID_3D") ||
+                error("BEGIN_BANDGRID_3D not found in line: $line")
             # identifier = chopprefix(line, "BEGIN_BANDGRID_3D_")
             n_bands = parse(Int, strip(readline(io)))
             n_x, n_y, n_z = parse.(Int, split(strip(readline(io))))
@@ -60,7 +62,8 @@ function read_bxsf(io::IO)
             Eib = similar(E, n_z, n_y, n_x)
             for ib in 1:n_bands
                 line = strip(readline(io))
-                @assert split(line) == ["BAND:", string(ib)]
+                split(line) == ["BAND:", string(ib)] ||
+                    error("BAND index mismatch in line: $line")
                 idx = 1
                 while idx <= n_x * n_y * n_z
                     line = split(strip(readline(io)))
@@ -68,12 +71,15 @@ function read_bxsf(io::IO)
                     Eib[idx:(idx + ncol - 1)] = parse.(Float64, line)
                     idx += ncol
                 end
-                @assert idx == n_x * n_y * n_z + 1
+                idx == n_x * n_y * n_z + 1 ||
+                    error("number of grid points mismatch for band $ib")
                 # to column-major
                 E[ib, :, :, :] = permutedims(Eib, [3, 2, 1])
             end
-            @assert occursin("END_BANDGRID_3D", strip(readline(io)))
-            @assert strip(readline(io)) == "END_BLOCK_BANDGRID_3D"
+            occursin("END_BANDGRID_3D", strip(readline(io))) ||
+                error("END_BANDGRID_3D not found in line: $line")
+            strip(readline(io)) == "END_BLOCK_BANDGRID_3D" ||
+                error("END_BLOCK_BANDGRID_3D not found in line: $line")
         end
     end
 
@@ -113,8 +119,9 @@ function write_bxsf(
     span_vectors::AbstractMatrix{T},
     E::AbstractArray{T,4},
 ) where {T<:Real}
-    size(origin) == (3,) || error("origin should be a 3-element vector")
-    size(span_vectors) == (3, 3) || error("span_vectors should be a 3×3 matrix")
+    size(origin) == (3,) || throw(DimensionMismatch("origin should be a 3-element vector"))
+    size(span_vectors) == (3, 3) ||
+        throw(DimensionMismatch("span_vectors should be a 3×3 matrix"))
 
     # header
     @printf(io, "BEGIN_INFO\n")

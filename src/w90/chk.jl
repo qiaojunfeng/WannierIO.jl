@@ -124,18 +124,18 @@ function Chk(
     ω::AbstractVector,
 )
     if have_disentangled
-        @assert length(Udis) > 0 "empty Udis"
+        length(Udis) > 0 || error("empty Udis")
         n_bands = size(Udis[1], 1)
     else
-        @assert length(Uml) > 0 "empty Uml"
+        length(Uml) > 0 || error("empty Uml")
         n_bands = size(Uml[1], 1)
     end
 
     n_exclude_bands = length(exclude_bands)
     n_kpts = length(M)
-    @assert n_kpts > 0 "empty M"
+    n_kpts > 0 || error("empty M")
     n_bvecs = length(M[1])
-    @assert length(Uml) > 0 "empty Uml"
+    length(Uml) > 0 || error("empty Uml")
     n_wann = size(Uml[1], 1)
 
     if have_disentangled
@@ -243,7 +243,8 @@ function read_chk(io::IO, ::FortranText)
         n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
             n_dis[ik] = parse(Int, srline())
-            @assert n_dis[ik] == count(dis_bands[ik])
+            n_dis[ik] == count(dis_bands[ik]) ||
+                error("Inconsistent number of disentangled bands")
         end
 
         # u_matrix_opt
@@ -378,7 +379,8 @@ function read_chk(io::FortranFile, ::FortranBinary)
         n_dis = zeros(Int, n_kpts)
         n_dis .= read(io, (Tint, n_kpts))
         for ik in 1:n_kpts
-            @assert n_dis[ik] == count(dis_bands[ik])
+            n_dis[ik] == count(dis_bands[ik]) ||
+                error("Inconsistent number of disentangled bands")
         end
 
         # u_matrix_opt

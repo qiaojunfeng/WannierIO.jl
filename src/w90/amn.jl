@@ -86,7 +86,7 @@ function read_amn(filename::AbstractString)
     A, header = read_amn(filename, format)
 
     n_kpts = length(A)
-    @assert n_kpts > 0 "A is empty"
+    n_kpts > 0 || error("A is empty")
     n_bands, n_wann = size(A[1])
     @info "Reading amn file" filename header n_kpts n_bands n_wann
 
@@ -121,7 +121,7 @@ function write_amn end
 
 function write_amn(io::IO, A::AbstractVector, ::FortranText; header=default_header())
     n_kpts = length(A)
-    @assert n_kpts > 0 "A is empty"
+    n_kpts > 0 || throw(ArgumentError("A is empty"))
     n_bands, n_wann = size(A[1])
 
     write(io, header, "\n")
@@ -153,7 +153,7 @@ function write_amn(
     io::IO, A::AbstractVector, ::FortranBinaryStream; header=default_header()
 )
     n_kpts = length(A)
-    @assert n_kpts > 0 "A is empty"
+    n_kpts > 0 || throw(ArgumentError("A is empty"))
     n_bands, n_wann = size(A[1])
 
     # I write in Fortran stream io format.
@@ -190,7 +190,7 @@ function write_amn(
     filename::AbstractString, A::AbstractVector; header=default_header(), binary=false
 )
     n_kpts = length(A)
-    @assert n_kpts > 0 "A is empty"
+    n_kpts > 0 || throw(ArgumentError("A is empty"))
     n_bands, n_wann = size(A[1])
 
     @info "Writing amn file" filename header n_kpts n_bands n_wann

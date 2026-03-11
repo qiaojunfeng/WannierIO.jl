@@ -238,9 +238,9 @@ function build_mapping_ik_isym(
 
     for ir in 1:n_repmat
         ik_ibz = repmat_band[ir].ik_ibz
-        (0 < ik_ibz <= nkpts_ibz) || error("ik_ibz out of range")
+        (0 < ik_ibz <= nkpts_ibz) || throw(ArgumentError("ik_ibz out of range"))
         isym = repmat_band[ir].isym
-        (0 < isym <= n_symops) || error("isym out of range")
+        (0 < isym <= n_symops) || throw(ArgumentError("isym out of range"))
         mapping[ik_ibz][isym] = ir
     end
 

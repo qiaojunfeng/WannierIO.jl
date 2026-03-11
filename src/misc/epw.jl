@@ -32,7 +32,8 @@ function read_epw_mmn(io::IO; n_kpts::Integer, n_bvecs::Integer, n_bands::Intege
             end
         end
     end
-    @assert eof(io) "Did not reach the end of the file, maybe wrong n_kpts, n_bvecs, or n_bands?"
+    eof(io) ||
+        error("Did not reach the end of the file, maybe wrong n_kpts, n_bvecs, or n_bands?")
     return M
 end
 
@@ -121,7 +122,7 @@ function read_epw_ukk(io::IO)
     end
     centers = reverse(centers)
     n_wann = length(centers)
-    @assert n_wann > 0 "n_wann = $n_wann ≤ 0"
+    n_wann > 0 || error("n_wann = $n_wann ≤ 0")
 
     io2 = IOBuffer(join(lines, "\n") * "\n")
     ibndstart, ibndend = parse.(Int, split(readline(io2)))
@@ -161,8 +162,8 @@ function read_epw_ukk(io::IO)
     excluded_bands = BitVector(flags[(n_kpts_bands + 1):end])
     n_bands = count(!, excluded_bands)
     n_kpts = n_kpts_bands ÷ n_bands
-    @assert n_kpts > 0 "n_kpts = $n_kpts ≤ 0"
-    @assert n_bands > 0 "n_bands = $n_bands ≤ 0"
+    n_kpts > 0 || error("n_kpts = $n_kpts ≤ 0")
+    n_bands > 0 || error("n_bands = $n_bands ≤ 0")
     @info "Reading ukk file" n_kpts n_bands n_wann
 
     U = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]

@@ -38,14 +38,14 @@ function read_w90_tbdat(io::IO)
     # Hamiltonian
     for iR in 1:n_Rvecs
         line = strip(readline(io))  # empty line
-        @assert line == ""
+        line == "" || error("line is not empty")
         Rvectors[iR] = Vec3(parse.(Int, ssrline(io))...)
 
         for n in 1:n_wann
             for m in 1:n_wann
                 line = ssrline(io)
-                @assert m == parse(Int, line[1]) line
-                @assert n == parse(Int, line[2]) line
+                m == parse(Int, line[1]) || error(line)
+                n == parse(Int, line[2]) || error(line)
 
                 reH, imH = parse.(Float64, line[3:4])
                 H[iR][m, n] = reH + im * imH
@@ -60,13 +60,13 @@ function read_w90_tbdat(io::IO)
 
     for iR in 1:n_Rvecs
         line = strip(readline(io))  # empty line
-        @assert line == ""
-        @assert Rvectors[iR] == Vec3(parse.(Int, ssrline(io))...)
+        line == "" || error("line is not empty")
+        Rvectors[iR] == Vec3(parse.(Int, ssrline(io))...) || error("different R vector")
         for n in 1:n_wann
             for m in 1:n_wann
                 line = ssrline(io)
-                @assert m == parse(Int, line[1])
-                @assert n == parse(Int, line[2])
+                m == parse(Int, line[1]) || error("inconsistent m index")
+                n == parse(Int, line[2]) || error("inconsistent n index")
 
                 f = parse.(Float64, line[3:8])
                 r_x[iR][m, n] = f[1] + im * f[2]
@@ -109,7 +109,7 @@ function write_w90_tbdat(
     header=default_header(),
 )
     n_Rvecs = length(H)
-    @assert n_Rvecs > 0 "empty H"
+    n_Rvecs > 0 || error("empty H")
     n_wann = size(H[1], 1)
 
     println(io, strip(header))
@@ -186,7 +186,7 @@ function write_w90_tbdat(
     header=default_header(),
 )
     n_Rvecs = length(H)
-    @assert n_Rvecs > 0 "empty H"
+    n_Rvecs > 0 || error("empty H")
     n_wann = size(H[1], 1)
     @info "Writing tb.dat file" filename header n_wann n_Rvecs
 

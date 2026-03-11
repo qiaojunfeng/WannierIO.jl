@@ -26,8 +26,8 @@ function read_w90_rdat(io::IO)
             for m in 1:n_wann
                 line = split(strip(readline(io)))
                 Rvectors[iR] = parse.(Int, line[1:3])
-                @assert m == parse(Int, line[4]) line
-                @assert n == parse(Int, line[5]) line
+                m == parse(Int, line[4]) || error(line)
+                n == parse(Int, line[5]) || error(line)
                 r_x[iR][m, n] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
                 r_y[iR][m, n] = complex(parse(Float64, line[8]), parse(Float64, line[9]))
                 r_z[iR][m, n] = complex(parse(Float64, line[10]), parse(Float64, line[11]))
@@ -65,8 +65,9 @@ function write_w90_rdat(
     header=default_header(),
 )
     n_Rvecs = length(Rvectors)
-    @assert n_Rvecs > 0 "empty Rvectors"
-    @assert n_Rvecs == length(r_x) == length(r_y) == length(r_z) "inconsistent length"
+    n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
+    n_Rvecs == length(r_x) == length(r_y) == length(r_z) ||
+        throw(DimensionMismatch("inconsistent length"))
     n_wann = size(r_x[1], 1)
 
     println(io, strip(header))
@@ -105,8 +106,9 @@ function write_w90_rdat(
     header=default_header(),
 )
     n_Rvecs = length(Rvectors)
-    @assert n_Rvecs > 0 "empty Rvectors"
-    @assert n_Rvecs == length(r_x) == length(r_y) == length(r_z) "inconsistent length"
+    n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
+    n_Rvecs == length(r_x) == length(r_y) == length(r_z) ||
+        throw(DimensionMismatch("inconsistent length"))
     n_wann = size(r_x[1], 1)
     @info "Writing r.dat file" filename header n_wann n_Rvecs
 

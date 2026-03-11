@@ -42,7 +42,9 @@ function read_spn(io::IO, ::FortranText)
             end
         end
     end
-    @assert eof(io)
+    eof(io) || error(
+        "Did not reach the end of the file, maybe the file is corrupted or not in the correct format",
+    )
 
     return (; Sx, Sy, Sz, header)
 end
@@ -87,7 +89,9 @@ function read_spn(io::FortranFile, ::FortranBinary)
             end
         end
     end
-    @assert eof(io)
+    eof(io) || error(
+        "Did not reach the end of the file, maybe the file is corrupted or not in the correct format",
+    )
     close(io)
 
     return (; Sx, Sy, Sz, header)
@@ -107,7 +111,7 @@ function read_spn(filename::AbstractString)
     Sx, Sy, Sz, header = read_spn(filename, format)
 
     n_kpts = length(Sx)
-    @assert n_kpts > 0 "empty spn matrix"
+    n_kpts > 0 || error("empty spn matrix")
     n_bands = size(Sx[1], 1)
     @info "Reading spn file" filename header n_kpts n_bands
 
@@ -128,12 +132,16 @@ function write_spn end
 """
 @inline function _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
     n_kpts = length(Sx)
-    @assert n_kpts > 0 "empty spn matrix"
-    @assert n_kpts == length(Sy) == length(Sz) "Sx, Sy, Sz must have the same length"
+    n_kpts > 0 || throw(ArgumentError("empty spn matrix"))
+    n_kpts == length(Sy) == length(Sz) ||
+        throw(DimensionMismatch("Sx, Sy, Sz must have the same length"))
     n_bands = size(Sx[1], 1)
-    @assert all(size.(Sx) .== Ref((n_bands, n_bands))) "Sx[ik] must be a square matrix"
-    @assert all(size.(Sy) .== Ref((n_bands, n_bands))) "Sy[ik] must be a square matrix"
-    @assert all(size.(Sz) .== Ref((n_bands, n_bands))) "Sz[ik] must be a square matrix"
+    all(size.(Sx) .== Ref((n_bands, n_bands))) ||
+        throw(DimensionMismatch("Sx[ik] must be a square matrix"))
+    all(size.(Sy) .== Ref((n_bands, n_bands))) ||
+        throw(DimensionMismatch("Sy[ik] must be a square matrix"))
+    all(size.(Sz) .== Ref((n_bands, n_bands))) ||
+        throw(DimensionMismatch("Sz[ik] must be a square matrix"))
 end
 
 function write_spn(

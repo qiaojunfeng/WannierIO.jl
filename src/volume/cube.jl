@@ -112,9 +112,9 @@ function write_cube(
     W::AbstractArray{T,3},
 ) where {T<:Real}
     n_atoms = length(atom_numbers)
-    size(atom_positions, 2) == n_atoms || error("incompatible n_atoms")
-    size(voxel_vectors) == (3, 3) || error("incompatible voxel_vectors")
-    length(origin) == 3 || error("origin must be 3-vector")
+    size(atom_positions, 2) == n_atoms || throw(DimensionMismatch("incompatible n_atoms"))
+    size(voxel_vectors) == (3, 3) || throw(DimensionMismatch("incompatible voxel_vectors"))
+    length(origin) == 3 || throw(DimensionMismatch("origin must be 3-vector"))
 
     # header
     @printf(io, "%s\n", default_header())
