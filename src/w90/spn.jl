@@ -112,9 +112,6 @@ function read_spn(filename::AbstractString)
 
     n_kpts = length(Sx)
     n_kpts > 0 || error("empty spn matrix")
-    n_bands = size(Sx[1], 1)
-    @info "Reading spn file" filename header n_kpts n_bands
-
     return Sx, Sy, Sz
 end
 
@@ -252,9 +249,5 @@ function write_spn(
         format = FortranText()
     end
     _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
-    n_kpts = length(Sx)
-    n_bands = size(Sx[1], 1)
-    @info "Writing spn file" filename header n_kpts n_bands
-
     return write_spn(filename, Sx, Sy, Sz, format; header)
 end

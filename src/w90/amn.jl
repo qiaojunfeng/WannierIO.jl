@@ -87,13 +87,6 @@ function read_amn(filename::AbstractString)
 
     n_kpts = length(A)
     n_kpts > 0 || error("A is empty")
-    n_bands, n_wann = size(A[1])
-    @info "Reading amn file" filename header n_kpts n_bands n_wann
-
-    # I do not return header here, since
-    # - it is already printed by @info
-    # - user can directly use `A = read_amn(filename)` to load it, without
-    #   the need to unpack the NamedTuple
     return A
 end
 
@@ -191,10 +184,6 @@ function write_amn(
 )
     n_kpts = length(A)
     n_kpts > 0 || throw(ArgumentError("A is empty"))
-    n_bands, n_wann = size(A[1])
-
-    @info "Writing amn file" filename header n_kpts n_bands n_wann
-
     if binary
         format = FortranBinaryStream()
     else

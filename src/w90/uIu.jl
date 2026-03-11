@@ -51,7 +51,6 @@ function read_uIu(filename::AbstractString; kwargs...)
     n_bvecs = size(uIu[1], 1)
     n_bvecs > 0 || error("empty uIu matrix")
     n_bands = size(uIu[1][1, 1], 1)
-    @info "Reading uIu file" filename header n_kpts n_bvecs n_bands
     return uIu
 end
 
@@ -124,7 +123,6 @@ function write_uIu(
     n_bvecs = size(uIu[1], 1)
     n_bvecs > 0 || throw(ArgumentError("empty uIu matrix"))
     n_bands = size(uIu[1][1, 1], 1)
-    @info "Writing uIu file" filename header n_kpts n_bands n_bvecs
 
     return write_uIu(filename, uIu, format; header, kwargs...)
 end

@@ -445,10 +445,6 @@ function read_chk(filename::AbstractString)
     end
     chk = read_chk(filename, format)
 
-    n_kpts = chk.n_kpts
-    n_bands = chk.n_bands
-    n_wann = chk.n_wann
-    @info "Reading chk file" filename n_kpts n_bands n_wann
     return chk
 end
 
@@ -673,11 +669,6 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
 end
 
 function write_chk(filename::AbstractString, chk::Chk; binary=false)
-    n_kpts = chk.n_kpts
-    n_bands = chk.n_bands
-    n_wann = chk.n_wann
-    @info "Writing chk file" filename n_kpts n_bands n_wann
-
     if binary
         format = FortranBinary()
     else

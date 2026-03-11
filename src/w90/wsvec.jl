@@ -97,8 +97,6 @@ function read_w90_wsvec(filename::AbstractString)
     result = open(filename) do io
         read_w90_wsvec(io)
     end
-    n_Rvecs = length(result.Rvectors)
-    @info "Reading wsvec.dat file" filename result.header result.mdrs result.n_wann n_Rvecs
     return result
 end
 
@@ -186,8 +184,6 @@ function write_w90_wsvec(
     if mdrs && isnothing(n_wann)
         n_wann = size(Tvectors[1], 1)
     end
-    @info "Writing wsvec.dat file" filename header mdrs n_wann n_Rvecs
-
     open(filename, "w") do io
         write_w90_wsvec(io; Rvectors, n_wann, Tvectors, Tdegens, header)
     end

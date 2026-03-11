@@ -225,7 +225,6 @@ function write_xsf(
     span_vectors::Union{AbstractMatrix{T},Nothing}=nothing,
     W::Union{AbstractArray{T,3},Nothing}=nothing,
 ) where {T<:Real}
-    @info "Writing xsf file: " filename
     open(filename, "w") do io
         write_xsf(io, lattice, atom_positions, atom_numbers, origin, span_vectors, W)
     end

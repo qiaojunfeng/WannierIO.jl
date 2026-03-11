@@ -171,7 +171,6 @@ function write_bxsf(
     span_vectors::AbstractMatrix{T},
     E::AbstractArray{T,4},
 ) where {T<:Real}
-    @info "Writing bxsf file: " filename
     open(filename, "w") do io
         write_bxsf(io, fermi_energy, origin, span_vectors, E)
     end

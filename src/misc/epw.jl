@@ -164,7 +164,6 @@ function read_epw_ukk(io::IO)
     n_kpts = n_kpts_bands ÷ n_bands
     n_kpts > 0 || error("n_kpts = $n_kpts ≤ 0")
     n_bands > 0 || error("n_bands = $n_bands ≤ 0")
-    @info "Reading ukk file" n_kpts n_bands n_wann
 
     U = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
     counter = 1
@@ -261,7 +260,6 @@ function write_epw_ukk(filename::AbstractString, ukk::Ukk)
     open(filename, "w") do io
         write_epw_ukk(io, ukk)
     end
-    @printf("Written to %s\n", filename)
 end
 
 """

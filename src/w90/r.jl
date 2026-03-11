@@ -42,9 +42,6 @@ function read_w90_rdat(filename::AbstractString)
     result = open(filename) do io
         read_w90_rdat(io)
     end
-    @info "Reading r.dat file" filename result.header n_wann=size(result.r_x[1], 1) n_Rvecs=length(
-        result.Rvectors
-    )
     return result
 end
 
@@ -109,8 +106,6 @@ function write_w90_rdat(
     n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
     n_Rvecs == length(r_x) == length(r_y) == length(r_z) ||
         throw(DimensionMismatch("inconsistent length"))
-    n_wann = size(r_x[1], 1)
-    @info "Writing r.dat file" filename header n_wann n_Rvecs
 
     open(filename, "w") do io
         write_w90_rdat(io; Rvectors, r_x, r_y, r_z, header)

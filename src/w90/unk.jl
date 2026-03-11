@@ -79,9 +79,6 @@ function read_unk(filename::AbstractString)
     end
     ik, Ψ = read_unk(filename, format)
 
-    n_gx, n_gy, n_gz, n_bands, n_spin = size(Ψ)
-    @info "Reading unk file" filename ik (n_gx, n_gy, n_gz) n_bands n_spin
-
     return ik, Ψ
 end
 
@@ -156,9 +153,6 @@ function write_unk(
 end
 
 function write_unk(filename::AbstractString, ik, Ψ; binary=false)
-    n_gx, n_gy, n_gz, n_bands, n_spin = size(Ψ)
-    @info "Writing unk file" filename ik (n_gx, n_gy, n_gz) n_bands n_spin
-
     if binary
         format = FortranBinary()
     else
