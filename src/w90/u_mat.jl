@@ -49,9 +49,6 @@ function read_u_mat(filename::AbstractString)
     result = open(filename) do io
         read_u_mat(io)
     end
-    nkpts = length(result.U)
-    nbands, nwann = size(result.U[1])
-    @info "Reading u_mat file" filename result.header nkpts nbands nwann
     return result
 end
 
@@ -116,8 +113,6 @@ function write_u_mat(
     nkpts > 0 || throw(ArgumentError("U is empty"))
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
     nbands, nwann = size(U[1])
-
-    @info "Writing u_mat file" filename header nkpts nbands nwann
 
     open(filename, "w") do io
         write_u_mat(io, U, kpoints; header)

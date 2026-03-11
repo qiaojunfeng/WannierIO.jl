@@ -42,3 +42,21 @@ function write_toml end
 function write_toml(io, params::AbstractDict)
     return TOML.print(to_toml, io, params)
 end
+
+function istoml(io::IO)
+    content = read(io, String)
+    try
+        TOML.parse(content)
+    catch err
+        err isa TOML.ParserError || rethrow()
+        return false
+    else
+        return true
+    end
+end
+
+function istoml(filename::AbstractString)
+    return open(filename) do io
+        istoml(io)
+    end
+end

@@ -103,9 +103,6 @@ function read_eig(filename::AbstractString)
 
     n_kpts = length(eigenvalues)
     n_kpts > 0 || error("Empty eig file")
-    n_bands = length(eigenvalues[1])
-    @info "Reading eig file" filename n_kpts n_bands
-
     return eigenvalues
 end
 
@@ -171,6 +168,4 @@ function write_eig(filename::AbstractString, eigenvalues::AbstractVector; binary
 
     n_kpts = length(eigenvalues)
     n_kpts > 0 || throw(ArgumentError("Empty eigenvalues"))
-    n_bands = length(eigenvalues[1])
-    @info "Writing eig file" filename n_kpts n_bands
 end

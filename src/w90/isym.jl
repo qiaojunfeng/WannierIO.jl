@@ -193,7 +193,6 @@ function read_isym(io::IO)
         repmat_wann[isym] = RepMatWann{n_wann}(isym, D)
     end
 
-    @info "Read isym file" n_symops nkpts_ibz n_bands n_wann
     return (;
         header,
         n_symops,
@@ -213,7 +212,6 @@ function read_isym(filename::AbstractString)
     result = open(filename) do io
         read_isym(io)
     end
-    @info "Read isym file" filename result.n_symops result.nkpts_ibz result.n_bands result.n_wann
     return result
 end
 

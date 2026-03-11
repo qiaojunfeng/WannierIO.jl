@@ -137,10 +137,6 @@ function read_w90_band(prefix::AbstractString)
     kpt = read_w90_band_kpt(band_kpt)
     labelinfo = read_w90_band_labelinfo(band_labelinfo)
 
-    n_kpts = length(kpt.kpoints)
-    n_symm = length(labelinfo.symm_point_indices)
-    @info "Reading Wannier90 band files" band_dat band_kpt band_labelinfo n_kpts n_symm
-
     return (; dat..., kpt..., labelinfo...)
 end
 
@@ -327,8 +323,6 @@ function write_w90_band(
     band_kpt = "$(prefix)_band.kpt"
     band_dat = "$(prefix)_band.dat"
     band_labelinfo = "$(prefix)_band.labelinfo.dat"
-
-    @info "Writing Wannier90 band files" band_kpt band_dat band_labelinfo n_kpts n_symm
 
     write_w90_band_dat(band_dat; x, eigenvalues)
     write_w90_band_kpt(band_kpt; kpoints, kweights)

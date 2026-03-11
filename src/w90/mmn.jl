@@ -118,10 +118,6 @@ function read_mmn(filename::AbstractString)
     M, kpb_k, kpb_G, header = read_mmn(filename, format)
 
     _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-    n_kpts = length(M)
-    n_bvecs = length(M[1])
-    n_bands = size(M[1][1], 1)
-    @info "Reading mmn file" filename header n_kpts n_bvecs n_bands
 
     # Not returning header since it is printed
     # Note I am returning a Tuple instead of NamedTuple
@@ -288,16 +284,10 @@ function write_mmn(
     binary::Bool=false,
 )
     _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-    n_kpts = length(M)
-    n_bvecs = length(M[1])
-    n_bands = size(M[1][1], 1)
-
     if binary
         format = FortranBinaryStream()
     else
         format = FortranText()
     end
     write_mmn(filename, M, kpb_k, kpb_G, format; header)
-
-    @info "Writing mmn file" filename header n_kpts n_bvecs n_bands
 end

@@ -235,9 +235,6 @@ function read_nnkp(filename::AbstractString)
 
     n_kpts = length(nnkp["kpb_k"])
     n_kpts > 0 || error("no kpoints found")
-    n_bvecs = length(nnkp["kpb_k"][1])
-    @info "Reading nnkp file" filename n_kpts n_bvecs
-
     return nnkp
 end
 
@@ -394,10 +391,6 @@ function write_nnkp(
     format::FileFormat;
     header=default_header(),
 )
-    n_kpts = length(params["kpoints"])
-    n_bvecs = length(params["kpb_k"][1])
-    @info "Writing nnkp file" filename n_kpts n_bvecs
-
     open(filename, "w") do io
         write_nnkp(io, params, format; header)
     end

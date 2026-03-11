@@ -86,7 +86,6 @@ function write_HH_R(
     open(filename, "w") do io
         write_HH_R(io, H, R; N, header)
     end
-    @info "Written to file: $(filename)"
 
     # the vanilla wannier90 code does not read the N array (the degeneracy
     # of R vector), and assume that N = 1 for all the R vectors.
@@ -108,6 +107,5 @@ function write_HH_R(
                 @printf(io, "%s\n", vec2str(N[s:e]))
             end
         end
-        @info "Written to file: $(ndegen_filename)"
     end
 end

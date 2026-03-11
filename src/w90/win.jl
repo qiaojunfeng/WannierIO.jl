@@ -5,14 +5,14 @@ using TOML
 export read_win, write_win
 
 """
-    read_win(filename; standardize=true)
-    read_win(filename, ::Wannier90Text; standardize=true)
-    read_win(filename, ::Wannier90Toml; standardize=true)
+    read_win(file; standardize=true)
+    read_win(file, ::Wannier90Text; standardize=true)
+    read_win(file, ::Wannier90Toml; standardize=true)
 
 Read wannier90 input `win` file.
 
 # Arguments
-- `filename`: The name of the input file.
+- `file`: The name of the input file, or an `IO`.
 
 # Keyword Arguments
 - `standardize`: sanity check and fix the input parameters, e.g., set
@@ -295,12 +295,6 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
     return params
 end
 
-function read_win(filename::AbstractString, format::FileFormat; standardize::Bool=true)
-    return open(filename) do io
-        read_win(io, format; standardize)
-    end
-end
-
 """
 I store atoms_frac and kpoint_path as Vector of StringVec3.
 However, TOML.print does not accept Pair (specifically, StringVec3);
@@ -349,35 +343,15 @@ function read_win(io::IO, ::Wannier90Toml; standardize::Bool=true)
     return win
 end
 
-function read_win(io::IO; standardize::Bool=true)
-    content = read(io, String)
-    format = Wannier90Text()
-    try
-        TOML.parse(content)
-    catch err
-        err isa TOML.ParserError || rethrow()
-    else
-        format = Wannier90Toml()
+function read_win(filename::AbstractString, format::FileFormat; standardize::Bool=true)
+    return open(filename) do io
+        read_win(io, format; standardize)
     end
-    win = read_win(IOBuffer(content), format; standardize)
-
-    return win
 end
 
-function read_win(filename::AbstractString; standardize::Bool=true)
-    win = open(filename) do io
-        read_win(io; standardize)
-    end
-
-    num_wann = win["num_wann"]
-    num_bands = nothing
-    if "num_bands" in keys(win)
-        num_bands = win["num_bands"]
-    end
-    # I need to convert to tuple so that @info does not output its type
-    mp_grid = Tuple(win["mp_grid"])
-    @info "Reading win file" filename num_wann num_bands mp_grid
-
+function read_win(file::Union{IO,AbstractString}; standardize::Bool=true)
+    format = istoml(file) ? Wannier90Toml() : Wannier90Text()
+    win = read_win(file, format; standardize)
     return win
 end
 
@@ -431,48 +405,46 @@ function standardize_win!(params::AbstractDict)
 end
 
 """
-    write_win(filename, params; header)
-    write_win(filename, params, ::Wannier90Text; header)
-    write_win(filename, params, ::Wannier90Toml; header)
+    write_win(file, params; header)
+    write_win(file, params, ::Wannier90Text; header)
+    write_win(file, params, ::Wannier90Toml; header)
 
 Write input parameters into a wannier90 `win` file.
 
-There are two choice for passing the input parameters:
-1. as a `Dict` (or `OrderedDict` to preserve ordering) to the `params` argument
-2. as keyword arguments `params...`, with argument names the same as the input
-    parameters of wannier90
+# Arguments
+- `file`: The name of the output file, or an `IO`.
+- `params`: a `Dict` (or `OrderedDict`) of parameters to be written into the `win` file
 
 # Examples
 
 ```julia
-using WannierIO
+using OrderedCollections, WannierIO
 
-# you can also use `Dict` or `OrderedDict`
-params = (;
-    num_wann=4,
-    num_bands=4,
+params = OrderedDict(
+    "num_wann" => 4,
+    "num_bands" => 4,
     # unit_cell_cart is a matrix, its columns are the lattice vectors in angstrom
-    unit_cell_cart=[
+    "unit_cell_cart" => [
         0.0      2.71527  2.71527
         2.71527  0.0      2.71527
         2.71527  2.71527  0.0
     ],
     # atoms_frac is a vector of pairs of atom_label and fractional coordinates
-    atoms_frac=[
+    "atoms_frac" => [
         "Si" => [0.0, 0.0, 0.0],
         "Si" => [0.25, 0.25, 0.25],
     ],
     # each element in projections will be written as a line in the win file
-    projections=[
+    "projections" => [
         "random",
-    ]
-    kpoint_path=[
+    ],
+    "kpoint_path" => [
         ["G" => [0.0, 0.0, 0.0], "X" => [0.5, 0.0, 0.5]],
         ["X" => [0.5, 0.0, 0.5], "U" => [0.625, 0.25, 0.625]],
     ],
-    mp_grid=[2, 2, 2],
+    "mp_grid" => [2, 2, 2],
     # kpoints is a matrix, its columns are the fractional coordinates
-    kpoints=[
+    "kpoints" => [
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.5],
         [0.0, 0.5, 0.0],
@@ -483,7 +455,7 @@ params = (;
         [0.5, 0.5, 0.5],
     ],
     # additional parameters can be passed as keyword arguments, e.g.,
-    num_iter=500,
+    "num_iter" => 500,
 )
 write_win("silicon.win", params)
 ```
@@ -638,23 +610,6 @@ function write_win(io::IO, params::AbstractDict, ::Wannier90Text; header=default
     return nothing
 end
 
-function write_win(
-    filename::AbstractString,
-    params::AbstractDict,
-    format::FileFormat;
-    header=default_header(),
-)
-    num_wann = get(params, "num_wann", nothing)
-    num_bands = get(params, "num_bands", nothing)
-    mp_grid = get(params, "mp_grid", nothing)
-    !isnothing(mp_grid) && (mp_grid = Tuple(mp_grid))
-    @info "Writing win file" filename num_wann num_bands mp_grid
-
-    open(filename, "w") do io
-        write_win(io, params, format; header)
-    end
-end
-
 function write_win(io::IO, params::AbstractDict, ::Wannier90Toml; header=default_header())
     _check_win_required_params(params)
     isnothing(header) || println(io, header, "\n")
@@ -662,6 +617,19 @@ function write_win(io::IO, params::AbstractDict, ::Wannier90Toml; header=default
     return nothing
 end
 
-function write_win(filename::AbstractString, params::AbstractDict; header=default_header())
-    write_win(filename, params, Wannier90Text(); header)
+function write_win(
+    filename::AbstractString,
+    params::AbstractDict,
+    format::FileFormat;
+    header=default_header(),
+)
+    open(filename, "w") do io
+        write_win(io, params, format; header)
+    end
+end
+
+function write_win(
+    file::Union{IO,AbstractString}, params::AbstractDict; header=default_header()
+)
+    write_win(file, params, Wannier90Text(); header)
 end

@@ -38,9 +38,6 @@ function read_w90_hrdat(filename::AbstractString)
     result = open(filename) do io
         read_w90_hrdat(io)
     end
-    @info "Reading hr.dat file" filename result.header n_wann=size(result.H[1], 1) n_Rvecs=length(
-        result.H
-    )
     return result
 end
 
@@ -108,8 +105,6 @@ function write_w90_hrdat(
 )
     n_Rvecs = length(H)
     n_Rvecs > 0 || throw(ArgumentError("empty H"))
-    n_wann = size(H[1], 1)
-    @info "Writing hr.dat file" filename header n_wann n_Rvecs
 
     open(filename, "w") do io
         write_w90_hrdat(io; Rvectors, Rdegens, H, header)

@@ -117,7 +117,6 @@ function read_uHu(filename::AbstractString; kwargs...)
     n_bvecs = size(uHu[1], 1)
     n_bvecs > 0 || error("empty uHu matrix")
     n_bands = size(uHu[1][1, 1], 1)
-    @info "Reading uHu file" filename header n_kpts n_bvecs n_bands
     return uHu
 end
 
@@ -251,7 +250,6 @@ function write_uHu(
     n_bvecs = size(uHu[1], 1)
     n_bvecs > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bands = size(uHu[1][1, 1], 1)
-    @info "Writing uHu file" filename header n_kpts n_bands n_bvecs
 
     return write_uHu(filename, uHu, format; header, kwargs...)
 end

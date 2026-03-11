@@ -17,7 +17,6 @@ function read_cube(io::IO)
     # header
     header = readline(io; keep=true)
     header *= readline(io; keep=true)
-    print(header)
 
     line = split(strip(readline(io)))
     n_atoms = parse(Int, line[1])
@@ -85,7 +84,6 @@ function read_cube(io::IO)
 end
 
 function read_cube(filename::AbstractString)
-    @info "Reading cube file: " filename
     return open(filename) do io
         read_cube(io)
     end
@@ -163,7 +161,6 @@ function write_cube(
     voxel_vectors::AbstractMatrix{T},
     W::AbstractArray{T,3},
 ) where {T<:Real}
-    @info "Writing cube file: " filename
     open(filename, "w") do io
         write_cube(io, atom_positions, atom_numbers, origin, voxel_vectors, W)
     end
