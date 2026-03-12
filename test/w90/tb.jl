@@ -1,6 +1,6 @@
 @testitem "read tb WS" begin
     using LazyArtifacts
-    tbdat = read_w90_tbdat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
+    tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
 
     @test length(tbdat.Rvectors) == 279
     @test tbdat.Rvectors[1] == [-4, 0, 2]
@@ -43,8 +43,8 @@ end
 @testitem "read tb MDRS" begin
     using LazyArtifacts
     # The two files are identical
-    tbdat = read_w90_tbdat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
-    tbdat_ws = read_w90_tbdat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
+    tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
+    tbdat_ws = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
 
     for p in propertynames(tbdat)
         p == :header && continue
@@ -54,11 +54,11 @@ end
 
 @testitem "write tb WS" begin
     using LazyArtifacts
-    tbdat = read_w90_tbdat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
+    tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
 
     tmpfile = tempname(; cleanup=true)
-    write_w90_tbdat(tmpfile; tbdat...)
-    tbdat2 = read_w90_tbdat(tmpfile)
+    write_w90_tb_dat(tmpfile; tbdat...)
+    tbdat2 = read_w90_tb_dat(tmpfile)
 
     @test keys(tbdat) == keys(tbdat2)
     for (k, v) in pairs(tbdat)
@@ -69,11 +69,11 @@ end
 
 @testitem "write tb MDRS" begin
     using LazyArtifacts
-    tbdat = read_w90_tbdat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
+    tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
 
     tmpfile = tempname(; cleanup=true)
-    write_w90_tbdat(tmpfile; tbdat...)
-    tbdat2 = read_w90_tbdat(tmpfile)
+    write_w90_tb_dat(tmpfile; tbdat...)
+    tbdat2 = read_w90_tb_dat(tmpfile)
 
     @test keys(tbdat) == keys(tbdat2)
     for (k, v) in pairs(tbdat)

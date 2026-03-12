@@ -1,4 +1,4 @@
-export read_w90_tbdat, write_w90_tbdat
+export read_w90_tb_dat, write_w90_tb_dat
 
 """
     $(SIGNATURES)
@@ -15,7 +15,7 @@ Read `prefix_tb.dat`.
 - `r_x`: ``z``-component of position operator
 - `header`: the first line of the file
 """
-function read_w90_tbdat(io::IO)
+function read_w90_tb_dat(io::IO)
     header = strip(readline(io))
 
     # Å unit
@@ -77,9 +77,9 @@ function read_w90_tbdat(io::IO)
     return (; lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, header)
 end
 
-function read_w90_tbdat(filename::AbstractString)
+function read_w90_tb_dat(filename::AbstractString)
     return open(filename) do io
-        read_w90_tbdat(io)
+        read_w90_tb_dat(io)
     end
 end
 
@@ -89,9 +89,9 @@ end
 Write `prefix_tb.dat`.
 
 # Keyword arguments
-See the return values of [`read_w90_tbdat`](@ref).
+See the return values of [`read_w90_tb_dat`](@ref).
 """
-function write_w90_tbdat(
+function write_w90_tb_dat(
     io::IO;
     lattice::AbstractMatrix,
     Rvectors::AbstractVector,
@@ -168,7 +168,7 @@ function write_w90_tbdat(
     return nothing
 end
 
-function write_w90_tbdat(
+function write_w90_tb_dat(
     filename::AbstractString;
     lattice::AbstractMatrix,
     Rvectors::AbstractVector,
@@ -183,6 +183,6 @@ function write_w90_tbdat(
     n_Rvecs > 0 || error("empty H")
 
     open(filename, "w") do io
-        write_w90_tbdat(io; lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, header)
+        write_w90_tb_dat(io; lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, header)
     end
 end

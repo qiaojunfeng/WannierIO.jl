@@ -1,4 +1,4 @@
-export read_w90_rdat, write_w90_rdat
+export read_w90_r_dat, write_w90_r_dat
 
 """
     $(SIGNATURES)
@@ -12,7 +12,7 @@ Read `prefix_r.dat`.
 - `r_z`: ``z``-component of position operator
 - `header`: the first line of the file
 """
-function read_w90_rdat(io::IO)
+function read_w90_r_dat(io::IO)
     header = strip(readline(io))
     n_wann = parse(Int, strip(readline(io)))
     n_Rvecs = parse(Int, strip(readline(io)))
@@ -38,9 +38,9 @@ function read_w90_rdat(io::IO)
     return (; Rvectors, r_x, r_y, r_z, header)
 end
 
-function read_w90_rdat(filename::AbstractString)
+function read_w90_r_dat(filename::AbstractString)
     return open(filename) do io
-        read_w90_rdat(io)
+        read_w90_r_dat(io)
     end
 end
 
@@ -50,9 +50,9 @@ end
 Write `prefix_r.dat`.
 
 # Keyword arguments
-See the return values of [`read_w90_rdat`](@ref).
+See the return values of [`read_w90_r_dat`](@ref).
 """
-function write_w90_rdat(
+function write_w90_r_dat(
     io::IO;
     Rvectors::AbstractVector,
     r_x::AbstractVector,
@@ -93,7 +93,7 @@ function write_w90_rdat(
     return nothing
 end
 
-function write_w90_rdat(
+function write_w90_r_dat(
     filename::AbstractString;
     Rvectors::AbstractVector,
     r_x::AbstractVector,
@@ -107,6 +107,6 @@ function write_w90_rdat(
         throw(DimensionMismatch("inconsistent length"))
 
     open(filename, "w") do io
-        write_w90_rdat(io; Rvectors, r_x, r_y, r_z, header)
+        write_w90_r_dat(io; Rvectors, r_x, r_y, r_z, header)
     end
 end
