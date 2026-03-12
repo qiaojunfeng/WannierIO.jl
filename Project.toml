@@ -15,15 +15,29 @@ FortranFiles = "c58ffaec-ab22-586d-bfc5-781a99fd0b10"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[weakdeps]
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
+
+[extensions]
+WannierIOHDF5Ext = "HDF5"
+WannierIOJLD2Ext = "JLD2"
+WannierIOZarrExt = "Zarr"
 
 [compat]
 CrystalBase = "0.1"
 DelimitedFiles = "1"
 DocStringExtensions = "0.9"
 FortranFiles = "0.6"
+HDF5 = "0.17"
+JLD2 = "0.6"
 OrderedCollections = "1.8"
 StaticArrays = "1"
 TOML = "1"
+Zarr = "0.9"
 julia = "1.12"

@@ -10,6 +10,9 @@ $(TYPEDEF)
 $(FIELDS)
 """
 struct RDat{T<:Real,IT<:Integer}
+    "Header line"
+    header::String
+
     "``\\mathbf{R}``-vectors on which operators are defined"
     Rvectors::Vector{Vec3{IT}}
 
@@ -21,9 +24,6 @@ struct RDat{T<:Real,IT<:Integer}
 
     "z-component of position operator"
     r_z::Vector{Matrix{Complex{T}}}
-
-    "Header line"
-    header::String
 end
 
 """
@@ -57,7 +57,7 @@ function read_w90_r_dat(io::IO)
         end
     end
 
-    return RDat(Rvectors, r_x, r_y, r_z, String(header))
+    return RDat(String(header), Rvectors, r_x, r_y, r_z)
 end
 
 function read_w90_r_dat(filename::AbstractString)

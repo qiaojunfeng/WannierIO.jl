@@ -10,6 +10,9 @@ $(TYPEDEF)
 $(FIELDS)
 """
 struct Mmn{T<:Real,IT<:Integer}
+    "Header line (1st line of the file)"
+    header::String
+
     """Overlap matrices.
     Length-`n_kpts` vector, each element is a length-`n_bvecs` vector, then
     each element is a `n_bands * n_bands` matrix.
@@ -31,9 +34,6 @@ struct Mmn{T<:Real,IT<:Integer}
     where `b` is the `ib`-th bvector of the `ik`-th kpoint.
     """
     kpb_G::Vector{Vector{Vec3{IT}}}
-
-    "Header line (1st line of the file)"
-    header::String
 end
 
 """
@@ -86,7 +86,7 @@ function read_mmn(io::IO, ::FortranText)
     all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M) || error(
         "Some elements in M are NaN, maybe the file is corrupted or not in the correct format",
     )
-    return Mmn(M, kpb_k, kpb_G, String(header))
+    return Mmn(String(header), M, kpb_k, kpb_G)
 end
 
 function read_mmn(io::IO, ::FortranBinaryStream)
@@ -127,7 +127,7 @@ function read_mmn(io::IO, ::FortranBinaryStream)
     all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M) || error(
         "Some elements in M are NaN, maybe the file is corrupted or not in the correct format",
     )
-    return Mmn(M, kpb_k, kpb_G, String(header))
+    return Mmn(String(header), M, kpb_k, kpb_G)
 end
 
 function read_mmn(filename::AbstractString, format::AbstractFileFormat)

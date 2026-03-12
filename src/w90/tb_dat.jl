@@ -10,6 +10,9 @@ $(TYPEDEF)
 $(FIELDS)
 """
 struct TbDat{T<:Real,IT<:Integer}
+    "Header line"
+    header::String
+
     "Lattice matrix, columns are lattice vectors in Å"
     lattice::Mat3{T}
 
@@ -30,9 +33,6 @@ struct TbDat{T<:Real,IT<:Integer}
 
     "z-component of position operator"
     r_z::Vector{Matrix{Complex{T}}}
-
-    "Header line"
-    header::String
 end
 
 """
@@ -102,7 +102,7 @@ function read_w90_tb_dat(io::IO)
         end
     end
 
-    return TbDat(lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, String(header))
+    return TbDat(String(header), lattice, Rvectors, Rdegens, H, r_x, r_y, r_z)
 end
 
 function read_w90_tb_dat(filename::AbstractString)

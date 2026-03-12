@@ -1,8 +1,19 @@
+export RvectorReducer
+
 """
 Simplify the R-vectors of a tight-binding operator, such that the inverse
 Fourier transform is a simple sum (and is faster).
 """
 abstract type AbstractRvectorReducer end
+
+"""
+Reduce the R-vectors of a tight-binding operator by absorbing the R degeneracies
+(and T vectors & degeneracies, if provided) into the operator.
+
+This is a general interface for R-vector reduction, which can be implemented for
+different input argument types.
+"""
+function RvectorReducer end
 
 """
 Wigner-Seitz R-vector reducer, which simplifies the R-vectors by absorbing the
@@ -61,6 +72,13 @@ function (reducer::WsRvectorReducer)(operator::AbstractVector{<:AbstractMatrix})
         O ./ degen
     end
     return operator_new
+end
+
+function RvectorReducer(
+    Rvectors::AbstractVector{<:AbstractVector{<:Integer}},
+    Rdegens::AbstractVector{<:Integer},
+)
+    return WsRvectorReducer(Rvectors, Rdegens)
 end
 
 """
@@ -236,4 +254,15 @@ function (reducer::MdrsRvectorReducer)(operator::AbstractVector{<:AbstractMatrix
         end
         O_new
     end
+end
+
+function RvectorReducer(
+    Rvectors::AbstractVector{<:AbstractVector{<:Integer}},
+    Rdegens::AbstractVector{<:Integer},
+    Tvectors::AbstractVector{
+        <:AbstractMatrix{<:AbstractVector{<:AbstractVector{<:Integer}}}
+    },
+    Tdegens::AbstractVector{<:AbstractMatrix{<:Integer}},
+)
+    return MdrsRvectorReducer(Rvectors, Rdegens, Tvectors, Tdegens)
 end

@@ -11,6 +11,9 @@ $(TYPEDEF)
 $(FIELDS)
 """
 struct Spn{T<:Real}
+    "Header line"
+    header::String
+
     """Spin x matrices.
     A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
     """
@@ -25,9 +28,6 @@ struct Spn{T<:Real}
     A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
     """
     Sz::Vector{Matrix{Complex{T}}}
-
-    "Header line"
-    header::String
 end
 
 """
@@ -75,7 +75,7 @@ function read_spn(io::IO, ::FortranText)
         "Did not reach the end of the file, maybe the file is corrupted or not in the correct format",
     )
 
-    return Spn(Sx, Sy, Sz, String(header))
+    return Spn(String(header), Sx, Sy, Sz)
 end
 
 function read_spn(filename::AbstractString, ::FortranText)
@@ -123,7 +123,7 @@ function read_spn(io::FortranFile, ::FortranBinary)
     )
     close(io)
 
-    return Spn(Sx, Sy, Sz, String(header))
+    return Spn(String(header), Sx, Sy, Sz)
 end
 
 function read_spn(filename::AbstractString, ::FortranBinary)

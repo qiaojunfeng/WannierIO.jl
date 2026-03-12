@@ -81,3 +81,88 @@ end
         @test getfield(tbdat2, name) == getfield(tbdat, name)
     end
 end
+
+@testitem "sparsify/densify tb" begin
+    using LazyArtifacts
+    tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
+    dpack = WannierIO.pack(tbdat)
+
+    # lossless round-trip (ComplexF64 keeps full precision)
+    opt0 = WannierIO.SparseOption(; atol=0.0, value_type=ComplexF64)
+    spack = WannierIO.sparsify(dpack, opt0)
+    dpack2 = WannierIO.densify(spack)
+
+    @test dpack2 isa WannierIO.OperatorPack
+    @test dpack2.n_wann == dpack.n_wann
+    @test dpack2.Rvectors == dpack.Rvectors
+    for name in keys(dpack.operators)
+        @test dpack2.operators[name] == dpack.operators[name]
+    end
+
+    # sparsification threshold drops small entries
+    spack_sparse = WannierIO.sparsify(dpack, WannierIO.SparseOption(; atol=1e-8))
+    for name in keys(spack.operators)
+        @test length(spack_sparse.operators[name].nzval) <=
+            length(spack.operators[name].nzval)
+    end
+
+    # reduced precision round-trip
+    opt32 = WannierIO.SparseOption(; atol=0.0, value_type=Float32, index_type=Int16)
+    spack32 = WannierIO.sparsify(dpack, opt32)
+    dpack32 = WannierIO.densify(spack32)
+    dpack64 = WannierIO.densify(spack32; value_type=ComplexF64)
+    @test eltype(spack32.lattice) == Float32
+    @test eltype(spack32.Rvectors) == Int16
+    @test eltype(spack32.operators["H"].nzval) == ComplexF32
+    @test dpack32 isa WannierIO.OperatorPack{Float32,Int16}
+    @test dpack64 isa WannierIO.OperatorPack{Float64,Int16}
+    @test dpack32.lattice ≈ dpack.lattice
+    @test dpack32.operators["H"] ≈ dpack.operators["H"]
+    @test dpack64.operators["H"] ≈ [ComplexF64.(O) for O in dpack32.operators["H"]]
+end
+
+@testitem "unified tb api" begin
+    using HDF5
+    using JLD2
+    using LazyArtifacts
+    using Zarr
+
+    tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
+    dpack0 = WannierIO.pack(tbdat)
+
+    targets = [
+        (WannierIO.W90Dat(), tempname() * "_tb.dat"),
+        (WannierIO.HDF5Format(), tempname() * ".h5"),
+        (WannierIO.JLD2Format(), tempname() * ".jld2"),
+        (WannierIO.ZarrFormat(), tempname() * ".zarr"),
+    ]
+
+    for (fmt, dst) in targets
+        write_w90_tb(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
+        pack2 = read_w90_tb(dst, fmt)
+        pack3 = read_w90_tb(dst)
+
+        for pack in (pack2, pack3)
+            @test pack isa WannierIO.OperatorPack
+            @test pack.n_wann == dpack0.n_wann
+            @test pack.Rvectors == dpack0.Rvectors
+            for name in keys(dpack0.operators)
+                @test pack.operators[name] ≈ dpack0.operators[name]
+            end
+        end
+    end
+
+    reduced_precision_targets = [
+        (WannierIO.HDF5Format(), tempname() * ".h5"),
+        (WannierIO.JLD2Format(), tempname() * ".jld2"),
+        (WannierIO.ZarrFormat(), tempname() * ".zarr"),
+    ]
+
+    for (fmt, dst) in reduced_precision_targets
+        write_w90_tb(dst, dpack0, fmt; atol=0.0, value_type=Float32, index_type=Int16)
+        pack2 = read_w90_tb(dst, fmt)
+        @test pack2 isa WannierIO.OperatorPack{Float32,Int16}
+        @test pack2.lattice ≈ dpack0.lattice
+        @test pack2.operators["H"] ≈ dpack0.operators["H"]
+    end
+end
