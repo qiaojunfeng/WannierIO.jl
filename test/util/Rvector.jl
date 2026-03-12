@@ -4,6 +4,10 @@
     tbdat = WannierIO.read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
 
     reducer = WannierIO.WsRvectorReducer(tbdat.Rvectors, tbdat.Rdegens)
+    # Test the exported function `RvectorReducer` works
+    reducer2 = RvectorReducer(tbdat.Rvectors, tbdat.Rdegens)
+    @test reducer == reducer2
+
     H1 = reducer(tbdat.H)
     r_x1 = reducer(tbdat.r_x)
     r_y1 = reducer(tbdat.r_y)
@@ -33,6 +37,10 @@ end
     reducer = WannierIO.MdrsRvectorReducer(
         tbdat.Rvectors, tbdat.Rdegens, wsvec.Tvectors, wsvec.Tdegens
     )
+    # Test the exported function `RvectorReducer` works
+    reducer2 = RvectorReducer(tbdat.Rvectors, tbdat.Rdegens, wsvec.Tvectors, wsvec.Tdegens)
+    @test reducer == reducer2
+
     H1 = reducer(tbdat.H)
     r_x1 = reducer(tbdat.r_x)
     r_y1 = reducer(tbdat.r_y)

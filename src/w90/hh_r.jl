@@ -10,6 +10,9 @@ $(TYPEDEF)
 $(FIELDS)
 """
 struct HHRDat{T<:Real,IT<:Integer}
+    "Header line"
+    header::String
+
     "`R` vectors of length `n_rvecs`"
     Rvectors::Vector{Vec3{IT}}
 
@@ -18,9 +21,6 @@ struct HHRDat{T<:Real,IT<:Integer}
 
     "Hamiltonian of length `n_rvecs`, each element is a matrix with shape `(n_wann, n_wann)`"
     H::Vector{Matrix{Complex{T}}}
-
-    "Header line"
-    header::String
 end
 
 """

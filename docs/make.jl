@@ -17,6 +17,7 @@ makedocs(;
             "EPW" => "api/epw.md",
             "Index" => "api/index.md",
         ],
+        "Sparse storage" => "sparse.md",
     ],
 )
 

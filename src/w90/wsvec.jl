@@ -10,6 +10,9 @@ $(TYPEDEF)
 $(FIELDS)
 """
 struct WsvecDat{IT<:Integer}
+    "Header line"
+    header::String
+
     """Whether MDRS interpolation is enabled.
     i.e. the `use_ws_distance` in the header.
     """
@@ -26,16 +29,13 @@ struct WsvecDat{IT<:Integer}
 
     "Number of Wannier functions"
     n_wann::Int
-
-    "Header line"
-    header::String
 end
 
 """
 For Wigner-Seitz Rvectors, needs to provide a `n_wann` for number of Wannier functions.
 """
 function WsvecDat(Rvectors::Vector{<:Vec3}, n_wann::Integer, header::String)
-    return WsvecDat(false, Rvectors, nothing, nothing, n_wann, header)
+    return WsvecDat(header, false, Rvectors, nothing, nothing, n_wann)
 end
 
 """
@@ -48,7 +48,7 @@ function WsvecDat(
     header::String,
 )
     n_wann = size(Tvectors[1], 1)
-    return WsvecDat(true, Rvectors, Tvectors, Tdegens, n_wann, header)
+    return WsvecDat(header, true, Rvectors, Tvectors, Tdegens, n_wann)
 end
 
 """

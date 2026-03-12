@@ -10,6 +10,9 @@ $(TYPEDEF)
 $(FIELDS)
 """
 struct HrDat{T<:Real,IT<:Integer}
+    "Header line"
+    header::String
+
     "`R` vectors on which operators are defined"
     Rvectors::Vector{Vec3{IT}}
 
@@ -18,9 +21,6 @@ struct HrDat{T<:Real,IT<:Integer}
 
     "Hamiltonian matrices in real space"
     H::Vector{Matrix{Complex{T}}}
-
-    "Header line"
-    header::String
 end
 
 """
@@ -54,7 +54,7 @@ function read_w90_hr_dat(io::IO)
         end
     end
 
-    return HrDat(Rvectors, Rdegens, H, String(header))
+    return HrDat(String(header), Rvectors, Rdegens, H)
 end
 
 function read_w90_hr_dat(filename::AbstractString)

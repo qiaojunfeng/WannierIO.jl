@@ -110,3 +110,56 @@ Infer a `win`/`nnkp` format tag from `file` using [`istoml`](@ref).
 function detect_w90input_format(file::Union{IO,AbstractString})
     return istoml(file) ? W90InputToml() : W90InputText()
 end
+
+"""
+Native Wannier90 tight-binding text format (`.dat` files written by Wannier90).
+"""
+struct W90Dat <: AbstractFileFormat end
+
+"""
+HDF5 storage format for tight-binding data.
+
+Requires loading the `HDF5` package.
+"""
+struct HDF5Format <: AbstractFileFormat end
+
+"""
+JLD2 storage format for tight-binding data.
+
+Requires loading the `JLD2` package.
+"""
+struct JLD2Format <: AbstractFileFormat end
+
+"""
+Zarr storage format for tight-binding data.
+
+Requires loading the `Zarr` package.
+"""
+struct ZarrFormat <: AbstractFileFormat end
+
+format_name(::W90Dat) = "wannier90-dat"
+format_name(::HDF5Format) = "hdf5"
+format_name(::JLD2Format) = "jld2"
+format_name(::ZarrFormat) = "zarr"
+
+"""
+    detect_w90dat_format(path)
+
+Infer a tight-binding format tag from the file extension of `path`:
+- `.h5` / `.hdf5` → [`HDF5Format`](@ref)
+- `.jld2`          → [`JLD2Format`](@ref)
+- `.zarr`          → [`ZarrFormat`](@ref)
+    - anything else   → [`W90Dat`](@ref)
+"""
+function detect_w90dat_format(path::AbstractString)
+    p = lowercase(path)
+    if endswith(p, ".h5") || endswith(p, ".hdf5")
+        return HDF5Format()
+    elseif endswith(p, ".jld2")
+        return JLD2Format()
+    elseif endswith(p, ".zarr")
+        return ZarrFormat()
+    else
+        return W90Dat()
+    end
+end
