@@ -1,4 +1,4 @@
-export read_w90_hrdat, write_w90_hrdat
+export read_w90_hr_dat, write_w90_hr_dat
 
 """
     $(SIGNATURES)
@@ -11,7 +11,7 @@ Read `prefix_hr.dat`.
 - `H`: Hamiltonian ``\\mathbf{H}(\\mathbf{R})``
 - `header`: the first line of the file
 """
-function read_w90_hrdat(io::IO)
+function read_w90_hr_dat(io::IO)
     header = strip(readline(io))
     n_wann = parse(Int, strip(readline(io)))
     n_Rvecs = parse(Int, strip(readline(io)))
@@ -34,9 +34,9 @@ function read_w90_hrdat(io::IO)
     return (; Rvectors, Rdegens, H, header)
 end
 
-function read_w90_hrdat(filename::AbstractString)
+function read_w90_hr_dat(filename::AbstractString)
     return open(filename) do io
-        read_w90_hrdat(io)
+        read_w90_hr_dat(io)
     end
 end
 
@@ -46,9 +46,9 @@ end
 Write `prefix_hr.dat`.
 
 # Keyword arguments
-See the return values of [`read_w90_hrdat`](@ref).
+See the return values of [`read_w90_hr_dat`](@ref).
 """
-function write_w90_hrdat(
+function write_w90_hr_dat(
     io::IO;
     Rvectors::AbstractVector,
     Rdegens::AbstractVector,
@@ -95,7 +95,7 @@ function write_w90_hrdat(
     return nothing
 end
 
-function write_w90_hrdat(
+function write_w90_hr_dat(
     filename::AbstractString;
     Rvectors::AbstractVector,
     Rdegens::AbstractVector,
@@ -106,6 +106,6 @@ function write_w90_hrdat(
     n_Rvecs > 0 || throw(ArgumentError("empty H"))
 
     open(filename, "w") do io
-        write_w90_hrdat(io; Rvectors, Rdegens, H, header)
+        write_w90_hr_dat(io; Rvectors, Rdegens, H, header)
     end
 end
