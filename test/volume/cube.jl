@@ -11,18 +11,11 @@
     @test cube.Y ≈ cube.X
     @test cube.Z ≈ cube.X
     @test size(cube.W) == (20, 20, 20)
-    @test size(cube.atom_positions) == (3, 8)
-    @test cube.atom_positions[:, 1] ≈ transpose([0.00000 -5.13111 -5.13111]) * Bohr
+    @test length(cube.atom_positions) == 8
+    @test cube.atom_positions[1] ≈ [0.00000, -5.13111, -5.13111] * Bohr
 
     tmpfile = tempname(; cleanup=true)
-    write_cube(
-        tmpfile,
-        cube.atom_positions,
-        cube.atom_numbers,
-        cube.origin,
-        cube.voxel_vectors,
-        cube.W,
-    )
+    write_cube(tmpfile, cube)
     cube2 = read_cube(tmpfile)
 
     @test cube.atom_positions ≈ cube2.atom_positions

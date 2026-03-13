@@ -1,6 +1,29 @@
 export read_w90_hr_dat, write_w90_hr_dat
 
 """
+Container for `prefix_hr.dat` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct HrDat{T<:Real,IT<:Integer}
+    "`R` vectors on which operators are defined"
+    Rvectors::Vector{Vec3{IT}}
+
+    "Degeneracies of each `R` vector"
+    Rdegens::Vector{IT}
+
+    "Hamiltonian matrices in real space"
+    H::Vector{Matrix{Complex{T}}}
+
+    "Header line"
+    header::String
+end
+
+"""
     $(SIGNATURES)
 
 Read `prefix_hr.dat`.
@@ -31,7 +54,7 @@ function read_w90_hr_dat(io::IO)
         end
     end
 
-    return (; Rvectors, Rdegens, H, header)
+    return HrDat(Rvectors, Rdegens, H, String(header))
 end
 
 function read_w90_hr_dat(filename::AbstractString)
@@ -45,26 +68,20 @@ end
 
 Write `prefix_hr.dat`.
 
-# Keyword arguments
-See the return values of [`read_w90_hr_dat`](@ref).
+# Arguments
+See the fields of [`HrDat`](@ref).
 """
-function write_w90_hr_dat(
-    io::IO;
-    Rvectors::AbstractVector,
-    Rdegens::AbstractVector,
-    H::AbstractVector,
-    header=default_header(),
-)
-    n_Rvecs = length(H)
+function write_w90_hr_dat(io::IO, hrdat::HrDat)
+    n_Rvecs = length(hrdat.H)
     n_Rvecs > 0 || throw(ArgumentError("empty H"))
-    n_wann = size(H[1], 1)
+    n_wann = size(hrdat.H[1], 1)
 
-    println(io, strip(header))
+    println(io, strip(hrdat.header))
     @printf(io, "%d\n", n_wann)
     @printf(io, "%d\n", n_Rvecs)
 
     n_columns = 15
-    for (iR, degen) in enumerate(Rdegens)
+    for (iR, degen) in enumerate(hrdat.Rdegens)
         @printf(io, "%5d", degen)
         if mod(iR, n_columns) == 0
             println(io)
@@ -77,12 +94,12 @@ function write_w90_hr_dat(
     for iR in 1:n_Rvecs
         for n in 1:n_wann
             for m in 1:n_wann
-                reH = real(H[iR][m, n])
-                imH = imag(H[iR][m, n])
+                reH = real(hrdat.H[iR][m, n])
+                imH = imag(hrdat.H[iR][m, n])
                 @printf(
                     io,
                     " %4d %4d %4d %4d %4d %11.6f %11.6f\n",
-                    Rvectors[iR]...,
+                    hrdat.Rvectors[iR]...,
                     m,
                     n,
                     reH,
@@ -95,17 +112,8 @@ function write_w90_hr_dat(
     return nothing
 end
 
-function write_w90_hr_dat(
-    filename::AbstractString;
-    Rvectors::AbstractVector,
-    Rdegens::AbstractVector,
-    H::AbstractVector,
-    header=default_header(),
-)
-    n_Rvecs = length(H)
-    n_Rvecs > 0 || throw(ArgumentError("empty H"))
-
+function write_w90_hr_dat(filename::AbstractString, hrdat::HrDat)
     open(filename, "w") do io
-        write_w90_hr_dat(io; Rvectors, Rdegens, H, header)
+        write_w90_hr_dat(io, hrdat)
     end
 end

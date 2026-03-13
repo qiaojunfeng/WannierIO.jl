@@ -1,3 +1,28 @@
+export write_HH_R
+
+"""
+Container for `prefix_HH_R.dat` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct HHRDat{T<:Real,IT<:Integer}
+    "`R` vectors of length `n_rvecs`"
+    Rvectors::Vector{Vec3{IT}}
+
+    "Degeneracy vector for each R vector, or `nothing`"
+    Rdegens::Union{Vector{IT},Nothing}
+
+    "Hamiltonian of length `n_rvecs`, each element is a matrix with shape `(n_wann, n_wann)`"
+    H::Vector{Matrix{Complex{T}}}
+
+    "Header line"
+    header::String
+end
+
 """
     $(SIGNATURES)
 
@@ -5,12 +30,7 @@ Write the real space Hamiltonian to a `prefix_HH_R.dat` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `H`: a `n_wann * n_wann * n_rvecs` array of Hamiltonian
-- `R`: a `n_rvecs * 3` array of integers
-
-# Keyword arguments
-- `N`: a `n_rvecs` vector of integers, the degeneracy of each R vector
-- `header`: a string, the header of the file
+- `hhr`: a [`HHRDat`](@ref) struct
 
 !!! note
 
@@ -25,24 +45,23 @@ Write the real space Hamiltonian to a `prefix_HH_R.dat` file.
     `F12.6` to `E15.8`.
 
 """
-function write_HH_R(
-    io::IO,
-    H::AbstractArray{T,3},
-    R::AbstractMatrix{IT};
-    N::Union{AbstractVector{IT},Nothing}=nothing,
-    header=default_header(),
-) where {T<:Complex,IT<:Integer}
-    n_wann, _, n_rvecs = size(H)
-    size(H, 2) == n_wann ||
-        throw(ArgumentError("H must be a n_wann * n_wann * n_rvecs matrix"))
-    size(R) == (3, n_rvecs) || throw(ArgumentError("R must be a 3 * n_rvecs matrix"))
-    isnothing(N) ||
-        length(N) == n_rvecs ||
-        throw(ArgumentError("N must be a n_rvecs vector"))
+function write_HH_R(io::IO, hhr::HHRDat)
+    n_rvecs = length(hhr.Rvectors)
+    n_rvecs > 0 || throw(ArgumentError("Rvectors must be non-empty"))
+    length(hhr.H) == n_rvecs ||
+        throw(DimensionMismatch("H and Rvectors must have the same length"))
+    isnothing(hhr.Rdegens) ||
+        length(hhr.Rdegens) == n_rvecs ||
+        throw(DimensionMismatch("Rdegens and Rvectors must have the same length"))
+
+    n_wann = size(hhr.H[1], 1)
+    n_wann > 0 || throw(ArgumentError("H matrices must be non-empty"))
+    all(size.(hhr.H) .== Ref((n_wann, n_wann))) ||
+        throw(DimensionMismatch("H[ir] must all be n_wann * n_wann matrices"))
 
     vec2str(v) = join([@sprintf "%5d" x for x in v], "")
 
-    write(io, strip(header), "\n")
+    write(io, strip(hhr.header), "\n")
 
     @printf(io, "%d\n", n_wann)
     @printf(io, "%d\n", n_rvecs)
@@ -50,13 +69,13 @@ function write_HH_R(
     for ir in 1:n_rvecs
         for j in 1:n_wann
             for i in 1:n_wann
-                h = H[i, j, ir]
+                h = hhr.H[ir][i, j]
                 # 12.6f is the wannier90 default, however, I change it to
                 # 15.8e so that it has the same accuracy as tb.dat file.
                 @printf(
                     io,
                     "%s   %15.8e %15.8e\n",
-                    vec2str([R[:, ir]..., i, j]),
+                    vec2str([hhr.Rvectors[ir]..., i, j]),
                     real(h),
                     imag(h)
                 )
@@ -67,44 +86,43 @@ function write_HH_R(
     return nothing
 end
 
-function write_HH_R(
-    filename::AbstractString,
-    H::AbstractArray{T,3},
-    R::AbstractMatrix{IT};
-    N::Union{AbstractVector{IT},Nothing}=nothing,
-    header=default_header(),
-) where {T<:Complex,IT<:Integer}
-    n_wann, _, n_rvecs = size(H)
-    size(H, 2) == n_wann ||
-        throw(ArgumentError("H must be a n_wann * n_wann * n_rvecs matrix"))
-    size(R) == (3, n_rvecs) || throw(ArgumentError("R must be a 3 * n_rvecs matrix"))
-    isnothing(N) ||
-        length(N) == n_rvecs ||
-        throw(ArgumentError("N must be a n_rvecs vector"))
-    vec2str(v) = join([@sprintf "%5d" x for x in v], "")
+function write_HH_R(filename::AbstractString, hhr::HHRDat)
+    n_rvecs = length(hhr.Rvectors)
+    n_rvecs > 0 || throw(ArgumentError("Rvectors must be non-empty"))
+    length(hhr.H) == n_rvecs ||
+        throw(DimensionMismatch("H and Rvectors must have the same length"))
+    isnothing(hhr.Rdegens) ||
+        length(hhr.Rdegens) == n_rvecs ||
+        throw(DimensionMismatch("Rdegens and Rvectors must have the same length"))
+
+    n_wann = size(hhr.H[1], 1)
+    n_wann > 0 || throw(ArgumentError("H matrices must be non-empty"))
+    all(size.(hhr.H) .== Ref((n_wann, n_wann))) ||
+        throw(DimensionMismatch("H[ir] must all be n_wann * n_wann matrices"))
 
     open(filename, "w") do io
-        write_HH_R(io, H, R; N, header)
+        write_HH_R(io, hhr)
     end
 
     # the vanilla wannier90 code does not read the N array (the degeneracy
     # of R vector), and assume that N = 1 for all the R vectors.
     # I write it, and also implement the reading of wsvec.dat as well,
     # to use MDRS interpolation.
-    if !isnothing(N)
+    if !isnothing(hhr.Rdegens)
         ndegen_filename = filename * ".ndegen"
+        vec2str(v) = join([@sprintf "%5d" x for x in v], "")
         open(ndegen_filename, "w") do io
             # for aesthetic purpose, I write the N array in 15 columns
             n_col = 15  # 15 numbers per row
             for i in 0:(n_rvecs ÷ n_col - 1)
                 s = i * n_col + 1  # start
                 e = (i + 1) * n_col  # end
-                @printf(io, "%s\n", vec2str(N[s:e]))
+                @printf(io, "%s\n", vec2str(hhr.Rdegens[s:e]))
             end
             if (n_rvecs % n_col) > 0
                 s = n_rvecs - n_rvecs % n_col + 1 # start
                 e = n_rvecs  # end
-                @printf(io, "%s\n", vec2str(N[s:e]))
+                @printf(io, "%s\n", vec2str(hhr.Rdegens[s:e]))
             end
         end
     end

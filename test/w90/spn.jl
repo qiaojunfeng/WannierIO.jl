@@ -17,7 +17,7 @@
     @test Sx[end] ≈ ref_Sx_end
 
     tmpfile = tempname(; cleanup=true)
-    write_spn(tmpfile, Sx, Sy, Sz; binary=false)
+    write_spn(tmpfile, spn; binary=false)
 
     spn1 = read_spn(tmpfile)
     Sx1 = spn1.Sx
@@ -43,7 +43,7 @@ end
     @test Sz ≈ Sz1
 
     tmpfile = tempname(; cleanup=true)
-    write_spn(tmpfile, Sx, Sy, Sz; binary=true)
+    write_spn(tmpfile, spn; binary=true)
     spn2 = read_spn(tmpfile)
     Sx2 = spn2.Sx
     Sy2 = spn2.Sy

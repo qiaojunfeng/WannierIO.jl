@@ -35,7 +35,7 @@
     @test kpb_G[3] == ref_kpb_G_3
 
     tmpfile = tempname(; cleanup=true)
-    write_mmn(tmpfile, M, kpb_k, kpb_G)
+    write_mmn(tmpfile, mmn)
     mmn2 = read_mmn(tmpfile)
     M2 = mmn2.M
     kpb_k2 = mmn2.kpb_k
@@ -61,7 +61,7 @@ end
     @test kpb_G ≈ kpb_G1
 
     tmpfile = tempname(; cleanup=true)
-    write_mmn(tmpfile, M, kpb_k, kpb_G; binary=true)
+    write_mmn(tmpfile, mmn; binary=true)
     mmn2 = read_mmn(tmpfile)
     M2 = mmn2.M
     kpb_k2 = mmn2.kpb_k

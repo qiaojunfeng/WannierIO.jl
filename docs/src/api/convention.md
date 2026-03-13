@@ -55,6 +55,18 @@ where
 - `m`: index of bands
 - `n`: index of Wannier functions
 
+### Containers
+
+Reader/writer APIs follow a simple rule for returned/accepted grouped data:
+
+- If a parser returns up to 3 values, it returns a `NamedTuple`
+- If a parser returns more than 3 values, it returns a thin container `struct`
+
+The same thin container structs are accepted by corresponding writer functions.
+This keeps small APIs lightweight while giving large file formats a centralized,
+documented data model (field names, meanings, and units) that downstream packages
+can reuse as a stable reference point.
+
 ## Functions
 
 In most cases, there are some multiple dispatches for the same function.

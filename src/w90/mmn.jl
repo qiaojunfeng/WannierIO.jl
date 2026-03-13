@@ -1,6 +1,42 @@
 export read_mmn, write_mmn
 
 """
+Container for wannier90 `mmn` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct Mmn{T<:Real,IT<:Integer}
+    """Overlap matrices.
+    Length-`n_kpts` vector, each element is a length-`n_bvecs` vector, then
+    each element is a `n_bands * n_bands` matrix.
+    """
+    M::Vector{Vector{Matrix{Complex{T}}}}
+
+    """Neighbor kpoint indices.
+    Length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
+    integers for the indices of the neighboring kpoints.
+    """
+    kpb_k::Vector{Vector{IT}}
+
+    """Translation vectors for neighboring kpoints.
+    Length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
+    of `Vec3{Int}`, which are the translation vectors.
+
+    The translation vector `G` is defined as
+    `b = kpoints[kpb_k[ik][ib]] + kpb_G[ik][ib] - kpoints[ik]`,
+    where `b` is the `ib`-th bvector of the `ik`-th kpoint.
+    """
+    kpb_G::Vector{Vector{Vec3{IT}}}
+
+    "Header line (1st line of the file)"
+    header::String
+end
+
+"""
     read_mmn(file)
     read_mmn(file, ::FortranText)
     read_mmn(file, ::FortranBinaryStream)
@@ -11,19 +47,7 @@ Read wannier90 `mmn` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `M`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector, then
-    each element is a `n_bands * n_bands` matrix
-- `kpb_k`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
-    integers for the indices of the neighboring kpoints
-- `kpb_G`: length-`n_kpts` vector, each element is a lenght-`n_bvecs` vector of
-    of `Vec3{Int}`, which are the translation vectors
-- `header`: 1st line of the file
-
-The translation vector `G` is defined as
-`b = kpoints[kpb_k[ik][ib]] + kpb_G[ik][ib] - kpoints[ik]`,
-where `b` is the `ib`-th bvector of the `ik`-th kpoint.
-
-The 1st version is a convenience wrapper for the other two.
+- [`Mmn`](@ref) struct containing the data in the file
 """
 function read_mmn end
 
@@ -62,7 +86,7 @@ function read_mmn(io::IO, ::FortranText)
     all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M) || error(
         "Some elements in M are NaN, maybe the file is corrupted or not in the correct format",
     )
-    return (; M, kpb_k, kpb_G, header)
+    return Mmn(M, kpb_k, kpb_G, String(header))
 end
 
 function read_mmn(io::IO, ::FortranBinaryStream)
@@ -103,7 +127,7 @@ function read_mmn(io::IO, ::FortranBinaryStream)
     all(Mk -> all(Mkb -> !any(isnan.(Mkb)), Mk), M) || error(
         "Some elements in M are NaN, maybe the file is corrupted or not in the correct format",
     )
-    return (; M, kpb_k, kpb_G, header)
+    return Mmn(M, kpb_k, kpb_G, String(header))
 end
 
 function read_mmn(filename::AbstractString, format::AbstractFileFormat)
@@ -120,23 +144,18 @@ function read_mmn(file::Union{IO,AbstractString})
 end
 
 """
-    write_mmn(file, M, kpb_k, kpb_G; header=default_header(), binary=false)
-    write_mmn(file, M, kpb_k, kpb_G, ::FortranText; header=default_header())
-    write_mmn(file, M, kpb_k, kpb_G, ::FortranBinaryStream; header=default_header())
+    write_mmn(file, mmn; binary=false)
+    write_mmn(file, mmn, ::FortranText)
+    write_mmn(file, mmn, ::FortranBinaryStream)
 
 Write wannier90 `mmn` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `M`: length-`n_kpts` vector of `n_bands * n_bands * n_bvecs` arrays
-- `kpb_k`: length-`n_kpts` vector of length-`n_bvecs` vector of integers
-- `kpb_G`: length-`n_kpts` vector of length-`n_bvecs` vector of `Vec3{Int}` for bvectors
+- `mmn`: a [`Mmn`](@ref) struct
 
 # Keyword arguments
-- `header`: header string
 - `binary`: if true write in Fortran binary format
-
-The 1st version is a convenience wrapper for the other two.
 """
 function write_mmn end
 
@@ -177,31 +196,23 @@ end
         throw(DimensionMismatch("M[ik][ib] are not square matrices"))
 end
 
-function write_mmn(
-    io::IO,
-    M::AbstractVector,
-    kpb_k::AbstractVector,
-    kpb_G::AbstractVector,
-    ::FortranText;
-    header=default_header(),
-)
-    _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-    n_kpts = length(M)
-    n_bvecs = length(M[1])
-    n_bands = size(M[1][1], 1)
+function write_mmn(io::IO, mmn::Mmn, ::FortranText)
+    _check_dimensions_M_kpb(mmn.M, mmn.kpb_k, mmn.kpb_G)
+    n_kpts = length(mmn.M)
+    n_bvecs = length(mmn.M[1])
+    n_bands = size(mmn.M[1][1], 1)
 
-    header = strip(header)
-    write(io, header, "\n")
+    write(io, strip(mmn.header), "\n")
 
     @printf(io, "    %d   %d    %d \n", n_bands, n_kpts, n_bvecs)
 
     for ik in 1:n_kpts
         for ib in 1:n_bvecs
-            @printf(io, "%d %d %d %d %d\n", ik, kpb_k[ik][ib], kpb_G[ik][ib]...)
+            @printf(io, "%d %d %d %d %d\n", ik, mmn.kpb_k[ik][ib], mmn.kpb_G[ik][ib]...)
 
             for n in 1:n_bands
                 for m in 1:n_bands
-                    o = M[ik][ib][m, n]
+                    o = mmn.M[ik][ib][m, n]
                     @printf(io, "  %16.12f  %16.12f\n", real(o), imag(o))
                 end
             end
@@ -210,33 +221,25 @@ function write_mmn(
     return nothing
 end
 
-function write_mmn(
-    io::IO,
-    M::AbstractVector,
-    kpb_k::AbstractVector,
-    kpb_G::AbstractVector,
-    ::FortranBinaryStream;
-    header=default_header(),
-)
-    _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-    n_kpts = length(M)
-    n_bvecs = length(M[1])
-    n_bands = size(M[1][1], 1)
+function write_mmn(io::IO, mmn::Mmn, ::FortranBinaryStream)
+    _check_dimensions_M_kpb(mmn.M, mmn.kpb_k, mmn.kpb_G)
+    n_kpts = length(mmn.M)
+    n_bvecs = length(mmn.M[1])
+    n_bands = size(mmn.M[1][1], 1)
 
     # gfortran default integer size = 4
     Tint = Int32
     # I use stream io to write mmn, so I should use plain julia `open`
     header_len = 60
-    header = FString(header_len, String(strip(header)))
-    write(io, header)
+    write(io, FString(header_len, String(strip(mmn.header))))
 
     write(io, Tint(n_bands))
     write(io, Tint(n_kpts))
     write(io, Tint(n_bvecs))
 
     for ik in 1:n_kpts
-        kpb_k_ik = kpb_k[ik]
-        kpb_G_ik = kpb_G[ik]
+        kpb_k_ik = mmn.kpb_k[ik]
+        kpb_G_ik = mmn.kpb_G[ik]
         for ib in 1:n_bvecs
             write(io, Tint(ik))
             write(io, Tint(kpb_k_ik[ib]))
@@ -246,7 +249,7 @@ function write_mmn(
 
             for n in 1:n_bands
                 for m in 1:n_bands
-                    o = M[ik][ib][m, n]
+                    o = mmn.M[ik][ib][m, n]
                     write(io, Float64(real(o)))
                     write(io, Float64(imag(o)))
                 end
@@ -256,29 +259,14 @@ function write_mmn(
     return nothing
 end
 
-function write_mmn(
-    filename::AbstractString,
-    M::AbstractVector,
-    kpb_k::AbstractVector,
-    kpb_G::AbstractVector,
-    format::AbstractFileFormat;
-    header=default_header(),
-)
+function write_mmn(filename::AbstractString, mmn::Mmn, format::AbstractFileFormat)
     open(filename, "w") do io
-        write_mmn(io, M, kpb_k, kpb_G, format; header)
+        write_mmn(io, mmn, format)
     end
     return nothing
 end
 
-function write_mmn(
-    file::Union{IO,AbstractString},
-    M::AbstractVector,
-    kpb_k::AbstractVector,
-    kpb_G::AbstractVector;
-    header::AbstractString=default_header(),
-    binary::Bool=false,
-)
-    _check_dimensions_M_kpb(M, kpb_k, kpb_G)
+function write_mmn(filename::AbstractString, mmn::Mmn; binary=false)
     format = fortran_format(; binary, stream=true)
-    write_mmn(file, M, kpb_k, kpb_G, format; header)
+    return write_mmn(filename, mmn, format)
 end

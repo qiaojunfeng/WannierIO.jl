@@ -4,6 +4,41 @@
 export read_cube, write_cube
 
 """
+Container for `cube` volumetric data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct Cube{T<:Real}
+    "Atomic positions in Cartesian coordinates in Å"
+    atom_positions::Vector{Vec3{T}}
+
+    "Atomic numbers"
+    atom_numbers::Vector{Int}
+
+    "Grid origin in Cartesian coordinates in Å"
+    origin::Vec3{T}
+
+    "Voxel vectors, each column is a voxel vector in Å"
+    voxel_vectors::Mat3{T}
+
+    "Fractional grid coordinates along first voxel direction"
+    X::Vector{T}
+
+    "Fractional grid coordinates along second voxel direction"
+    Y::Vector{T}
+
+    "Fractional grid coordinates along third voxel direction"
+    Z::Vector{T}
+
+    "Volumetric values, with shape (n_x, n_y, n_z)"
+    W::Array{T,3}
+end
+
+"""
     $(SIGNATURES)
 
 Read `cube` file.
@@ -23,9 +58,7 @@ function read_cube(io::IO)
 
     line = split(strip(readline(io)))
     n_atoms = parse(Int, line[1])
-    origin = parse.(Float64, line[2:4])
-    # to Å unit
-    origin .*= Bohr
+    origin = vec3(parse_vector(line[2:4])) * Bohr
 
     # number of voxels in domain
     n_voxels = zeros(Int, 3)
@@ -35,28 +68,26 @@ function read_cube(io::IO)
         n_v = parse(Int, line[1])
         n_voxels[i] = n_v
         # bohr unit
-        voxel_vectors[:, i] = parse.(Float64, line[2:4])
+        voxel_vectors[:, i] = parse_vector(line[2:4])
     end
     # to Å unit
-    voxel_vectors .*= Bohr
+    voxel_vectors = mat3(voxel_vectors) * Bohr
 
-    atom_positions = zeros(Float64, 3, n_atoms)
+    atom_positions = Vector{Vec3{Float64}}(undef, n_atoms)
     atom_numbers = zeros(Int, n_atoms)
     for i in 1:n_atoms
         line = split(strip(readline(io)))
         atom_numbers[i] = parse(Int, line[1])
         charge = parse(Float64, line[2])
-        # cartesian coordinates, Bohr unit
-        atom_positions[:, i] = parse.(Float64, line[3:5])
+        # cartesian coordinates, Bohr unit to Å
+        atom_positions[i] = vec3(parse_vector(line[3:5])) * Bohr
     end
-    # to Å unit
-    atom_positions .*= Bohr
 
     n_x, n_y, n_z = n_voxels
     # fractional w.r.t. voxel_vectors
-    X = range(0, n_x-1, n_x)
-    Y = range(0, n_y-1, n_y)
-    Z = range(0, n_z-1, n_z)
+    X = collect(range(0.0, n_x - 1.0, n_x))
+    Y = collect(range(0.0, n_y - 1.0, n_y))
+    Z = collect(range(0.0, n_z - 1.0, n_z))
 
     W = zeros(Float64, n_x, n_y, n_z)
     # 6 columns per line
@@ -83,7 +114,7 @@ function read_cube(io::IO)
         end
     end
 
-    return (; atom_positions, atom_numbers, origin, voxel_vectors, X, Y, Z, W)
+    return Cube(atom_positions, atom_numbers, origin, voxel_vectors, X, Y, Z, W)
 end
 
 function read_cube(filename::AbstractString)
@@ -99,52 +130,43 @@ Write `cube` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `atom_positions`: `3 * n_atoms`, Å, cartesian coordinates
-- `atom_numbers`: `n_atoms`, atomic numbers
-- `origin`: `3`, Å, origin of the grid
-- `voxel_vectors`: `3 * 3`, Å, each column is a voxel vector
-- `W`: `nx * ny * nz`, volumetric data
+- `cube`: a [`Cube`](@ref) struct
 """
-function write_cube(
-    io::IO,
-    atom_positions::AbstractMatrix{T},
-    atom_numbers::AbstractVector{Int},
-    origin::AbstractVector{T},
-    voxel_vectors::AbstractMatrix{T},
-    W::AbstractArray{T,3},
-) where {T<:Real}
-    n_atoms = length(atom_numbers)
-    size(atom_positions, 2) == n_atoms || throw(DimensionMismatch("incompatible n_atoms"))
-    size(voxel_vectors) == (3, 3) || throw(DimensionMismatch("incompatible voxel_vectors"))
-    length(origin) == 3 || throw(DimensionMismatch("origin must be 3-vector"))
+function write_cube(io::IO, cube::Cube)
+    n_atoms = length(cube.atom_numbers)
+    length(cube.atom_positions) == n_atoms ||
+        throw(DimensionMismatch("incompatible n_atoms"))
+    size(cube.voxel_vectors) == (3, 3) ||
+        throw(DimensionMismatch("incompatible voxel_vectors"))
+    length(cube.origin) == 3 || throw(DimensionMismatch("origin must be 3-vector"))
 
     # header
     @printf(io, "%s\n", default_header())
     @printf(io, "outer loop: x, middle loop: y, inner loop: z\n")
 
     # to Bohr
-    origin_bohr = origin ./ Bohr
+    origin_bohr = cube.origin ./ Bohr
     @printf(io, "%d %12.6f %12.6f %12.6f\n", n_atoms, origin_bohr...)
 
-    n_xyz = size(W)
+    n_xyz = size(cube.W)
     for i in 1:3
         # number of voxels
         n_v = n_xyz[i]
-        ax = voxel_vectors[:, i] ./ Bohr
+        ax = cube.voxel_vectors[:, i] ./ Bohr
         @printf(io, "%d %12.6f %12.6f %12.6f\n", n_v, ax...)
     end
 
     for i in 1:n_atoms
-        n = atom_numbers[i]
+        n = cube.atom_numbers[i]
         charge = 1.0
-        pos = atom_positions[:, i] ./ Bohr
+        pos = cube.atom_positions[i] ./ Bohr
         @printf(io, "%d %12.6f %12.6f %12.6f %12.6f\n", n, charge, pos...)
     end
 
     for ix in 1:n_xyz[1]
         for iy in 1:n_xyz[2]
             for iz in 1:n_xyz[3]
-                @printf(io, "%12.6g ", W[ix, iy, iz])
+                @printf(io, "%12.6g ", cube.W[ix, iy, iz])
 
                 if (iz % 6 == 0)
                     @printf(io, "\n")
@@ -157,16 +179,9 @@ function write_cube(
     return nothing
 end
 
-function write_cube(
-    filename::AbstractString,
-    atom_positions::AbstractMatrix{T},
-    atom_numbers::AbstractVector{Int},
-    origin::AbstractVector{T},
-    voxel_vectors::AbstractMatrix{T},
-    W::AbstractArray{T,3},
-) where {T<:Real}
+function write_cube(filename::AbstractString, cube::Cube)
     open(filename, "w") do io
-        write_cube(io, atom_positions, atom_numbers, origin, voxel_vectors, W)
+        write_cube(io, cube)
     end
     return nothing
 end

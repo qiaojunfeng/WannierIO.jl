@@ -14,7 +14,7 @@
     @test bxsf.E[1, 2, 3, 4] ≈ E1234
 
     tmpfile = tempname(; cleanup=true)
-    write_bxsf(tmpfile, bxsf.fermi_energy, bxsf.origin, bxsf.span_vectors, bxsf.E)
+    write_bxsf(tmpfile, bxsf)
     bxsf2 = read_bxsf(tmpfile)
 
     @test bxsf.fermi_energy ≈ bxsf2.fermi_energy

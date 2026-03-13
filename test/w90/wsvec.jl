@@ -28,13 +28,13 @@ end
     wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
 
     tmpfile = tempname(; cleanup=true)
-    write_w90_wsvec(tmpfile; wsvec.Rvectors, wsvec.n_wann)
+    write_w90_wsvec(tmpfile, wsvec)
     wsvec2 = read_w90_wsvec(tmpfile)
 
-    @test keys(wsvec) == keys(wsvec2)
-    for (k, v) in pairs(wsvec)
-        k == :header && continue
-        @test wsvec2[k] == v
+    @test propertynames(wsvec) == propertynames(wsvec2)
+    for name in propertynames(wsvec)
+        name == :header && continue
+        @test getfield(wsvec2, name) == getfield(wsvec, name)
     end
 end
 
@@ -44,22 +44,22 @@ end
     wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/MDRS/Si2_valence_wsvec.dat")
 
     tmpfile = tempname(; cleanup=true)
-    write_w90_wsvec(tmpfile; wsvec.Rvectors, wsvec.Tvectors, wsvec.Tdegens)
+    write_w90_wsvec(tmpfile, wsvec)
     wsvec2 = read_w90_wsvec(tmpfile)
 
-    @test keys(wsvec) == keys(wsvec2)
-    for (k, v) in pairs(wsvec)
-        k == :header && continue
-        @test wsvec2[k] == v
+    @test propertynames(wsvec) == propertynames(wsvec2)
+    for name in propertynames(wsvec)
+        name == :header && continue
+        @test getfield(wsvec2, name) == getfield(wsvec, name)
     end
 
     # n_wann is optional
-    write_w90_wsvec(tmpfile; wsvec.Rvectors, wsvec.Tvectors, wsvec.Tdegens, wsvec.n_wann)
+    write_w90_wsvec(tmpfile, wsvec)
     wsvec2 = read_w90_wsvec(tmpfile)
 
-    @test keys(wsvec) == keys(wsvec2)
-    for (k, v) in pairs(wsvec)
-        k == :header && continue
-        @test wsvec2[k] == v
+    @test propertynames(wsvec) == propertynames(wsvec2)
+    for name in propertynames(wsvec)
+        name == :header && continue
+        @test getfield(wsvec2, name) == getfield(wsvec, name)
     end
 end

@@ -48,7 +48,7 @@ end
 
     for p in propertynames(tbdat)
         p == :header && continue
-        @test tbdat_ws[p] ≈ tbdat[p]
+        @test getfield(tbdat_ws, p) ≈ getfield(tbdat, p)
     end
 end
 
@@ -57,13 +57,13 @@ end
     tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
 
     tmpfile = tempname(; cleanup=true)
-    write_w90_tb_dat(tmpfile; tbdat...)
+    write_w90_tb_dat(tmpfile, tbdat)
     tbdat2 = read_w90_tb_dat(tmpfile)
 
-    @test keys(tbdat) == keys(tbdat2)
-    for (k, v) in pairs(tbdat)
-        k == :header && continue
-        @test tbdat2[k] == v
+    @test propertynames(tbdat) == propertynames(tbdat2)
+    for name in propertynames(tbdat)
+        name == :header && continue
+        @test getfield(tbdat2, name) == getfield(tbdat, name)
     end
 end
 
@@ -72,12 +72,12 @@ end
     tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
 
     tmpfile = tempname(; cleanup=true)
-    write_w90_tb_dat(tmpfile; tbdat...)
+    write_w90_tb_dat(tmpfile, tbdat)
     tbdat2 = read_w90_tb_dat(tmpfile)
 
-    @test keys(tbdat) == keys(tbdat2)
-    for (k, v) in pairs(tbdat)
-        k == :header && continue
-        @test tbdat2[k] == v
+    @test propertynames(tbdat) == propertynames(tbdat2)
+    for name in propertynames(tbdat)
+        name == :header && continue
+        @test getfield(tbdat2, name) == getfield(tbdat, name)
     end
 end

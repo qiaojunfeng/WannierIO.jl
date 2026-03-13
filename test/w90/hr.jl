@@ -22,7 +22,7 @@ end
 
     for p in propertynames(hrdat)
         p == :header && continue
-        @test hrdat_ws[p] ≈ hrdat[p]
+        @test getfield(hrdat_ws, p) ≈ getfield(hrdat, p)
     end
 end
 
@@ -31,12 +31,12 @@ end
     hrdat = read_w90_hr_dat(artifact"Si2_valence/outputs/WS/Si2_valence_hr.dat")
 
     tmpfile = tempname(; cleanup=true)
-    write_w90_hr_dat(tmpfile; hrdat...)
+    write_w90_hr_dat(tmpfile, hrdat)
     hrdat2 = read_w90_hr_dat(tmpfile)
 
-    @test keys(hrdat) == keys(hrdat2)
-    for (k, v) in pairs(hrdat)
-        k == :header && continue
-        @test hrdat2[k] == v
+    @test propertynames(hrdat) == propertynames(hrdat2)
+    for name in propertynames(hrdat)
+        name == :header && continue
+        @test getfield(hrdat2, name) == getfield(hrdat, name)
     end
 end
