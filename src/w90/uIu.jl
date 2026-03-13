@@ -42,7 +42,7 @@ function read_uIu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
 end
 
 function read_uIu(filename::AbstractString; kwargs...)
-    format = isbinary(filename) ? FortranBinary() : FortranText()
+    format = detect_fortran_format(filename)
     return read_uIu(filename, format; kwargs...)
 end
 
@@ -110,6 +110,6 @@ function write_uIu(
     header=default_header(),
     kwargs...,
 )
-    format = binary ? FortranBinary() : FortranText()
+    format = fortran_format(; binary)
     return write_uIu(filename, uIu, format; header, kwargs...)
 end

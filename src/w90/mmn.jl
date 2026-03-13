@@ -106,14 +106,14 @@ function read_mmn(io::IO, ::FortranBinaryStream)
     return (; M, kpb_k, kpb_G, header)
 end
 
-function read_mmn(filename::AbstractString, format::FileFormat)
+function read_mmn(filename::AbstractString, format::AbstractFileFormat)
     return open(filename) do io
         read_mmn(io, format)
     end
 end
 
 function read_mmn(file::Union{IO,AbstractString})
-    format = isbinary(file) ? FortranBinaryStream() : FortranText()
+    format = detect_fortran_format(file; stream=true)
     mmn = read_mmn(file, format)
     _check_dimensions_M_kpb(mmn.M, mmn.kpb_k, mmn.kpb_G)
     return mmn
@@ -261,7 +261,7 @@ function write_mmn(
     M::AbstractVector,
     kpb_k::AbstractVector,
     kpb_G::AbstractVector,
-    format::FileFormat;
+    format::AbstractFileFormat;
     header=default_header(),
 )
     open(filename, "w") do io
@@ -279,6 +279,6 @@ function write_mmn(
     binary::Bool=false,
 )
     _check_dimensions_M_kpb(M, kpb_k, kpb_G)
-    format = binary ? FortranBinaryStream() : FortranText()
+    format = fortran_format(; binary, stream=true)
     write_mmn(file, M, kpb_k, kpb_G, format; header)
 end

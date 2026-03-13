@@ -108,7 +108,7 @@ function read_uHu(filename::AbstractString, ::FortranBinary; transpose_band_indi
 end
 
 function read_uHu(filename::AbstractString; kwargs...)
-    format = isbinary(filename) ? FortranBinary() : FortranText()
+    format = detect_fortran_format(filename)
     return read_uHu(filename, format; kwargs...)
 end
 
@@ -237,6 +237,6 @@ function write_uHu(
     header=default_header(),
     kwargs...,
 )
-    format = binary ? FortranBinary() : FortranText()
+    format = fortran_format(; binary)
     return write_uHu(filename, uHu, format; header, kwargs...)
 end
