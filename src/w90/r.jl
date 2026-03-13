@@ -1,16 +1,38 @@
 export read_w90_r_dat, write_w90_r_dat
 
 """
+Container for `prefix_r.dat` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct RDat{T<:Real,IT<:Integer}
+    "``\\mathbf{R}``-vectors on which operators are defined"
+    Rvectors::Vector{Vec3{IT}}
+
+    "x-component of position operator"
+    r_x::Vector{Matrix{Complex{T}}}
+
+    "y-component of position operator"
+    r_y::Vector{Matrix{Complex{T}}}
+
+    "z-component of position operator"
+    r_z::Vector{Matrix{Complex{T}}}
+
+    "Header line"
+    header::String
+end
+
+"""
     $(SIGNATURES)
 
 Read `prefix_r.dat`.
 
 # Return
-- `Rvectors`: ``\\mathbf{R}``-vectors on which operators are defined
-- `r_x`: ``x``-component of position operator
-- `r_y`: ``y``-component of position operator
-- `r_z`: ``z``-component of position operator
-- `header`: the first line of the file
+- [`RDat`](@ref) struct containing the data in the file
 """
 function read_w90_r_dat(io::IO)
     header = strip(readline(io))
@@ -35,7 +57,7 @@ function read_w90_r_dat(io::IO)
         end
     end
 
-    return (; Rvectors, r_x, r_y, r_z, header)
+    return RDat(Rvectors, r_x, r_y, r_z, String(header))
 end
 
 function read_w90_r_dat(filename::AbstractString)
@@ -49,24 +71,17 @@ end
 
 Write `prefix_r.dat`.
 
-# Keyword arguments
-See the return values of [`read_w90_r_dat`](@ref).
+# Arguments
+See the fields of [`RDat`](@ref).
 """
-function write_w90_r_dat(
-    io::IO;
-    Rvectors::AbstractVector,
-    r_x::AbstractVector,
-    r_y::AbstractVector,
-    r_z::AbstractVector,
-    header=default_header(),
-)
-    n_Rvecs = length(Rvectors)
+function write_w90_r_dat(io::IO, rdat::RDat)
+    n_Rvecs = length(rdat.Rvectors)
     n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
-    n_Rvecs == length(r_x) == length(r_y) == length(r_z) ||
+    n_Rvecs == length(rdat.r_x) == length(rdat.r_y) == length(rdat.r_z) ||
         throw(DimensionMismatch("inconsistent length"))
-    n_wann = size(r_x[1], 1)
+    n_wann = size(rdat.r_x[1], 1)
 
-    println(io, strip(header))
+    println(io, strip(rdat.header))
     @printf(io, "%d\n", n_wann)
     @printf(io, "%d\n", n_Rvecs)
 
@@ -76,15 +91,15 @@ function write_w90_r_dat(
                 @printf(
                     io,
                     " %4d %4d %4d %4d %4d %11.6f %11.6f %11.6f %11.6f %11.6f %11.6f\n",
-                    Rvectors[iR]...,
+                    rdat.Rvectors[iR]...,
                     m,
                     n,
-                    real(r_x[iR][m, n]),
-                    imag(r_x[iR][m, n]),
-                    real(r_y[iR][m, n]),
-                    imag(r_y[iR][m, n]),
-                    real(r_z[iR][m, n]),
-                    imag(r_z[iR][m, n]),
+                    real(rdat.r_x[iR][m, n]),
+                    imag(rdat.r_x[iR][m, n]),
+                    real(rdat.r_y[iR][m, n]),
+                    imag(rdat.r_y[iR][m, n]),
+                    real(rdat.r_z[iR][m, n]),
+                    imag(rdat.r_z[iR][m, n]),
                 )
             end
         end
@@ -93,20 +108,8 @@ function write_w90_r_dat(
     return nothing
 end
 
-function write_w90_r_dat(
-    filename::AbstractString;
-    Rvectors::AbstractVector,
-    r_x::AbstractVector,
-    r_y::AbstractVector,
-    r_z::AbstractVector,
-    header=default_header(),
-)
-    n_Rvecs = length(Rvectors)
-    n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
-    n_Rvecs == length(r_x) == length(r_y) == length(r_z) ||
-        throw(DimensionMismatch("inconsistent length"))
-
+function write_w90_r_dat(filename::AbstractString, rdat::RDat)
     open(filename, "w") do io
-        write_w90_r_dat(io; Rvectors, r_x, r_y, r_z, header)
+        write_w90_r_dat(io, rdat)
     end
 end

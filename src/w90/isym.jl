@@ -75,12 +75,56 @@ struct RepMatWann{N}
 end
 
 """
+Container for `prefix.isym` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct Isym{RB<:RepMatBand,RW<:RepMatWann}
+    "Header line"
+    header::String
+
+    "Number of symmetry operations"
+    n_symops::Int64
+
+    "Whether spinors are considered"
+    spinors::Bool
+
+    "Symmetry operations"
+    symops::Vector{SymOp}
+
+    "Number of IBZ kpoints"
+    nkpts_ibz::Int64
+
+    "IBZ kpoints in fractional coordinates"
+    kpoints_ibz::Vector{Vec3{Float64}}
+
+    "Number of bands"
+    n_bands::Int64
+
+    "Number of band representation matrices"
+    n_repmat_band::Int64
+
+    "Representation matrices for bands"
+    repmat_band::Vector{RB}
+
+    "Number of Wannier functions"
+    n_wann::Int64
+
+    "Representation matrices for Wannier functions"
+    repmat_wann::Vector{RW}
+end
+
+"""
     $(SIGNATURES)
 
 Read `prefix.isym`.
 
 # Return
-A named tuple with the following fields:
+A [`Isym`](@ref) with the following fields:
 - `header::String`: Header line.
 - `n_symops::Int64`: Number of symmetry operations.
 - `spinors::Bool`: Whether spinors are considered.
@@ -193,8 +237,8 @@ function read_isym(io::IO)
         repmat_wann[isym] = RepMatWann{n_wann}(isym, D)
     end
 
-    return (;
-        header,
+    return Isym(
+        String(header),
         n_symops,
         spinors,
         symops,

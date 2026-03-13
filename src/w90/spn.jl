@@ -2,6 +2,35 @@
 export read_spn, write_spn
 
 """
+Container for wannier90 `spn` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct Spn{T<:Real}
+    """Spin x matrices.
+    A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
+    """
+    Sx::Vector{Matrix{Complex{T}}}
+
+    """Spin y matrices.
+    A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
+    """
+    Sy::Vector{Matrix{Complex{T}}}
+
+    """Spin z matrices.
+    A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
+    """
+    Sz::Vector{Matrix{Complex{T}}}
+
+    "Header line"
+    header::String
+end
+
+"""
     read_spn(filename)
     read_spn(file, ::FortranText)
     read_spn(file, ::FortranBinary)
@@ -12,10 +41,7 @@ Read the wannier90 `spn` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `Sx`: spin x, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
-- `Sy`: spin y, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
-- `Sz`: spin z, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
-- `header`: 1st line of the file
+- [`Spn`](@ref) struct containing the data in the file
 """
 function read_spn end
 
@@ -49,7 +75,7 @@ function read_spn(io::IO, ::FortranText)
         "Did not reach the end of the file, maybe the file is corrupted or not in the correct format",
     )
 
-    return (; Sx, Sy, Sz, header)
+    return Spn(Sx, Sy, Sz, String(header))
 end
 
 function read_spn(filename::AbstractString, ::FortranText)
@@ -97,7 +123,7 @@ function read_spn(io::FortranFile, ::FortranBinary)
     )
     close(io)
 
-    return (; Sx, Sy, Sz, header)
+    return Spn(Sx, Sy, Sz, String(header))
 end
 
 function read_spn(filename::AbstractString, ::FortranBinary)
@@ -111,58 +137,31 @@ function read_spn(filename::AbstractString)
 end
 
 """
-    write_spn(filename, Sx, Sy, Sz; binary=false, header)
-    write_spn(file, Sx, Sy, Sz, ::FortranText; header)
-    write_spn(file, Sx, Sy, Sz, ::FortranBinary; header)
+    write_spn(filename, spn; binary=false)
+    write_spn(file, spn, ::FortranText)
+    write_spn(file, spn, ::FortranBinary)
 
 Write the `spn` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `Sx`: spin x, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
-- `Sy`: spin y, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
-- `Sz`: spin z, a length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix
+- `spn`: a [`Spn`](@ref) struct
 """
 function write_spn end
 
-"""
-    $(SIGNATURES)
-"""
-@inline function _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
-    n_kpts = length(Sx)
+function write_spn(io::IO, spn::Spn, ::FortranText)
+    n_kpts = length(spn.Sx)
     n_kpts > 0 || throw(ArgumentError("empty spn matrix"))
-    n_kpts == length(Sy) == length(Sz) ||
-        throw(DimensionMismatch("Sx, Sy, Sz must have the same length"))
-    n_bands = size(Sx[1], 1)
-    all(size.(Sx) .== Ref((n_bands, n_bands))) ||
-        throw(DimensionMismatch("Sx[ik] must be a square matrix"))
-    all(size.(Sy) .== Ref((n_bands, n_bands))) ||
-        throw(DimensionMismatch("Sy[ik] must be a square matrix"))
-    all(size.(Sz) .== Ref((n_bands, n_bands))) ||
-        throw(DimensionMismatch("Sz[ik] must be a square matrix"))
-end
+    n_bands = size(spn.Sx[1], 1)
 
-function write_spn(
-    io::IO,
-    Sx::AbstractVector,
-    Sy::AbstractVector,
-    Sz::AbstractVector,
-    ::FortranText;
-    header=default_header(),
-)
-    _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
-    n_kpts = length(Sx)
-    n_bands = size(Sx[1], 1)
-
-    header = strip(header)
-    write(io, header, "\n")
+    write(io, strip(spn.header), "\n")
 
     @printf(io, "%3d %4d\n", n_bands, n_kpts)
 
     for ik in 1:n_kpts
         for m in 1:n_bands
             for n in 1:m
-                for Si in (Sx, Sy, Sz)
+                for Si in (spn.Sx, spn.Sy, spn.Sz)
                     s = Si[ik][n, m]
                     @printf(io, "%26.16e  %26.16e\n", real(s), imag(s))
                 end
@@ -172,34 +171,20 @@ function write_spn(
     return nothing
 end
 
-function write_spn(
-    filename::AbstractString,
-    Sx::AbstractVector,
-    Sy::AbstractVector,
-    Sz::AbstractVector,
-    ::FortranText;
-    header=default_header(),
-)
+function write_spn(filename::AbstractString, spn::Spn, ::FortranText)
     open(filename, "w") do io
-        write_spn(io, Sx, Sy, Sz, FortranText(); header)
+        write_spn(io, spn, FortranText())
     end
     return nothing
 end
 
-function write_spn(
-    io::FortranFile,
-    Sx::AbstractVector,
-    Sy::AbstractVector,
-    Sz::AbstractVector,
-    ::FortranBinary;
-    header=default_header(),
-)
-    _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
-    n_kpts = length(Sx)
-    n_bands = size(Sx[1], 1)
+function write_spn(io::FortranFile, spn::Spn, ::FortranBinary)
+    n_kpts = length(spn.Sx)
+    n_kpts > 0 || throw(ArgumentError("empty spn matrix"))
+    n_bands = size(spn.Sx[1], 1)
 
     header_len = 60
-    write(io, FString(header_len, string(strip(header))))
+    write(io, FString(header_len, string(strip(spn.header))))
 
     # gfortran default integer is 4 bytes
     Tint = Int32
@@ -213,7 +198,7 @@ function write_spn(
         for m in 1:n_bands
             for n in 1:m
                 counter += 1
-                for (i, Si) in enumerate((Sx, Sy, Sz))
+                for (i, Si) in enumerate((spn.Sx, spn.Sy, spn.Sz))
                     spn_tmp[i, counter] = Si[ik][n, m]
                 end
             end
@@ -224,27 +209,12 @@ function write_spn(
     return nothing
 end
 
-function write_spn(
-    filename::AbstractString,
-    Sx::AbstractVector,
-    Sy::AbstractVector,
-    Sz::AbstractVector,
-    ::FortranBinary;
-    header=default_header(),
-)
+function write_spn(filename::AbstractString, spn::Spn, ::FortranBinary)
     io = FortranFile(filename, "w")
-    return write_spn(io, Sx, Sy, Sz, FortranBinary(); header)
+    return write_spn(io, spn, FortranBinary())
 end
 
-function write_spn(
-    filename::AbstractString,
-    Sx::AbstractVector,
-    Sy::AbstractVector,
-    Sz::AbstractVector;
-    binary=false,
-    header=default_header(),
-)
-    _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
+function write_spn(filename::AbstractString, spn::Spn; binary=false)
     format = fortran_format(; binary)
-    return write_spn(filename, Sx, Sy, Sz, format; header)
+    return write_spn(filename, spn, format)
 end

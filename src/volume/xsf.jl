@@ -4,6 +4,47 @@
 export read_xsf, write_xsf
 
 """
+Container for `xsf` structure and volumetric data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct Xsf{T<:Real}
+    "Primitive lattice vectors, each column is a primitive lattice vector in Å"
+    primvec::Union{Mat3{T},Nothing}
+
+    "Conventional lattice vectors, each column is a conventional lattice vector in Å"
+    convvec::Union{Mat3{T},Nothing}
+
+    "Atomic labels or numbers"
+    atoms::Union{Vector{String},Nothing}
+
+    "Atomic positions in Cartesian coordinates in Å"
+    atom_positions::Union{Vector{Vec3{T}},Nothing}
+
+    "Grid origin in Cartesian coordinates in Å"
+    origin::Union{Vec3{T},Nothing}
+
+    "Grid spanning vectors, each column is a spanning vector in Å"
+    span_vectors::Union{Mat3{T},Nothing}
+
+    "Fractional grid coordinates along first spanning vector"
+    X::Union{Vector{T},Nothing}
+
+    "Fractional grid coordinates along second spanning vector"
+    Y::Union{Vector{T},Nothing}
+
+    "Fractional grid coordinates along third spanning vector"
+    Z::Union{Vector{T},Nothing}
+
+    "Volumetric values, with shape (n_x, n_y, n_z)"
+    W::Union{Array{T,3},Nothing}
+end
+
+"""
     $(SIGNATURES)
 
 Read `xsf` file.
@@ -12,16 +53,7 @@ Read `xsf` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `primvec`: `3 * 3`, Å, each column is a primitive lattice vector
-- `convvec`: `3 * 3`, Å, each column is a conventional lattice vector
-- `atoms`: `n_atoms` String, atomic labels or numbers
-- `atom_positions`: length-`n_atoms` vector, Å, cartesian coordinates
-- `origin`: `3`, Å, origin of the grid
-- `span_vectors`: `3 * 3`, Å, each column is a spanning vector
-- `X`: `nx`, fractional coordinate of grid points along the first spanning vector
-- `Y`: `ny`, fractional coordinate of grid points along the second spanning vector
-- `Z`: `nz`, fractional coordinate of grid points along the third spanning vector
-- `W`: `nx * ny * nz`, volumetric data
+- [`Xsf`](@ref) struct containing the data in the file
 
 !!! note
 
@@ -61,15 +93,17 @@ function read_xsf(io::IO)
                 primvec = zeros(Float64, 3, 3)
                 for i in 1:3
                     line = strip(readline(io))
-                    primvec[:, i] = parse.(Float64, split(line))
+                    primvec[:, i] = parse_vector(split(line))
                 end
+                primvec = mat3(primvec)
             elseif startswith(line, "CONVVEC")
                 # conventional lattice, each column is a lattice vector
                 convvec = zeros(Float64, 3, 3)
                 for i in 1:3
                     line = strip(readline(io))
-                    convvec[:, i] = parse.(Float64, split(line))
+                    convvec[:, i] = parse_vector(split(line))
                 end
+                convvec = mat3(convvec)
             elseif startswith(line, "PRIMCOORD")
                 # read atom positions
                 line = strip(readline(io))
@@ -93,14 +127,15 @@ function read_xsf(io::IO)
             startswith(line, "BEGIN_DATAGRID_3D") ||
                 error("BEGIN_DATAGRID_3D not found in line: $line")
             # identifier = chopprefix(line, "BEGIN_DATAGRID_3D_")
-            ngx, ngy, ngz = parse.(Int, split(strip(readline(io))))
-            origin = parse.(Float64, split(strip(readline(io))))
+            ngx, ngy, ngz = parse_vector(split(strip(readline(io))), Int)
+            origin = vec3(parse_vector(split(strip(readline(io)))))
             # spanning vectors
             span_vectors = zeros(Float64, 3, 3)
             for i in 1:3
                 line = strip(readline(io))
-                span_vectors[:, i] = parse.(Float64, split(line))
+                span_vectors[:, i] = parse_vector(split(line))
             end
+            span_vectors = mat3(span_vectors)
             # column-major
             W = zeros(Float64, ngx, ngy, ngz)
             idx = 1
@@ -122,12 +157,12 @@ function read_xsf(io::IO)
 
     if !isnothing(W)
         n_x, n_y, n_z = size(W)
-        X = range(0, 1, n_x)
-        Y = range(0, 1, n_y)
-        Z = range(0, 1, n_z)
+        X = collect(range(0.0, 1.0, n_x))
+        Y = collect(range(0.0, 1.0, n_y))
+        Z = collect(range(0.0, 1.0, n_z))
     end
 
-    return (; primvec, convvec, atoms, atom_positions, origin, span_vectors, X, Y, Z, W)
+    return Xsf(primvec, convvec, atoms, atom_positions, origin, span_vectors, X, Y, Z, W)
 end
 
 function read_xsf(filename::AbstractString)
@@ -143,67 +178,64 @@ Write `xsf` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `lattice`: `3 * 3`, Å, each column is a lattice vector
-- `atom_positions`: length-`n_atoms` vector, fractional coordinates
-- `atom_numbers`: `n_atoms`, atomic numbers
-- `origin`: `3`, Å, origin of the grid
-- `span_vectors`: `3 * 3`, Å, each column is a spanning vector
-- `W`: `nx * ny * nz`, volumetric data
+- `xsf`: a [`Xsf`](@ref) struct
+
+!!! note
+
+    `xsf.atoms` must contain integer-parseable labels (atomic numbers).
+    If atom labels are strings (e.g. `"Si"`), convert them to atomic numbers first.
 """
-function write_xsf(
-    io::IO,
-    lattice::AbstractMatrix{T},
-    atom_positions::Vector{Vec3{T}},
-    atom_numbers::AbstractVector{Int},
-    origin::Union{AbstractVector{T},Nothing}=nothing,
-    span_vectors::Union{AbstractMatrix{T},Nothing}=nothing,
-    W::Union{AbstractArray{T,3},Nothing}=nothing,
-) where {T<:Real}
-    n_atoms = length(atom_numbers)
-    length(atom_positions) == n_atoms || throw(DimensionMismatch("incompatible n_atoms"))
-    size(lattice) == (3, 3) || throw(DimensionMismatch("incompatible lattice"))
-    isnothing(span_vectors) ||
-        size(span_vectors) == (3, 3) ||
-        throw(DimensionMismatch("incompatible span_vectors"))
+function write_xsf(io::IO, xsf::Xsf)
+    lattice = isnothing(xsf.primvec) ? xsf.convvec : xsf.primvec
 
-    # header
-    @printf(io, "%s\n", default_header())
+    if !isnothing(xsf.atoms)
+        atom_numbers = tryparse.(Int, xsf.atoms)
+        any(isnothing, atom_numbers) && throw(
+            ArgumentError(
+                "xsf.atoms contains non-integer labels; convert to atomic numbers first"
+            ),
+        )
+        atom_numbers = Int.(atom_numbers)
+        n_atoms = length(atom_numbers)
 
-    @printf(io, "CRYSTAL\n")
-    @printf(io, "PRIMVEC\n")
-    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 1]...)
-    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 2]...)
-    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 3]...)
-    @printf(io, "CONVVEC\n")
-    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 1]...)
-    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 2]...)
-    @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 3]...)
-    @printf(io, "PRIMCOORD\n")
-    @printf(io, "%d 1\n", n_atoms)
-    for i in 1:n_atoms
-        pos = lattice * atom_positions[i]
-        @printf(io, "%d %15.10f %15.10f %15.10f\n", atom_numbers[i], pos...)
+        @printf(io, "%s\n", default_header())
+        @printf(io, "CRYSTAL\n")
+        @printf(io, "PRIMVEC\n")
+        @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 1]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 2]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 3]...)
+        @printf(io, "CONVVEC\n")
+        @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 1]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 2]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", lattice[:, 3]...)
+        @printf(io, "PRIMCOORD\n")
+        @printf(io, "%d 1\n", n_atoms)
+        for i in 1:n_atoms
+            # xsf.atom_positions are already in Cartesian coordinates
+            pos = xsf.atom_positions[i]
+            @printf(io, "%d %15.10f %15.10f %15.10f\n", atom_numbers[i], pos...)
+        end
     end
 
-    if !any([isnothing(origin), isnothing(span_vectors), isnothing(W)])
+    if !any([isnothing(xsf.origin), isnothing(xsf.span_vectors), isnothing(xsf.W)])
         @printf(io, "\n")
         @printf(io, "BEGIN_BLOCK_DATAGRID_3D\n")
         @printf(io, "3D_field\n")
         @printf(io, "BEGIN_DATAGRID_3D_UNKNOWN\n")
 
-        n_x, n_y, n_z = size(W)
+        n_x, n_y, n_z = size(xsf.W)
         @printf(io, "%d %d %d\n", n_x, n_y, n_z)
-        @printf(io, "%15.10f %15.10f %15.10f\n", origin...)
-        @printf(io, "%15.10f %15.10f %15.10f\n", span_vectors[:, 1]...)
-        @printf(io, "%15.10f %15.10f %15.10f\n", span_vectors[:, 2]...)
-        @printf(io, "%15.10f %15.10f %15.10f\n", span_vectors[:, 3]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", xsf.origin...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", xsf.span_vectors[:, 1]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", xsf.span_vectors[:, 2]...)
+        @printf(io, "%15.10f %15.10f %15.10f\n", xsf.span_vectors[:, 3]...)
 
         # column-major
         ncol = 0
         for k in 1:n_z
             for j in 1:n_y
                 for i in 1:n_x
-                    @printf(io, " %13.5e", W[i, j, k])
+                    @printf(io, " %13.5e", xsf.W[i, j, k])
                     ncol += 1
                     if ncol == 6
                         @printf(io, "\n")
@@ -220,17 +252,9 @@ function write_xsf(
     return nothing
 end
 
-function write_xsf(
-    filename::AbstractString,
-    lattice::AbstractMatrix{T},
-    atom_positions::Vector{Vec3{T}},
-    atom_numbers::AbstractVector{Int},
-    origin::Union{AbstractVector{T},Nothing}=nothing,
-    span_vectors::Union{AbstractMatrix{T},Nothing}=nothing,
-    W::Union{AbstractArray{T,3},Nothing}=nothing,
-) where {T<:Real}
+function write_xsf(filename::AbstractString, xsf::Xsf)
     open(filename, "w") do io
-        write_xsf(io, lattice, atom_positions, atom_numbers, origin, span_vectors, W)
+        write_xsf(io, xsf)
     end
     return nothing
 end

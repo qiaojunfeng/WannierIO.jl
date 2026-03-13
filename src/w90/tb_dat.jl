@@ -1,19 +1,47 @@
 export read_w90_tb_dat, write_w90_tb_dat
 
 """
+Container for `prefix_tb.dat` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct TbDat{T<:Real,IT<:Integer}
+    "Lattice matrix, columns are lattice vectors in Å"
+    lattice::Mat3{T}
+
+    "``\\mathbf{R}``-vectors on which operators are defined"
+    Rvectors::Vector{Vec3{IT}}
+
+    "Degeneracies of each ``\\mathbf{R}``-vector"
+    Rdegens::Vector{IT}
+
+    "Hamiltonian matrices ``\\mathbf{H}(\\mathbf{R})``"
+    H::Vector{Matrix{Complex{T}}}
+
+    "x-component of position operator"
+    r_x::Vector{Matrix{Complex{T}}}
+
+    "y-component of position operator"
+    r_y::Vector{Matrix{Complex{T}}}
+
+    "z-component of position operator"
+    r_z::Vector{Matrix{Complex{T}}}
+
+    "Header line"
+    header::String
+end
+
+"""
     $(SIGNATURES)
 
 Read `prefix_tb.dat`.
 
 # Return
-- `lattice`: each column is a lattice vector in Å
-- `Rvectors`: ``\\mathbf{R}``-vectors on which operators are defined
-- `Rdegens`: degeneracies of each ``\\mathbf{R}``-vector
-- `H`: Hamiltonian ``\\mathbf{H}(\\mathbf{R})``
-- `r_x`: ``x``-component of position operator
-- `r_x`: ``y``-component of position operator
-- `r_x`: ``z``-component of position operator
-- `header`: the first line of the file
+- [`TbDat`](@ref) struct containing the data in the file
 """
 function read_w90_tb_dat(io::IO)
     header = strip(readline(io))
@@ -74,7 +102,7 @@ function read_w90_tb_dat(io::IO)
         end
     end
 
-    return (; lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, header)
+    return TbDat(lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, String(header))
 end
 
 function read_w90_tb_dat(filename::AbstractString)
@@ -88,36 +116,26 @@ end
 
 Write `prefix_tb.dat`.
 
-# Keyword arguments
-See the return values of [`read_w90_tb_dat`](@ref).
+# Arguments
+See the fields of [`TbDat`](@ref).
 """
-function write_w90_tb_dat(
-    io::IO;
-    lattice::AbstractMatrix,
-    Rvectors::AbstractVector,
-    Rdegens::AbstractVector,
-    H::AbstractVector,
-    r_x::AbstractVector,
-    r_y::AbstractVector,
-    r_z::AbstractVector,
-    header=default_header(),
-)
-    n_Rvecs = length(H)
+function write_w90_tb_dat(io::IO, tbdat::TbDat)
+    n_Rvecs = length(tbdat.H)
     n_Rvecs > 0 || error("empty H")
-    n_wann = size(H[1], 1)
+    n_wann = size(tbdat.H[1], 1)
 
-    println(io, strip(header))
+    println(io, strip(tbdat.header))
 
     # Å unit
-    @printf(io, "%21.16f    %21.16f    %21.16f\n", lattice[:, 1]...)
-    @printf(io, "%21.16f    %21.16f    %21.16f\n", lattice[:, 2]...)
-    @printf(io, "%21.16f    %21.16f    %21.16f\n", lattice[:, 3]...)
+    @printf(io, "%21.16f    %21.16f    %21.16f\n", tbdat.lattice[:, 1]...)
+    @printf(io, "%21.16f    %21.16f    %21.16f\n", tbdat.lattice[:, 2]...)
+    @printf(io, "%21.16f    %21.16f    %21.16f\n", tbdat.lattice[:, 3]...)
 
     @printf(io, "%d\n", n_wann)
     @printf(io, "%d\n", n_Rvecs)
 
     n_columns = 15
-    for (iR, degen) in enumerate(Rdegens)
+    for (iR, degen) in enumerate(tbdat.Rdegens)
         @printf(io, "%5d", degen)
         if mod(iR, n_columns) == 0
             println(io)
@@ -129,12 +147,12 @@ function write_w90_tb_dat(
 
     # Hamiltonian
     for iR in 1:n_Rvecs
-        @printf(io, "\n%5d %5d %5d\n", Rvectors[iR]...)
+        @printf(io, "\n%5d %5d %5d\n", tbdat.Rvectors[iR]...)
 
         for n in 1:n_wann
             for m in 1:n_wann
-                reH = real(H[iR][m, n])
-                imH = imag(H[iR][m, n])
+                reH = real(tbdat.H[iR][m, n])
+                imH = imag(tbdat.H[iR][m, n])
                 @printf(io, "%5d %5d   %15.8e %15.8e\n", m, n, reH, imH)
             end
         end
@@ -142,13 +160,13 @@ function write_w90_tb_dat(
 
     # WF position operator
     for iR in 1:n_Rvecs
-        @printf(io, "\n%5d %5d %5d\n", Rvectors[iR]...)
+        @printf(io, "\n%5d %5d %5d\n", tbdat.Rvectors[iR]...)
 
         for n in 1:n_wann
             for m in 1:n_wann
-                x = r_x[iR][m, n]
-                y = r_y[iR][m, n]
-                z = r_z[iR][m, n]
+                x = tbdat.r_x[iR][m, n]
+                y = tbdat.r_y[iR][m, n]
+                z = tbdat.r_z[iR][m, n]
                 @printf(
                     io,
                     "%5d %5d   %15.8e %15.8e %15.8e %15.8e %15.8e %15.8e\n",
@@ -168,21 +186,8 @@ function write_w90_tb_dat(
     return nothing
 end
 
-function write_w90_tb_dat(
-    filename::AbstractString;
-    lattice::AbstractMatrix,
-    Rvectors::AbstractVector,
-    Rdegens::AbstractVector,
-    H::AbstractVector,
-    r_x::AbstractVector,
-    r_y::AbstractVector,
-    r_z::AbstractVector,
-    header=default_header(),
-)
-    n_Rvecs = length(H)
-    n_Rvecs > 0 || error("empty H")
-
+function write_w90_tb_dat(filename::AbstractString, tbdat::TbDat)
     open(filename, "w") do io
-        write_w90_tb_dat(io; lattice, Rvectors, Rdegens, H, r_x, r_y, r_z, header)
+        write_w90_tb_dat(io, tbdat)
     end
 end

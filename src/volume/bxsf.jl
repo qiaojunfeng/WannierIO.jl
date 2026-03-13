@@ -4,6 +4,38 @@
 export read_bxsf, write_bxsf
 
 """
+Container for `bxsf` volumetric band-grid data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct Bxsf{T<:Real}
+    "Fermi energy in eV"
+    fermi_energy::T
+
+    "Grid origin in reciprocal-space coordinates in Å⁻¹"
+    origin::Vec3{T}
+
+    "Spanning vectors, each column is a spanning vector in Å⁻¹"
+    span_vectors::Mat3{T}
+
+    "Fractional grid coordinates along first spanning vector"
+    X::Vector{T}
+
+    "Fractional grid coordinates along second spanning vector"
+    Y::Vector{T}
+
+    "Fractional grid coordinates along third spanning vector"
+    Z::Vector{T}
+
+    "Band energies on the grid, in eV, with shape (n_bands, n_x, n_y, n_z)"
+    E::Array{T,4}
+end
+
+"""
     $(SIGNATURES)
 
 Read `bxsf` file.
@@ -12,13 +44,7 @@ Read `bxsf` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `fermi_energy`: Fermi energy in eV
-- `origin`: `3`, Å⁻¹, origin of the grid
-- `span_vectors`: `3 * 3`, Å⁻¹, each column is a spanning vector
-- `X`: `nx`, fractional coordinate of grid points along the first spanning vector
-- `Y`: `ny`, fractional coordinate of grid points along the second spanning vector
-- `Z`: `nz`, fractional coordinate of grid points along the third spanning vector
-- `E`: `n_bands * nx * ny * nz`, eigenvalues at each grid point
+- [`Bxsf`](@ref) struct containing the data in the file
 """
 function read_bxsf(io::IO)
     fermi_energy = nothing
@@ -53,13 +79,14 @@ function read_bxsf(io::IO)
             # identifier = chopprefix(line, "BEGIN_BANDGRID_3D_")
             n_bands = parse(Int, strip(readline(io)))
             n_x, n_y, n_z = parse.(Int, split(strip(readline(io))))
-            origin = parse.(Float64, split(strip(readline(io))))
+            origin = vec3(parse_vector(split(strip(readline(io)))))
             # spanning vectors
             span_vectors = zeros(Float64, 3, 3)
             for i in 1:3
                 line = strip(readline(io))
-                span_vectors[:, i] = parse.(Float64, split(line))
+                span_vectors[:, i] = parse_vector(split(line))
             end
+            span_vectors = mat3(span_vectors)
             E = zeros(Float64, n_bands, n_x, n_y, n_z)
             # temp storage for each band, but in row-major
             Eib = similar(E, n_z, n_y, n_x)
@@ -90,12 +117,12 @@ function read_bxsf(io::IO)
         _, n_x, n_y, n_z = size(E)
         # the kpoint grid is a general grid, i.e., it includes the last kpoint
         # which is periodic to the first kpoint
-        X = range(0, 1, n_x)
-        Y = range(0, 1, n_y)
-        Z = range(0, 1, n_z)
+        X = collect(range(0.0, 1.0, n_x))
+        Y = collect(range(0.0, 1.0, n_y))
+        Z = collect(range(0.0, 1.0, n_z))
     end
 
-    return (; fermi_energy, origin, span_vectors, X, Y, Z, E)
+    return Bxsf(fermi_energy, origin, span_vectors, X, Y, Z, E)
 end
 
 function read_bxsf(filename::AbstractString)
@@ -111,38 +138,30 @@ Write `bxsf` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `fermi_energy`: Fermi energy in eV
-- `origin`: `3`, Å⁻¹, origin of the grid
-- `span_vectors`: `3 * 3`, Å⁻¹, each column is a spanning vector
-- `E`: `n_bands * nx * ny * nz`, eigenvalues at each grid point
+- `bxsf`: a [`Bxsf`](@ref) struct
 """
-function write_bxsf(
-    io::IO,
-    fermi_energy::T,
-    origin::AbstractVector{T},
-    span_vectors::AbstractMatrix{T},
-    E::AbstractArray{T,4},
-) where {T<:Real}
-    size(origin) == (3,) || throw(DimensionMismatch("origin should be a 3-element vector"))
-    size(span_vectors) == (3, 3) ||
-        throw(DimensionMismatch("span_vectors should be a 3×3 matrix"))
+function write_bxsf(io::IO, bxsf::Bxsf)
+    size(bxsf.origin) == (3,) ||
+        throw(DimensionMismatch("origin should be a 3-element vector"))
+    size(bxsf.span_vectors) == (3, 3) ||
+        throw(DimensionMismatch("span_vectors should be a 3x3 matrix"))
 
     # header
     @printf(io, "BEGIN_INFO\n")
     @printf(io, "  %s\n", default_header())
-    @printf(io, "  Fermi Energy: %21.16f\n", fermi_energy)
+    @printf(io, "  Fermi Energy: %21.16f\n", bxsf.fermi_energy)
     @printf(io, "END_INFO\n\n")
 
     @printf(io, "BEGIN_BLOCK_BANDGRID_3D\n")
     @printf(io, "from_WannierIO.jl_code\n")
     @printf(io, "BEGIN_BANDGRID_3D_fermi\n")
-    n_bands, n_x, n_y, n_z = size(E)
+    n_bands, n_x, n_y, n_z = size(bxsf.E)
     @printf(io, "%d\n", n_bands)
     @printf(io, "%d %d %d\n", n_x, n_y, n_z)
-    @printf(io, "%12.7f %12.7f %12.7f\n", origin...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 1]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 2]...)
-    @printf(io, "%12.7f %12.7f %12.7f\n", span_vectors[:, 3]...)
+    @printf(io, "%12.7f %12.7f %12.7f\n", bxsf.origin...)
+    @printf(io, "%12.7f %12.7f %12.7f\n", bxsf.span_vectors[:, 1]...)
+    @printf(io, "%12.7f %12.7f %12.7f\n", bxsf.span_vectors[:, 2]...)
+    @printf(io, "%12.7f %12.7f %12.7f\n", bxsf.span_vectors[:, 3]...)
 
     for ib in 1:n_bands
         @printf(io, "BAND: %d\n", ib)
@@ -151,7 +170,7 @@ function write_bxsf(
         for i in 1:n_x
             for j in 1:n_y
                 for k in 1:n_z
-                    @printf(io, " %16.8e", E[ib, i, j, k])
+                    @printf(io, " %16.8e", bxsf.E[ib, i, j, k])
                     ncol += 1
                     if ncol == 6
                         @printf(io, "\n")
@@ -168,15 +187,9 @@ function write_bxsf(
     return nothing
 end
 
-function write_bxsf(
-    filename::AbstractString,
-    fermi_energy::T,
-    origin::AbstractVector{T},
-    span_vectors::AbstractMatrix{T},
-    E::AbstractArray{T,4},
-) where {T<:Real}
+function write_bxsf(filename::AbstractString, bxsf::Bxsf)
     open(filename, "w") do io
-        write_bxsf(io, fermi_energy, origin, span_vectors, E)
+        write_bxsf(io, bxsf)
     end
     return nothing
 end

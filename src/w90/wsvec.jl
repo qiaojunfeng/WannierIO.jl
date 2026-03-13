@@ -1,19 +1,63 @@
 export read_w90_wsvec, write_w90_wsvec
 
 """
+Container for `prefix_wsvec.dat` data.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct WsvecDat{IT<:Integer}
+    """Whether MDRS interpolation is enabled.
+    i.e. the `use_ws_distance` in the header.
+    """
+    mdrs::Bool
+
+    "The ``\\mathbf{R}`` vectors"
+    Rvectors::Vector{Vec3{IT}}
+
+    "MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
+    Tvectors::Union{Vector{Matrix{Vector{Vec3{IT}}}},Nothing}
+
+    "Degeneracies of MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
+    Tdegens::Union{Vector{Matrix{IT}},Nothing}
+
+    "Number of Wannier functions"
+    n_wann::Int
+
+    "Header line"
+    header::String
+end
+
+"""
+For Wigner-Seitz Rvectors, needs to provide a `n_wann` for number of Wannier functions.
+"""
+function WsvecDat(Rvectors::Vector{<:Vec3}, n_wann::Integer, header::String)
+    return WsvecDat(false, Rvectors, nothing, nothing, n_wann, header)
+end
+
+"""
+For MDRS Rvectors, the `n_wann` is optional and can be automatically determined from the `Tvectors`.
+"""
+function WsvecDat(
+    Rvectors::Vector{<:Vec3},
+    Tvectors::Vector{<:Matrix},
+    Tdegens::Vector{<:Matrix},
+    header::String,
+)
+    n_wann = size(Tvectors[1], 1)
+    return WsvecDat(true, Rvectors, Tvectors, Tdegens, n_wann, header)
+end
+
+"""
     $(SIGNATURES)
 
 Read `prefix_wsvec.dat`.
 
 # Return
-- `mdrs`: whether use MDRS interpolation, i.e. the `use_ws_distance` in the header
-- `Rvectors`: the ``\\mathbf{R}``-vectors
-- `Tvectors`: the ``\\mathbf{T}_{m n \\mathbf{R}}``-vectors.
-    Returned only `mdrs = true`.
-- `Tdegens`: the degeneracies of ``\\mathbf{T}_{m n \\mathbf{R}}``-vectors.
-    Returned only `mdrs = true`.
-- `n_wann`: number of WFs
-- `header`: the first line of the file
+- [`WsvecDat`](@ref) struct containing the data in the file
 """
 function read_w90_wsvec(io::IO)
     header = strip(readline(io))
@@ -70,7 +114,7 @@ function read_w90_wsvec(io::IO)
     end
 
     if !mdrs
-        return (; mdrs, Rvectors, n_wann, header)
+        return WsvecDat(Rvectors, n_wann, String(header))
     end
 
     # Objective: reorder Tvectors_flat -> Tvectors, Tdegens_flat -> Tdegens
@@ -90,7 +134,7 @@ function read_w90_wsvec(io::IO)
         end
     end
 
-    return (; mdrs, Rvectors, Tvectors, Tdegens, n_wann, header)
+    return WsvecDat(Rvectors, Tvectors, Tdegens, String(header))
 end
 
 function read_w90_wsvec(filename::AbstractString)
@@ -103,60 +147,24 @@ end
     $(SIGNATURES)
 
 Write `prefix_wsvec.dat`.
-
-# Keyword Arguments
-- `n_wann`: for Wigner-Seitz Rvectors, needs to provide a `n_wann` for number of
-    Wannier functions; for MDRS Rvectors, the `n_wann` is optional and can be
-    automatically determined from the `Tvectors`
-- `Tvectors` and `Tdegens`: if provided, write in MDRS format; otherwise, write in
-    Wigner-Seitz format
-Also see the return values of [`read_w90_wsvec`](@ref).
 """
-function write_w90_wsvec(
-    io::IO;
-    Rvectors::AbstractVector,
-    n_wann::Union{Integer,Nothing}=nothing,
-    Tvectors::Union{AbstractVector,Nothing}=nothing,
-    Tdegens::Union{AbstractVector,Nothing}=nothing,
-    header=default_header(),
-)
-    (
-        (!isnothing(Tvectors) && !isnothing(Tdegens)) ||
-        (isnothing(Tvectors) && isnothing(Tdegens))
-    ) || throw(
-        ArgumentError("Tvectors and Tdegens must be both nothing or both not nothing")
-    )
-    mdrs = !isnothing(Tvectors)
-    n_Rvecs = length(Rvectors)
-    n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
-    if mdrs
-        length(Tvectors) == length(Tdegens) == n_Rvecs ||
-            throw(DimensionMismatch("different n_Rvecs in Rvectors, Tvectors, and Tdegens"))
-        if isnothing(n_wann)
-            n_wann = size(Tvectors[1], 1)
-        else
-            n_wann == size(Tvectors[1], 1) ||
-                throw(DimensionMismatch("different n_wann in Tvectors and n_wann"))
-        end
+function write_w90_wsvec(io::IO, wsvec::WsvecDat)
+    if wsvec.mdrs
+        println(io, wsvec.header * "  with use_ws_distance=.true.")
     else
-        !isnothing(n_wann) ||
-            throw(ArgumentError("n_wann must be provided for Wigner-Seitz format"))
-    end
-    if mdrs
-        println(io, header * "  with use_ws_distance=.true.")
-    else
-        println(io, header * "  with use_ws_distance=.false.")
+        println(io, wsvec.header * "  with use_ws_distance=.false.")
     end
 
+    n_Rvecs = length(wsvec.Rvectors)
     for iR in 1:n_Rvecs
-        R = Rvectors[iR]
-        for m in 1:n_wann
-            for n in 1:n_wann
+        R = wsvec.Rvectors[iR]
+        for m in 1:wsvec.n_wann
+            for n in 1:wsvec.n_wann
                 @printf(io, "%5d %5d %5d %5d %5d\n", R..., m, n)
 
-                if mdrs
-                    @printf(io, "%5d\n", Tdegens[iR][m, n])
-                    for T in Tvectors[iR][m, n]
+                if wsvec.mdrs
+                    @printf(io, "%5d\n", wsvec.Tdegens[iR][m, n])
+                    for T in wsvec.Tvectors[iR][m, n]
                         @printf(io, "%5d %5d %5d\n", T...)
                     end
                 else
@@ -170,20 +178,8 @@ function write_w90_wsvec(
     return nothing
 end
 
-function write_w90_wsvec(
-    filename::AbstractString;
-    Rvectors::AbstractVector,
-    n_wann::Union{Integer,Nothing}=nothing,
-    Tvectors::Union{AbstractVector,Nothing}=nothing,
-    Tdegens::Union{AbstractVector,Nothing}=nothing,
-    header=default_header(),
-)
-    mdrs = !isnothing(Tvectors)
-    n_Rvecs = length(Rvectors)
-    if mdrs && isnothing(n_wann)
-        n_wann = size(Tvectors[1], 1)
-    end
+function write_w90_wsvec(filename::AbstractString, wsvec::WsvecDat)
     open(filename, "w") do io
-        write_w90_wsvec(io; Rvectors, n_wann, Tvectors, Tdegens, header)
+        write_w90_wsvec(io, wsvec)
     end
 end
