@@ -74,14 +74,14 @@ function read_amn(io::IO, ::FortranBinaryStream)
     return (; A, header)
 end
 
-function read_amn(filename::AbstractString, format::FileFormat)
+function read_amn(filename::AbstractString, format::AbstractFileFormat)
     return open(filename) do io
         read_amn(io, format)
     end
 end
 
 function read_amn(file::Union{IO,AbstractString})
-    format = isbinary(file) ? FortranBinaryStream() : FortranText()
+    format = detect_fortran_format(file; stream=true)
     return read_amn(file, format)
 end
 
@@ -166,7 +166,10 @@ function write_amn(
 end
 
 function write_amn(
-    filename::AbstractString, A::AbstractVector, format::FileFormat; header=default_header()
+    filename::AbstractString,
+    A::AbstractVector,
+    format::AbstractFileFormat;
+    header=default_header(),
 )
     open(filename, "w") do io
         write_amn(io, A, format; header)
@@ -177,6 +180,6 @@ end
 function write_amn(
     file::Union{IO,AbstractString}, A::AbstractVector; header=default_header(), binary=false
 )
-    format = binary ? FortranBinaryStream() : FortranText()
+    format = fortran_format(; binary, stream=true)
     return write_amn(file, A, format; header)
 end

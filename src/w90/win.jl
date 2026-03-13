@@ -6,8 +6,8 @@ export read_win, write_win
 
 """
     read_win(file; standardize=true)
-    read_win(file, ::Wannier90Text; standardize=true)
-    read_win(file, ::Wannier90Toml; standardize=true)
+    read_win(file, ::W90InputText; standardize=true)
+    read_win(file, ::W90InputToml; standardize=true)
 
 Read wannier90 input `win` file.
 
@@ -22,7 +22,7 @@ Read wannier90 input `win` file.
 """
 function read_win end
 
-function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
+function read_win(io::IO, ::W90InputText; standardize::Bool=true)
     params = OrderedDict{String,Any}()
 
     while !eof(io)
@@ -43,20 +43,22 @@ function read_win(io::IO, ::Wannier90Text; standardize::Bool=true)
     return params
 end
 
-function read_win(io::IO, ::Wannier90Toml; standardize::Bool=true)
+function read_win(io::IO, ::W90InputToml; standardize::Bool=true)
     win = read_toml(io)
     standardize && standardize_win!(win)
     return win
 end
 
-function read_win(filename::AbstractString, format::FileFormat; standardize::Bool=true)
+function read_win(
+    filename::AbstractString, format::AbstractFileFormat; standardize::Bool=true
+)
     return open(filename) do io
         read_win(io, format; standardize)
     end
 end
 
 function read_win(file::Union{IO,AbstractString}; standardize::Bool=true)
-    format = istoml(file) ? Wannier90Toml() : Wannier90Text()
+    format = detect_w90input_format(file)
     win = read_win(file, format; standardize)
     return win
 end
@@ -429,8 +431,8 @@ end
 
 """
     write_win(file, params; header)
-    write_win(file, params, ::Wannier90Text; header)
-    write_win(file, params, ::Wannier90Toml; header)
+    write_win(file, params, ::W90InputText; header)
+    write_win(file, params, ::W90InputToml; header)
 
 Write input parameters into a wannier90 `win` file.
 
@@ -492,7 +494,7 @@ write_win("silicon.win", params)
 """
 function write_win end
 
-function write_win(io::IO, params::AbstractDict, ::Wannier90Text; header=default_header())
+function write_win(io::IO, params::AbstractDict, ::W90InputText; header=default_header())
     _win_check_required_params(params)
 
     # Copy params to an OrderedDict, to avoid modifying the input `params`.
@@ -528,7 +530,7 @@ function write_win(io::IO, params::AbstractDict, ::Wannier90Text; header=default
     return nothing
 end
 
-function write_win(io::IO, params::AbstractDict, ::Wannier90Toml; header=default_header())
+function write_win(io::IO, params::AbstractDict, ::W90InputToml; header=default_header())
     _win_check_required_params(params)
     isnothing(header) || println(io, header, "\n")
     write_toml(io, params)
@@ -538,7 +540,7 @@ end
 function write_win(
     filename::AbstractString,
     params::AbstractDict,
-    format::FileFormat;
+    format::AbstractFileFormat;
     header=default_header(),
 )
     open(filename, "w") do io
@@ -549,7 +551,7 @@ end
 function write_win(
     file::Union{IO,AbstractString}, params::AbstractDict; header=default_header()
 )
-    return write_win(file, params, Wannier90Text(); header)
+    return write_win(file, params, W90InputText(); header)
 end
 
 """

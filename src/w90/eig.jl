@@ -90,14 +90,14 @@ function read_eig(io::IO, ::FortranBinaryStream)
     return eigenvalues
 end
 
-function read_eig(filename::AbstractString, format::FileFormat)
+function read_eig(filename::AbstractString, format::AbstractFileFormat)
     return open(filename) do io
         read_eig(io, format)
     end
 end
 
 function read_eig(file::Union{IO,AbstractString})
-    format = isbinary(file) ? FortranBinaryStream() : FortranText()
+    format = detect_fortran_format(file; stream=true)
     return read_eig(file, format)
 end
 
@@ -147,7 +147,7 @@ function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
 end
 
 function write_eig(
-    filename::AbstractString, eigenvalues::AbstractVector, format::FileFormat
+    filename::AbstractString, eigenvalues::AbstractVector, format::AbstractFileFormat
 )
     open(filename, "w") do io
         write_eig(io, eigenvalues, format)
@@ -157,6 +157,6 @@ end
 function write_eig(
     file::Union{IO,AbstractString}, eigenvalues::AbstractVector; binary=false
 )
-    format = binary ? FortranBinaryStream() : FortranText()
+    format = fortran_format(; binary, stream=true)
     write_eig(file, eigenvalues, format)
 end

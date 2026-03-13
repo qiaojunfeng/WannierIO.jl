@@ -106,7 +106,7 @@ function read_spn(filename::AbstractString, ::FortranBinary)
 end
 
 function read_spn(filename::AbstractString)
-    format = isbinary(filename) ? FortranBinary() : FortranText()
+    format = detect_fortran_format(filename)
     return read_spn(filename, format)
 end
 
@@ -245,6 +245,6 @@ function write_spn(
     header=default_header(),
 )
     _check_dimensions_Sx_Sy_Sz(Sx, Sy, Sz)
-    format = binary ? FortranBinary() : FortranText()
+    format = fortran_format(; binary)
     return write_spn(filename, Sx, Sy, Sz, format; header)
 end

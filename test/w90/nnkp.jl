@@ -3,7 +3,7 @@
     nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp")
 
     WRITE_TOML = false
-    WRITE_TOML && write_nnkp("/tmp/Si2_valence.nnkp.toml", nnkp, WannierIO.Wannier90Toml())
+    WRITE_TOML && write_nnkp("/tmp/Si2_valence.nnkp.toml", nnkp, WannierIO.W90InputToml())
 
     test_data = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp.toml")
     # make their keys unordered for comparison
@@ -27,7 +27,7 @@ end
         nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp.toml")
 
         tmpfile = tempname(; cleanup=true)
-        write_nnkp(tmpfile, nnkp, WannierIO.Wannier90Toml())
+        write_nnkp(tmpfile, nnkp, WannierIO.W90InputToml())
 
         nnkp2 = read_nnkp(tmpfile)
         @test nnkp == nnkp2
@@ -40,7 +40,7 @@ end
     @test nnkp["auto_projections"] == 12
 
     tmpfile = tempname(; cleanup=true)
-    write_nnkp(tmpfile, nnkp, WannierIO.Wannier90Toml())
+    write_nnkp(tmpfile, nnkp, WannierIO.W90InputToml())
     nnkp2 = read_nnkp(tmpfile)
     @test nnkp["auto_projections"] == nnkp2["auto_projections"]
 end

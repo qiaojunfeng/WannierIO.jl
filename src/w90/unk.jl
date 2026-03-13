@@ -75,7 +75,7 @@ function read_unk(filename::AbstractString, ::FortranBinary)
 end
 
 function read_unk(filename::AbstractString)
-    format = isbinary(filename) ? FortranBinary() : FortranText()
+    format = detect_fortran_format(filename)
     return read_unk(filename, format)
 end
 
@@ -151,6 +151,6 @@ function write_unk(
 end
 
 function write_unk(filename::AbstractString, ik, Ψ; binary=false)
-    format = binary ? FortranBinary() : FortranText()
+    format = fortran_format(; binary)
     return write_unk(filename, ik, Ψ, format)
 end

@@ -39,8 +39,8 @@ Base.NamedTuple(o::HydrogenOrbital) = (; o.center, o.n, o.l, o.m, o.α, o.zaxis,
 
 """
     read_nnkp(file)
-    read_nnkp(file, ::Wannier90Text)
-    read_nnkp(file, ::Wannier90Toml)
+    read_nnkp(file, ::W90InputText)
+    read_nnkp(file, ::W90InputToml)
 
 Read wannier90 `nnkp` file.
 
@@ -66,7 +66,7 @@ The 1st version auto detects the format and parse it.
 """
 function read_nnkp end
 
-function read_nnkp(io::IO, ::Wannier90Text)
+function read_nnkp(io::IO, ::W90InputText)
     read_array(type::Type) = map(x -> parse(type, x), split(readline(io)))
 
     lattice = zeros(Float64, 3, 3)
@@ -176,7 +176,7 @@ function read_nnkp(io::IO, ::Wannier90Text)
     return res
 end
 
-function read_nnkp(io::IO, ::Wannier90Toml)
+function read_nnkp(io::IO, ::W90InputToml)
     nnkp = read_toml(io)
 
     # Some following cleanups
@@ -191,14 +191,14 @@ function read_nnkp(io::IO, ::Wannier90Toml)
     return nnkp
 end
 
-function read_nnkp(filename::AbstractString, format::FileFormat)
+function read_nnkp(filename::AbstractString, format::AbstractFileFormat)
     return open(filename) do io
         read_nnkp(io, format)
     end
 end
 
 function read_nnkp(file::Union{IO,AbstractString})
-    format = istoml(file) ? Wannier90Toml() : Wannier90Text()
+    format = detect_w90input_format(file)
     nnkp = read_nnkp(file, format)
     return nnkp
 end
@@ -215,8 +215,8 @@ end
 
 """
     write_nnkp(file, params; header)
-    write_nnkp(file, params, ::Wannier90Text; header)
-    write_nnkp(file, params, ::Wannier90Toml; header)
+    write_nnkp(file, params, ::W90InputText; header)
+    write_nnkp(file, params, ::W90InputToml; header)
 
 Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
 
@@ -251,7 +251,7 @@ The following keys are optional:
 """
 function write_nnkp end
 
-function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Text; header=default_header())
+function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header=default_header())
     params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
 
@@ -354,7 +354,7 @@ function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Text; header=defaul
     return nothing
 end
 
-function write_nnkp(io::IO, params::AbstractDict, ::Wannier90Toml; header=default_header())
+function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header=default_header())
     params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
     kpb_k = params["kpb_k"]
@@ -370,7 +370,7 @@ end
 function write_nnkp(
     filename::AbstractString,
     params::AbstractDict,
-    format::FileFormat;
+    format::AbstractFileFormat;
     header=default_header(),
 )
     open(filename, "w") do io
@@ -381,6 +381,6 @@ end
 function write_nnkp(
     file::Union{IO,AbstractString}, params::AbstractDict; header=default_header()
 )
-    format = Wannier90Text()
+    format = w90input_format()
     write_nnkp(file, params, format; header)
 end
