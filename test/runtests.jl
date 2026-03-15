@@ -2,10 +2,11 @@ using TestItemRunner
 using WannierIO
 using Documenter
 
-# Use local artifacts, if they are changed locally.
-# macro artifact_str(path)
-#     joinpath(Sys.homedir(), "git/WannierDatasets/datasets", path)
-# end
+#= Use local artifacts, if they are changed locally.
+macro artifact_str(path)
+    joinpath(Sys.homedir(), "git/WannierDatasets/datasets", path)
+end
+=#
 
 # Get filter strings from command line arguments if provided
 # Usage: julia --project test/runtests.jl "w90/amn.jl" "util/parser.jl"
