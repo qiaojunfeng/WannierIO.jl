@@ -29,6 +29,7 @@ include("util/header.jl")
 include("util/toml.jl")
 include("util/parser.jl")
 include("util/compare.jl")
+include("util/Rvector.jl")
 
 using FortranFiles: FortranFile, FString, trimstring, Record
 
