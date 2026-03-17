@@ -30,6 +30,27 @@ struct Spn{T<:Real}
     Sz::Vector{Matrix{Complex{T}}}
 end
 
+function Base.show(io::IO, spn::Spn)
+    n_kpts = length(spn.Sx)
+    n_bands = n_kpts == 0 ? 0 : size(spn.Sx[1], 1)
+    print(io, "Spn(n_kpts=$(n_kpts), n_bands=$(n_bands))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", spn::Spn)
+    n_kpts = length(spn.Sx)
+    n_bands = n_kpts == 0 ? 0 : size(spn.Sx[1], 1)
+
+    print(
+        io,
+        """Spn(
+          header: $(spn.header)
+          n_kpts: $(n_kpts)
+          n_bands: $(n_bands)
+          Sx, Sy, Sz: Vector{Matrix{Complex}}($(n_bands)×$(n_bands))
+        )""",
+    )
+end
+
 """
     read_spn(filename)
     read_spn(file, ::FortranText)

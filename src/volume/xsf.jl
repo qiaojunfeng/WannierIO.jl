@@ -44,6 +44,33 @@ struct Xsf{T<:Real}
     W::Union{Array{T,3},Nothing}
 end
 
+function Base.show(io::IO, xsf::Xsf)
+    n_x = isnothing(xsf.X) ? 0 : length(xsf.X)
+    n_y = isnothing(xsf.Y) ? 0 : length(xsf.Y)
+    n_z = isnothing(xsf.Z) ? 0 : length(xsf.Z)
+    n_atoms = isnothing(xsf.atom_positions) ? 0 : length(xsf.atom_positions)
+    print(io, "Xsf(n_atoms=$(n_atoms), grid=$(n_x)×$(n_y)×$(n_z))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", xsf::Xsf)
+    n_x = isnothing(xsf.X) ? 0 : length(xsf.X)
+    n_y = isnothing(xsf.Y) ? 0 : length(xsf.Y)
+    n_z = isnothing(xsf.Z) ? 0 : length(xsf.Z)
+    n_atoms = isnothing(xsf.atom_positions) ? 0 : length(xsf.atom_positions)
+
+    print(
+        io,
+        """Xsf(
+          n_atoms: $(n_atoms)
+          grid: $(n_x)×$(n_y)×$(n_z)
+          primvec: $(isnothing(xsf.primvec) ? "nothing" : "present")
+          convvec: $(isnothing(xsf.convvec) ? "nothing" : "present")
+          span_vectors: $(isnothing(xsf.span_vectors) ? "nothing" : "present")
+          volumetric data W: $(isnothing(xsf.W) ? "nothing" : "present")
+        )""",
+    )
+end
+
 """
     $(SIGNATURES)
 

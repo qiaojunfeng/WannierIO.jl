@@ -4,6 +4,7 @@
 
     tbdat = WannierIO.read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
 
+    # lossless round-trip (ComplexF64 keeps full precision)
     csc = sparsify(
         tbdat.H, WannierIO.SparseOption(; atol=0.0, value_type=ComplexF64, index_type=Int32)
     )
@@ -22,6 +23,7 @@ end
     tbdat = WannierIO.read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
     dpack = pack(tbdat)
 
+    # lossless round-trip (ComplexF64 keeps full precision)
     spack = sparsify(
         dpack, WannierIO.SparseOption(; atol=0.0, value_type=ComplexF64, index_type=Int32)
     )
@@ -49,6 +51,7 @@ end
     )
     dpack = pack(tbdat, wsvec)
 
+    # reduced precision round-trip
     spack = sparsify(
         dpack, WannierIO.SparseOption(; atol=0.0, value_type=Float32, index_type=Int16)
     )
@@ -61,7 +64,26 @@ end
     @test spack.n_wann == Int16(dpack.n_wann)
     @test dpack32 isa WannierIO.OperatorPack{Float32,Int16}
     @test dpack64 isa WannierIO.OperatorPack{Float64,Int16}
+    @test dpack32.lattice ≈ dpack.lattice
     @test dpack32.Rvectors == WannierIO.Vec3{Int16}.(dpack.Rvectors)
     @test dpack32.operators["H"] ≈ dpack.operators["H"]
     @test dpack64.operators["H"] ≈ [ComplexF64.(O) for O in dpack32.operators["H"]]
+end
+
+@testitem "sparsify/densify atol" begin
+    using LazyArtifacts
+
+    tbdat = WannierIO.read_w90_tb_dat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
+    dpack = pack(tbdat)
+
+    # reduced precision round-trip
+    opt = WannierIO.SparseOption()
+    spack = sparsify(dpack)
+
+    for name in keys(dpack.operators)
+        sop = spack.operators[name]
+        dop = dpack.operators[name]
+        @test all(isapprox.(sop, dop; atol=(opt.atol * 10)))
+        @test !all(isapprox.(sop, dop; atol=(opt.atol / 10)))
+    end
 end

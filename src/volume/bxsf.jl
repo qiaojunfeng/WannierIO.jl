@@ -35,6 +35,35 @@ struct Bxsf{T<:Real}
     E::Array{T,4}
 end
 
+function Base.show(io::IO, bxsf::Bxsf)
+    n_bands = size(bxsf.E, 1)
+    n_x = length(bxsf.X)
+    n_y = length(bxsf.Y)
+    n_z = length(bxsf.Z)
+    print(io, "Bxsf(n_bands=$(n_bands), grid=$(n_x)×$(n_y)×$(n_z))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", bxsf::Bxsf)
+    n_bands = size(bxsf.E, 1)
+    n_x = length(bxsf.X)
+    n_y = length(bxsf.Y)
+    n_z = length(bxsf.Z)
+
+    print(
+        io,
+        """Bxsf(
+          Fermi energy: $(bxsf.fermi_energy) eV
+          n_bands: $(n_bands)
+          grid: $(n_x)×$(n_y)×$(n_z)
+          origin (Å⁻¹): $(bxsf.origin)
+          span_vectors:
+            b₁ = $(bxsf.span_vectors[:, 1])
+            b₂ = $(bxsf.span_vectors[:, 2])
+            b₃ = $(bxsf.span_vectors[:, 3])
+        )""",
+    )
+end
+
 """
     $(SIGNATURES)
 

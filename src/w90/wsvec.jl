@@ -31,6 +31,27 @@ struct WsvecDat{IT<:Integer}
     n_wann::Int
 end
 
+function Base.show(io::IO, wsvec::WsvecDat)
+    print(
+        io,
+        "WsvecDat(n_Rvecs=$(length(wsvec.Rvectors)), n_wann=$(wsvec.n_wann), mdrs=$(wsvec.mdrs))",
+    )
+end
+
+function Base.show(io::IO, ::MIME"text/plain", wsvec::WsvecDat)
+    print(
+        io,
+        """WsvecDat(
+          header: $(wsvec.header)
+          mdrs: $(wsvec.mdrs)
+          n_Rvecs: $(length(wsvec.Rvectors))
+          n_wann: $(wsvec.n_wann)
+          Tvectors: $(isnothing(wsvec.Tvectors) ? "nothing" : "present")
+          Tdegens: $(isnothing(wsvec.Tdegens) ? "nothing" : "present")
+        )""",
+    )
+end
+
 """
 For Wigner-Seitz Rvectors, needs to provide a `n_wann` for number of Wannier functions.
 """

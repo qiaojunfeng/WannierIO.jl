@@ -38,6 +38,34 @@ struct Cube{T<:Real}
     W::Array{T,3}
 end
 
+function Base.show(io::IO, cube::Cube)
+    n_atoms = length(cube.atom_positions)
+    n_x = length(cube.X)
+    n_y = length(cube.Y)
+    n_z = length(cube.Z)
+    print(io, "Cube(n_atoms=$(n_atoms), grid=$(n_x)×$(n_y)×$(n_z))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", cube::Cube)
+    n_atoms = length(cube.atom_positions)
+    n_x = length(cube.X)
+    n_y = length(cube.Y)
+    n_z = length(cube.Z)
+
+    print(
+        io,
+        """Cube(
+          n_atoms: $(n_atoms)
+          grid: $(n_x)×$(n_y)×$(n_z)
+          origin (Å): $(cube.origin)
+          voxel_vectors:
+            v₁ = $(cube.voxel_vectors[:, 1])
+            v₂ = $(cube.voxel_vectors[:, 2])
+            v₃ = $(cube.voxel_vectors[:, 3])
+        )""",
+    )
+end
+
 """
     $(SIGNATURES)
 
