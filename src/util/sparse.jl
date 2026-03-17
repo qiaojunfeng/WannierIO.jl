@@ -145,8 +145,10 @@ Control sparsification behavior.
 $(FIELDS)
 """
 Base.@kwdef struct SparseOption
-    "Absolute tolerance for treating values as zero. Must be nonnegative."
-    atol::Float64 = 1e-7
+    """Absolute tolerance for treating values as zero. Must be nonnegative.
+    Elements with `abs(real(v)) < atol` and `abs(imag(v)) < atol` are dropped.
+    """
+    atol::Float64 = 1e-6
 
     "Integer type for storing row and column indices in sparse matrices."
     index_type::Type{<:Integer} = Int16
@@ -194,7 +196,7 @@ end
 
 Convert an operator to sparse CSC representation.
 
-Only entries with `abs(real(v)) > atol || abs(imag(v)) > atol` are stored.
+Only entries with `abs(real(v)) >= atol || abs(imag(v)) >= atol` are stored.
 
 See [`densify`](@ref) for the inverse.
 
@@ -211,6 +213,7 @@ function sparsify(op::AbstractVector{<:AbstractMatrix}, opt::SparseOption=Sparse
     Tvin = eltype(first(op))
     to_real = (Tvin <: Complex) && (opt.value_type <: Real) && is_almost_real(op, opt.atol)
     Tvout = to_real ? opt.value_type : _force_value_type(Tvin, opt.value_type)
+    Trout = real(Tvout)
 
     mats = map(op) do O
         size(O) == (N, N) || error("operator matrices must have size ($N, $N)")
@@ -222,10 +225,12 @@ function sparsify(op::AbstractVector{<:AbstractMatrix}, opt::SparseOption=Sparse
                 v = O[m, n]
                 rv = real(v)
                 iv = imag(v)
-                if abs(rv) > opt.atol || abs(iv) > opt.atol
+                if abs(rv) >= opt.atol || abs(iv) >= opt.atol
                     push!(row, Ti(m))
                     push!(col, Ti(n))
-                    push!(val, Tvout(to_real ? rv : v))
+                    ro = abs(rv) >= opt.atol ? Trout(rv) : Trout(0)
+                    io = abs(iv) >= opt.atol ? Trout(iv) : Trout(0)
+                    push!(val, to_real ? ro : Complex(ro, io))
                 end
             end
         end
@@ -255,7 +260,7 @@ Series of operators with sparse CSC storage.
 # Fields
 $(FIELDS)
 """
-struct SparseOperatorPack{Tv<:Real,Ti<:Integer}
+struct SparseOperatorPack{Tv<:Real,Ti<:Integer} <: AbstractOperatorPack
     "Short description of the operator set"
     header::String
 
@@ -362,11 +367,26 @@ function densify(
     return OperatorPack(pack.header, Mat3{Trout}(pack.lattice), Rvectors, ops)
 end
 
+# 2^18 = 262_144 elements max per 1D chunk.
+const _MAX_CHUNK_ELEMS_1D = 1 << 18
+# 2^9 = 512 per edge; 512^2 matches the 1D element budget.
+const _MAX_CHUNK_EDGE_2D = 1 << 9
+
+"""
+    _chunk_shape(data)
+
+Return a conservative HDF5/Zarr chunk shape.
+
+For 1D arrays, cap the chunk at `_MAX_CHUNK_ELEMS_1D` elements.
+For 2D arrays, cap each edge at `_MAX_CHUNK_EDGE_2D`, i.e. at most
+`_MAX_CHUNK_EDGE_2D^2 == _MAX_CHUNK_ELEMS_1D` elements per chunk.
+"""
 function _chunk_shape(data::AbstractArray)
     if ndims(data) == 1
-        return (max(1, min(length(data), 262_144)),)
+        return (max(1, min(length(data), _MAX_CHUNK_ELEMS_1D)),)
     elseif ndims(data) == 2
-        return (max(1, min(size(data, 1), 512)), max(1, min(size(data, 2), 512)))
+        m, n = size(data)
+        return (max(1, min(m, _MAX_CHUNK_EDGE_2D)), max(1, min(n, _MAX_CHUNK_EDGE_2D)))
     else
         return size(data)
     end

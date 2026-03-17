@@ -2,6 +2,8 @@ export OperatorPack, pack
 
 using OrderedCollections: OrderedDict
 
+abstract type AbstractOperatorPack end
+
 function _infer_n_wann(operators::AbstractDict)
     if isempty(operators)
         n_wann = 0
@@ -63,7 +65,7 @@ or [`MdrsRvectorReducer`](@ref), i.e., no `Rdegens` or `Tvectors`.
 # Fields
 $(FIELDS)
 """
-struct OperatorPack{Tv<:Real,Ti<:Integer}
+struct OperatorPack{Tv<:Real,Ti<:Integer} <: AbstractOperatorPack
     "Short description of the operator set"
     header::String
 
