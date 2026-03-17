@@ -3,19 +3,28 @@ module WannierIOJLD2Ext
 using WannierIO
 using JLD2: JLD2
 
+const _DEFAULT_JLD2_COMPRESS = true
+
 function WannierIO.write_w90_tb(
     filename::AbstractString,
     pack::WannierIO.OperatorPack,
-    ::WannierIO.JLD2Format;
-    atol::Real=0.0,
-    index_type::Type{<:Integer}=Int32,
-    value_type::Type{<:Number}=Float32,
-    compress::Bool=true,
+    fmt::WannierIO.JLD2Format;
+    compress::Bool=_DEFAULT_JLD2_COMPRESS,
+    kwargs...,
 )
-    opt = WannierIO.SparseOption(; atol, index_type, value_type)
+    opt = WannierIO.SparseOption(; kwargs...)
     spack = WannierIO.sparsify(pack, opt)
-    JLD2.jldsave(filename; pack=spack, compress)
+    write_w90_tb(filename, spack, fmt; compress)
     return nothing
+end
+
+function WannierIO.write_w90_tb(
+    filename::AbstractString,
+    pack::WannierIO.SparseOperatorPack,
+    ::WannierIO.JLD2Format;
+    compress::Bool=_DEFAULT_JLD2_COMPRESS,
+)
+    JLD2.jldsave(filename, compress; pack)
 end
 
 function WannierIO.read_w90_tb(filename::AbstractString, ::WannierIO.JLD2Format)

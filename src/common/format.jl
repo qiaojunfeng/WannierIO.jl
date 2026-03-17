@@ -120,6 +120,14 @@ struct W90Dat <: AbstractFileFormat end
 HDF5 storage format for tight-binding data.
 
 Requires loading the `HDF5` package.
+
+!!! note
+    The matrices written in the HDF5 is row-major (Python/C-style) order,
+    which is different from the column-major (Julia/Fortran-style) order
+    used throughout the rest of WannierIO.
+    If you use the [`read_w90_tb`](@ref) and [`write_w90_tb`](@ref) functions
+    to read/write HDF5 files, this is handled automatically. However, if you
+    want to load them in python, be aware of this difference accordingly.
 """
 struct HDF5Format <: AbstractFileFormat end
 
@@ -134,13 +142,32 @@ struct JLD2Format <: AbstractFileFormat end
 Zarr storage format for tight-binding data.
 
 Requires loading the `Zarr` package.
+
+!!! note
+    Similar to the HDF5 format, the matrices written in Zarr are row-major
+    (Python/C-style) order. If you use the [`read_w90_tb`](@ref) and
+    [`write_w90_tb`](@ref) functions to read/write Zarr files, this is handled
+    automatically. However, if you want to load them in python, be aware of this
+    difference accordingly.
 """
 struct ZarrFormat <: AbstractFileFormat end
+
+"""
+Zarr storage format for tight-binding data, zipped into a single file.
+
+Requires loading the `Zarr` package.
+
+!!! note
+    Note the row-major order of the matrices in this format, as described in
+    the documentation of [`ZarrFormat`](@ref).
+"""
+struct ZarrZipFormat <: AbstractFileFormat end
 
 format_name(::W90Dat) = "wannier90-dat"
 format_name(::HDF5Format) = "hdf5"
 format_name(::JLD2Format) = "jld2"
 format_name(::ZarrFormat) = "zarr"
+format_name(::ZarrZipFormat) = "zarr-zip"
 
 """
     detect_w90dat_format(path)
@@ -149,6 +176,7 @@ Infer a tight-binding format tag from the file extension of `path`:
 - `.h5` / `.hdf5` → [`HDF5Format`](@ref)
 - `.jld2`          → [`JLD2Format`](@ref)
 - `.zarr`          → [`ZarrFormat`](@ref)
+- `.zarr.zip`      → [`ZarrZipFormat`](@ref)
     - anything else   → [`W90Dat`](@ref)
 """
 function detect_w90dat_format(path::AbstractString)
@@ -159,6 +187,8 @@ function detect_w90dat_format(path::AbstractString)
         return JLD2Format()
     elseif endswith(p, ".zarr")
         return ZarrFormat()
+    elseif endswith(p, ".zarr.zip")
+        return ZarrZipFormat()
     else
         return W90Dat()
     end

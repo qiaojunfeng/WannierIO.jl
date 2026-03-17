@@ -70,9 +70,9 @@ end
 Write Wannier90 tight-binding data. The format is one of:
 
 - [`W90Dat`](@ref): native Wannier90 `.dat` text file
-- [`HDF5Format`](@ref): HDF5 — keywords: `atol`, `index_type`, `value_type`, `deflate`
-- [`JLD2Format`](@ref): JLD2 — keywords: `atol`, `index_type`, `value_type`, `compress`
-- [`ZarrFormat`](@ref): Zarr — keywords: `atol`, `index_type`, `value_type`, `clevel`
+- [`HDF5Format`](@ref): HDF5 format with sparsification and compression (requires loading `HDF5`)
+- [`JLD2Format`](@ref): JLD2 format with sparsification and compression (requires loading `JLD2`)
+- [`ZarrFormat`](@ref): Zarr format with sparsification and compression (requires loading `Zarr`)
 
 When called without a format argument, the format is inferred from the file
 extension via [`detect_w90dat_format`](@ref).
@@ -108,7 +108,7 @@ end
     write_w90_tb backend fallback — override by loading HDF5/JLD2/Zarr.
 """
 function write_w90_tb(
-    file::AbstractString, pack::OperatorPack, fmt::AbstractFileFormat; kwargs...
+    file::AbstractString, pack::AbstractOperatorPack, fmt::AbstractFileFormat; kwargs...
 )
     error("Format `$(format_name(fmt))` requires loading the corresponding package. \
            See the `WannierIO` documentation for supported formats.")
@@ -136,7 +136,7 @@ function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat; kwarg
     return write_w90_tb(file, tbdat, wsvec, detect_w90dat_format(file); kwargs...)
 end
 
-function write_w90_tb(file::AbstractString, pack::OperatorPack; kwargs...)
+function write_w90_tb(file::AbstractString, pack::AbstractOperatorPack; kwargs...)
     return write_w90_tb(file, pack, detect_w90dat_format(file); kwargs...)
 end
 
