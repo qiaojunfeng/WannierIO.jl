@@ -44,7 +44,7 @@ struct WsRvectorReducer <: AbstractRvectorReducer
 end
 
 function Base.show(io::IO, reducer::WsRvectorReducer)
-    print(io, "WsRvectorReducer(n_Rvectors=", length(reducer.Rvectors), ")")
+    print(io, "WsRvectorReducer(n_Rvecs=", length(reducer.Rvectors), ")")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", reducer::WsRvectorReducer)
@@ -53,7 +53,7 @@ function Base.show(io::IO, ::MIME"text/plain", reducer::WsRvectorReducer)
     degen_max = nR == 0 ? 0 : maximum(reducer.degens)
     print(
         io,
-        """WsRvectorReducer(n_Rvectors = $(nR), degens = Int[$(degen_min), ..., $(degen_max)])""",
+        """WsRvectorReducer(n_Rvecs = $(nR), degens = Int[$(degen_min), ..., $(degen_max)])""",
     )
 end
 
@@ -146,7 +146,7 @@ struct MdrsRvectorReducer <: AbstractRvectorReducer
 end
 
 function Base.show(io::IO, reducer::MdrsRvectorReducer)
-    print(io, "MdrsRvectorReducer(n_Rvectors=", length(reducer.Rvectors), ")")
+    print(io, "MdrsRvectorReducer(n_Rvecs=", length(reducer.Rvectors), ")")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", reducer::MdrsRvectorReducer)
@@ -155,7 +155,7 @@ function Base.show(io::IO, ::MIME"text/plain", reducer::MdrsRvectorReducer)
     nw = nR0 == 0 ? 0 : size(reducer.degens[1], 1)
     print(
         io,
-        """MdrsRvectorReducer(n_Rvectors = $(nR), n_Rvectors_original = $(nR0), n_wannier = $(nw))""",
+        """MdrsRvectorReducer(n_Rvecs = $(nR), n_Rvecs_original = $(nR0), n_wann = $(nw))""",
     )
 end
 

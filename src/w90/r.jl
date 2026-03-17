@@ -26,6 +26,26 @@ struct RDat{T<:Real,IT<:Integer}
     r_z::Vector{Matrix{Complex{T}}}
 end
 
+function Base.show(io::IO, rdat::RDat)
+    n_wann = isempty(rdat.r_x) ? 0 : size(rdat.r_x[1], 1)
+    print(io, "RDat(n_Rvecs=$(length(rdat.r_x)), n_wann=$(n_wann))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", rdat::RDat)
+    n_Rvecs = length(rdat.r_x)
+    n_wann = isempty(rdat.r_x) ? 0 : size(rdat.r_x[1], 1)
+
+    print(
+        io,
+        """RDat(
+          header: $(rdat.header)
+          n_Rvecs: $(n_Rvecs)
+          n_wann: $(n_wann)
+          r_x, r_y, r_z: Vector{Matrix{Complex}}($(n_wann)×$(n_wann))
+        )""",
+    )
+end
+
 """
     $(SIGNATURES)
 

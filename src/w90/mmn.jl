@@ -36,6 +36,30 @@ struct Mmn{T<:Real,IT<:Integer}
     kpb_G::Vector{Vector{Vec3{IT}}}
 end
 
+function Base.show(io::IO, mmn::Mmn)
+    n_kpts = length(mmn.M)
+    n_bvecs = n_kpts == 0 ? 0 : length(mmn.M[1])
+    n_bands = (n_kpts == 0 || n_bvecs == 0) ? 0 : size(mmn.M[1][1], 1)
+    print(io, "Mmn(n_kpts=$(n_kpts), n_bvecs=$(n_bvecs), n_bands=$(n_bands))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", mmn::Mmn)
+    n_kpts = length(mmn.M)
+    n_bvecs = n_kpts == 0 ? 0 : length(mmn.M[1])
+    n_bands = (n_kpts == 0 || n_bvecs == 0) ? 0 : size(mmn.M[1][1], 1)
+
+    print(
+        io,
+        """Mmn(
+          header: $(mmn.header)
+          n_kpts: $(n_kpts)
+          n_bvecs: $(n_bvecs)
+          n_bands: $(n_bands)
+          M: Vector{Vector{Matrix{Complex}}($(n_bands)×$(n_bands))}}
+        )""",
+    )
+end
+
 """
     read_mmn(file)
     read_mmn(file, ::FortranText)

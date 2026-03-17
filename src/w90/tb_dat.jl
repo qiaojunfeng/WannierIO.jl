@@ -35,6 +35,34 @@ struct TbDat{T<:Real,IT<:Integer}
     r_z::Vector{Matrix{Complex{T}}}
 end
 
+function Base.show(io::IO, tbdat::TbDat)
+    n_wann = isempty(tbdat.H) ? 0 : size(tbdat.H[1], 1)
+    print(io, "TbDat(n_Rvecs=$(length(tbdat.H)), n_wann=$(n_wann))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", tbdat::TbDat)
+    n_Rvecs = length(tbdat.H)
+    n_wann = isempty(tbdat.H) ? 0 : size(tbdat.H[1], 1)
+    degen_min = length(tbdat.Rdegens) == 0 ? 0 : minimum(tbdat.Rdegens)
+    degen_max = length(tbdat.Rdegens) == 0 ? 0 : maximum(tbdat.Rdegens)
+
+    print(
+        io,
+        """TbDat(
+          header: $(tbdat.header)
+          lattice (Å):
+            $(tbdat.lattice[:, 1])
+            $(tbdat.lattice[:, 2])
+            $(tbdat.lattice[:, 3])
+          n_Rvecs: $(n_Rvecs)
+          n_wann: $(n_wann)
+          Rdegens range: [$(degen_min), ..., $(degen_max)]
+          H: Vector{Matrix{$(eltype(tbdat.H[1]) <: Complex ? "Complex" : "Real")}($(n_wann)×$(n_wann))}
+          r_x, r_y, r_z: Vector{Matrix{Complex}}($(n_wann)×$(n_wann))
+        )""",
+    )
+end
+
 """
     $(SIGNATURES)
 

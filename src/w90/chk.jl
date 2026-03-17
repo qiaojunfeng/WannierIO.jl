@@ -101,6 +101,26 @@ struct Chk{T<:Real}
     ω::Vector{T}
 end
 
+function Base.show(io::IO, chk::Chk)
+    print(io, "Chk(n_kpts=$(chk.n_kpts), n_bands=$(chk.n_bands), n_wann=$(chk.n_wann))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", chk::Chk)
+    print(
+        io,
+        """Chk(
+          header: $(chk.header)
+          checkpoint: $(chk.checkpoint)
+          n_kpts: $(chk.n_kpts)
+          n_bands: $(chk.n_bands)
+          n_wann: $(chk.n_wann)
+          n_exclude_bands: $(chk.n_exclude_bands)
+          have_disentangled: $(chk.have_disentangled)
+          ΩI: $(chk.ΩI)
+        )""",
+    )
+end
+
 """
     $(SIGNATURES)
 

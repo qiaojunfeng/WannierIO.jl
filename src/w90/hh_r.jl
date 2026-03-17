@@ -23,6 +23,34 @@ struct HHRDat{T<:Real,IT<:Integer}
     H::Vector{Matrix{Complex{T}}}
 end
 
+function Base.show(io::IO, hhr::HHRDat)
+    n_wann = isempty(hhr.H) ? 0 : size(hhr.H[1], 1)
+    print(io, "HHRDat(n_Rvecs=$(length(hhr.H)), n_wann=$(n_wann))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", hhr::HHRDat)
+    n_Rvecs = length(hhr.H)
+    n_wann = isempty(hhr.H) ? 0 : size(hhr.H[1], 1)
+    degen_str = if isnothing(hhr.Rdegens)
+        "none"
+    else
+        degen_min = minimum(hhr.Rdegens)
+        degen_max = maximum(hhr.Rdegens)
+        "[$(degen_min), ..., $(degen_max)]"
+    end
+
+    print(
+        io,
+        """HHRDat(
+          header: $(hhr.header)
+          n_Rvecs: $(n_Rvecs)
+          n_wann: $(n_wann)
+          Rdegens: $(degen_str)
+          H: Vector{Matrix{Complex}}($(n_wann)×$(n_wann))
+        )""",
+    )
+end
+
 """
     $(SIGNATURES)
 

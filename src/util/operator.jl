@@ -101,6 +101,28 @@ struct OperatorPack{Tv<:Real,Ti<:Integer}
     end
 end
 
+function Base.show(io::IO, op::OperatorPack)
+    n_ops = length(op.operators)
+    print(
+        io, "OperatorPack(n_Rvecs=$(op.n_Rvecs), n_wann=$(op.n_wann), n_operators=$(n_ops))"
+    )
+end
+
+function Base.show(io::IO, ::MIME"text/plain", op::OperatorPack)
+    n_ops = length(op.operators)
+    op_names = collect(keys(op.operators))
+
+    print(
+        io,
+        """OperatorPack(
+          header: $(op.header)
+          n_Rvecs: $(op.n_Rvecs)
+          n_wann: $(op.n_wann)
+          operators ($(n_ops)): $(join(op_names, ", "))
+        )""",
+    )
+end
+
 """
 Pack tight-binding operators into an [`OperatorPack`](@ref) struct.
 

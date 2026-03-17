@@ -112,6 +112,32 @@ Base.isempty(p::CscPack) = length(p) == 0
 Base.first(p::CscPack) = p[1]
 Base.last(p::CscPack) = p[length(p)]
 
+function Base.show(io::IO, csc::CscPack)
+    L = length(csc)
+    N = matrix_order(csc)
+    nnz_total = length(csc.nzval)
+    print(io, "CscPack(L=$(L), N=$(N), nnz=$(nnz_total))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", csc::CscPack)
+    L = length(csc)
+    N = matrix_order(csc)
+    nnz_total = length(csc.nzval)
+    nnz_avg = L == 0 ? 0 : div(nnz_total, L)
+
+    print(
+        io,
+        """CscPack(
+          n_matrices: $(L)
+          matrix_size: $(N)×$(N)
+          total_nonzeros: $(nnz_total)
+          avg_nonzeros_per_matrix: $(nnz_avg)
+          value_type: $(eltype(csc.nzval))
+          index_type: $(eltype(csc.nzptr))
+        )""",
+    )
+end
+
 """
 Control sparsification behavior.
 
@@ -123,7 +149,7 @@ Base.@kwdef struct SparseOption
     atol::Float64 = 1e-7
 
     "Integer type for storing row and column indices in sparse matrices."
-    index_type::Type{<:Integer} = Int32
+    index_type::Type{<:Integer} = Int16
 
     """Numeric type for storing nonzero values in sparse matrices.
     Can be real or complex. If real, will attempt to convert complex values
@@ -269,6 +295,29 @@ struct SparseOperatorPack{Tv<:Real,Ti<:Integer}
             String(header), Mat3{Tv}(lattice), Matrix{Ti}(Rvectors), ops, n_Rvecs, n_wann
         )
     end
+end
+
+function Base.show(io::IO, sop::SparseOperatorPack)
+    n_ops = length(sop.operators)
+    print(
+        io,
+        "SparseOperatorPack(n_Rvecs=$(sop.n_Rvecs), n_wann=$(sop.n_wann), n_operators=$(n_ops))",
+    )
+end
+
+function Base.show(io::IO, ::MIME"text/plain", sop::SparseOperatorPack)
+    n_ops = length(sop.operators)
+    op_names = collect(keys(sop.operators))
+
+    print(
+        io,
+        """SparseOperatorPack(
+          header: $(sop.header)
+          n_Rvecs: $(sop.n_Rvecs)
+          n_wann: $(sop.n_wann)
+          operators ($(n_ops)): $(join(op_names, ", "))
+        )""",
+    )
 end
 
 """
