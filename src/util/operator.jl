@@ -128,6 +128,6 @@ end
 """
 Pack tight-binding operators into an [`OperatorPack`](@ref) struct.
 
-e.g., from [`TbDat`](@ref) and [`WsvecData`](@ref) structs to [`OperatorPack`](@ref).
+e.g., from [`TbDat`](@ref) and [`WsvecDat`](@ref) structs to [`OperatorPack`](@ref).
 """
 function pack end
