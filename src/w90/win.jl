@@ -63,6 +63,11 @@ function read_win(file::Union{IO,AbstractString}; standardize::Bool=true)
     return win
 end
 
+"""Read the next non-empty line from a win file block, with optional case control.
+
+Win files are case-insensitive, but some blocks (e.g., atoms_frac) preserve
+atomic labels. This function supports both via the `:lower` kwarg.
+"""
 function _win_block_nextline(io::IO, block_name; kwargs...)
     # win file is case-insensitive, I will lowercase lines by default, but
     # for some blocks, e.g., atoms_frac, I need to keep the original case for
@@ -75,6 +80,7 @@ function _win_block_nextline(io::IO, block_name; kwargs...)
     return line
 end
 
+"""Check if a line marks the end of a named block in a win file."""
 @inline function _win_block_isend(
     line::AbstractString, block_name::AbstractString; lower::Bool=true
 )
@@ -83,6 +89,7 @@ end
     return occursin(r"^end\s+" * block_name, line)
 end
 
+"""Assert that a line marks the end of a named block, or raise an error."""
 @inline function _win_block_mustend(
     line::AbstractString, block_name::AbstractString; lower::Bool=true
 )
@@ -90,6 +97,10 @@ end
     isend || error("Error parsing $block_name: `end $block_name` not found")
 end
 
+"""Parse a `unit_cell_cart` block from a win file.
+
+Returns lattice vectors as a 3×3 matrix (columns are lattice vectors in angstrom).
+"""
 function _win_parse_block_unit_cell_cart(io::IO)
     block_name = "unit_cell_cart"
     unit_cell = zeros(Float64, 3, 3)
@@ -116,6 +127,10 @@ function _win_parse_block_unit_cell_cart(io::IO)
     return mat3(unit_cell)
 end
 
+"""Parse a `atoms_frac` or `atoms_cart` block from a win file.
+
+Returns a vector of (atom_label => fractional/Cartesian coordinates) pairs.
+"""
 function _win_parse_block_atoms(io::IO, block_name::AbstractString)
     block_name == "atoms_frac" ||
         block_name == "atoms_cart" ||
@@ -160,6 +175,10 @@ function _win_parse_block_atoms(io::IO, block_name::AbstractString)
     return "atoms_frac" => atoms
 end
 
+"""Parse a `kpoints` block from a win file.
+
+Returns a vector of k-point coordinates.
+"""
 function _win_parse_block_kpoints(io::IO)
     block_name = "kpoints"
     lines = String[]
@@ -177,6 +196,10 @@ function _win_parse_block_kpoints(io::IO)
     return kpoints
 end
 
+"""Parse a `kpoint_path` block from a win file.
+
+Returns a vector of segments, each containing (start_label => start_kpt, end_label => end_kpt) pairs.
+"""
 function _win_parse_block_kpoint_path(io::IO)
     block_name = "kpoint_path"
     kpoint_path = Vector{Vector{StringVec3{Float64}}}()
@@ -199,6 +222,10 @@ function _win_parse_block_kpoint_path(io::IO)
     return kpoint_path
 end
 
+"""Parse a `explicit_kpath` block from a win file.
+
+Returns a vector of k-point coordinates along the path.
+"""
 function _win_parse_block_explicit_kpath(io::IO)
     block_name = "explicit_kpath"
     explicit_kpath = Vec3{Float64}[]
@@ -213,6 +240,10 @@ function _win_parse_block_explicit_kpath(io::IO)
     return explicit_kpath
 end
 
+"""Parse a `explicit_kpath_labels` block from a win file.
+
+Returns a vector of (label => k-point) pairs for high-symmetry points.
+"""
 function _win_parse_block_explicit_kpath_labels(io::IO)
     block_name = "explicit_kpath_labels"
     explicit_kpath_labels = StringVec3{Float64}[]
@@ -230,6 +261,7 @@ function _win_parse_block_explicit_kpath_labels(io::IO)
     return explicit_kpath_labels
 end
 
+"""Parse a generic block as a vector of strings (for unknown block types)."""
 function _win_parse_block_string(io::IO, block_name::AbstractString)
     block_content = String[]
     # allow uppercase
@@ -241,6 +273,7 @@ function _win_parse_block_string(io::IO, block_name::AbstractString)
     return block_content
 end
 
+"""Dispatch to the appropriate block parser based on the block name."""
 function _win_parse_block(io::IO, block_name::AbstractString)
     if block_name == "unit_cell_cart"
         return "unit_cell_cart" => _win_parse_block_unit_cell_cart(io)
@@ -261,6 +294,10 @@ function _win_parse_block(io::IO, block_name::AbstractString)
     return block_name => _win_parse_block_string(io, block_name)
 end
 
+"""Return a dictionary mapping parameter names to their value types for parsing.
+
+Used to determine how to parse key-value pairs from win files.
+"""
 function _win_keyval_types()
     key_types = Dict{String,Symbol}()
 
@@ -332,6 +369,7 @@ function _win_keyval_types()
     return key_types
 end
 
+"""Parse a key-value line, separating key and value by = or : delimiters."""
 function _win_parse_keyval(line::AbstractString)
     normalized_line = strip(replace(line, '=' => ' ', ':' => ' '))
     parts = split(normalized_line; limit=2)
@@ -341,6 +379,7 @@ function _win_parse_keyval(line::AbstractString)
     return key => strip(value)  # remove leading whitespaces
 end
 
+"""Convert a string value to the appropriate type based on value_type symbol."""
 function _win_convert_keyval_type(value::AbstractString, value_type::Symbol)
     if value_type == :int
         return parse(Int, value)
@@ -357,6 +396,7 @@ function _win_convert_keyval_type(value::AbstractString, value_type::Symbol)
     return value
 end
 
+"""Convert all key-value parameter strings to their appropriate types, in-place."""
 function _win_convert_keyval_types!(params::AbstractDict)
     key_types = _win_keyval_types()
     for (key, value) in pairs(params)
@@ -368,6 +408,10 @@ function _win_convert_keyval_types!(params::AbstractDict)
     return params
 end
 
+"""Check if a line starts a block (begins with `'begin '`) or contains a key-value pair.
+
+Returns `(isblock, content)` where `content` is the block name or key-value line.
+"""
 function _win_check_line(line::AbstractString)
     isblock = false
     content = line
@@ -570,6 +614,7 @@ end
     end
 end
 
+"""Write a comment line to the output, prefixing with # if needed."""
 function _win_write_comment(io::IO, comment)
     if !isnothing(comment)
         startswith(lstrip(comment), "#") || (comment = "# $comment")
@@ -577,6 +622,7 @@ function _win_write_comment(io::IO, comment)
     end
 end
 
+"""Format a key-value pair for output, handling special types like int3 and indices."""
 function _win_format_keyval(key::AbstractString, value, value_type::Union{Symbol,Nothing})
     if value_type == :int3
         # Unpack 3-element vector/tuple into separate integers
@@ -590,6 +636,7 @@ function _win_format_keyval(key::AbstractString, value, value_type::Union{Symbol
     end
 end
 
+"""Write all key-value parameters to the output stream."""
 function _win_write_keyvals(io::IO, params::AbstractDict)
     key_types = _win_keyval_types()
     for (key, value) in pairs(params)
@@ -605,6 +652,7 @@ function _win_write_keyvals(io::IO, params::AbstractDict)
     end
 end
 
+"""Write a `unit_cell_cart` block to the output."""
 function _win_write_block_unit_cell_cart(io::IO, unit_cell_cart)
     # Lattice vectors are in rows in Wannier90
     println(io, "begin unit_cell_cart\nangstrom")
@@ -616,6 +664,7 @@ function _win_write_block_unit_cell_cart(io::IO, unit_cell_cart)
     println(io, "end unit_cell_cart\n")
 end
 
+"""Write a `atoms_frac` block to the output."""
 function _win_write_block_atoms_frac(io::IO, atoms_frac)
     println(io, "begin atoms_frac")
     # label width is dynamic, e.g. 3 to accommodate "Si1"
@@ -627,6 +676,7 @@ function _win_write_block_atoms_frac(io::IO, atoms_frac)
     println(io, "end atoms_frac\n")
 end
 
+"""Write a `atoms_cart` block to the output."""
 function _win_write_block_atoms_cart(io::IO, atoms_cart)
     println(io, "begin atoms_cart")
     # unit is angstrom
@@ -640,6 +690,7 @@ function _win_write_block_atoms_cart(io::IO, atoms_cart)
     println(io, "end atoms_cart\n")
 end
 
+"""Write a `projections` block to the output."""
 function _win_write_block_projections(io::IO, projections)
     println(io, "begin projections")
     for proj in projections
@@ -648,6 +699,7 @@ function _win_write_block_projections(io::IO, projections)
     println(io, "end projections\n")
 end
 
+"""Write a `kpoint_path` block to the output."""
 function _win_write_block_kpoint_path(io::IO, kpoint_path)
     println(io, "begin kpoint_path")
     # label width is dynamic, e.g. 5 to accommodate "Gamma"
@@ -665,6 +717,7 @@ function _win_write_block_kpoint_path(io::IO, kpoint_path)
     println(io, "end kpoint_path\n")
 end
 
+"""Write a `explicit_kpath_labels` block to the output."""
 function _win_write_block_explicit_kpath_labels(io::IO, explicit_kpath_labels)
     println(io, "begin explicit_kpath_labels")
     # label width is dynamic, e.g. 5 to accommodate "Gamma"
@@ -676,6 +729,7 @@ function _win_write_block_explicit_kpath_labels(io::IO, explicit_kpath_labels)
     println(io, "end explicit_kpath_labels\n")
 end
 
+"""Write a `explicit_kpath` block to the output."""
 function _win_write_block_explicit_kpath(io::IO, explicit_kpath)
     println(io, "begin explicit_kpath")
     for kpt in explicit_kpath
@@ -684,6 +738,7 @@ function _win_write_block_explicit_kpath(io::IO, explicit_kpath)
     println(io, "end explicit_kpath\n")
 end
 
+"""Write a `kpoints` block to the output."""
 function _win_write_block_kpoints(io::IO, kpoints)
     println(io, "begin kpoints")
     for kpt in kpoints
