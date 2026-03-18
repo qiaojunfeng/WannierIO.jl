@@ -6,20 +6,6 @@ Some simple convenience functions for development.
 CurrentModule = WannierIO
 ```
 
-## Fortran related
-
-```@autodocs
-Modules = [WannierIO]
-Pages   = ["util/fortran.jl"]
-```
-
-## Types
-
-```@autodocs
-Modules = [WannierIO]
-Pages   = ["common/type.jl"]
-```
-
 ## Constants
 
 ```@autodocs
@@ -27,9 +13,30 @@ Modules = [WannierIO]
 Pages   = ["common/const.jl"]
 ```
 
+## Helper functions
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["util/header.jl", "util/toml.jl", "util/parser.jl", "util/compare.jl"]
+```
+
+## Fortran related
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["util/fortran.jl"]
+```
+
+## File formats
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["common/format.jl"]
+```
+
 ## Misc
 
 ```@autodocs
 Modules = [WannierIO]
-Pages   = ["util/header.jl", "util/toml.jl", "util/parser.jl", "util/compare.jl", "WannierIO.jl"]
+Pages   = ["WannierIO.jl"]
 ```
