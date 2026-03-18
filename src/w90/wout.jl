@@ -193,10 +193,30 @@ function _wout_parse_repeated_equals(
     return values
 end
 
+"""
+Parse block
+```
+      Wannier Function Num:    1       Phase Factor =    0.996157  +0.087588i
+      Wannier Function Num:    2       Phase Factor =    0.996157  +0.087588i
+      Wannier Function Num:    3       Phase Factor =    0.996157  +0.087588i
+      Wannier Function Num:    4       Phase Factor =    0.998869  +0.047543i
+
+```
+"""
 function _wout_parse_phase_factor(io::IO, line::AbstractString)
     return _wout_parse_repeated_equals(io, line, WOUT_MARKS.phase, ComplexF64)
 end
 
+"""
+Parse block
+```
+      Wannier Function Num:    1       Maximum Im/Re Ratio =    4.566451
+      Wannier Function Num:    2       Maximum Im/Re Ratio =    4.566481
+      Wannier Function Num:    3       Maximum Im/Re Ratio =    4.566335
+      Wannier Function Num:    4       Maximum Im/Re Ratio =    2.154381
+
+```
+"""
 function _wout_parse_im_re_ratio(io::IO, line::AbstractString)
     return _wout_parse_repeated_equals(io, line, WOUT_MARKS.imre, Float64)
 end
@@ -359,6 +379,9 @@ function _wout_parse_wf_center_spread(io::IO)
     return (; centers, spreads, sum_centers, sum_spreads)
 end
 
+"""
+See [`_wout_parse_wf_center_spread`](@ref) for the format of the block to be parsed.
+"""
 @inline function _wout_parse_final_state(io::IO)
     _wout_parse_wf_center_spread(io)
 end
