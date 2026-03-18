@@ -2,25 +2,25 @@
 
 ## Units
 
-In most cases, the units of the function arguments and returned values are in
-angstrom for lattice, and fractional (w.r.t. lattice) for atomic positions, etc.
+Unless explicitly stated otherwise:
+
+- lattice vectors are in angstrom,
+- reciprocal vectors are in angstrom^-1,
+- fractional coordinates are expressed with respect to lattice vectors.
 
 ## Variables
 
-Here are some variable conventions used throughout the code and documentation.
+The following naming conventions are used consistently across code and docs.
 
 ### Names
 
 - `U`: unitary transformation matrices
-  - `A`: to differentiate between `U`, some times we use `A` specifically for
-    the initial projection matrix, i.e., `amn` of Wannier90
+  - `A`: initial projection matrix (`amn` in Wannier90 terminology)
 - `M`: overlap matrices between neighboring kpoints, i.e., `mmn` of Wannier90
 
 ### Dimensions
 
-Prefixed by `n_`, indicating this is an integer specifying the length of
-some quantities; then followed by a short acronym of the quantity, to avoid
-typing long names repeatedly.
+Dimension variables are prefixed with `n_`.
 
 - `n_bands`: number of bands
 - `n_wann`: number of WFs
@@ -63,14 +63,13 @@ Reader/writer APIs follow a simple rule for returned/accepted grouped data:
 - If a parser returns more than 3 values, it returns a thin container `struct`
 
 The same thin container structs are accepted by corresponding writer functions.
-This keeps small APIs lightweight while giving large file formats a centralized,
-documented data model (field names, meanings, and units) that downstream packages
-can reuse as a stable reference point.
+This keeps small APIs lightweight while giving large file formats a centralized
+data model that downstream packages can reuse.
 
 ## Functions
 
-In most cases, there are some multiple dispatches for the same function.
-For instance, there are three functions for reading the `chk` file:
+Most top-level APIs have multiple dispatch variants.
+For example, there are format-specific methods for reading `chk` files:
 
 ```julia
 read_chk(filename::AbstractString)
@@ -78,22 +77,14 @@ read_chk(filename::AbstractString, ::FortranText)
 read_chk(filename::AbstractString, ::FortranBinary)
 ```
 
-Why do we need several functions for reading the same format? The reasons are:
+Why this design:
 
-- Wannier90 is a Fortran code that accepts both Fortran text format and binary
-  format (or called Fortran formatted and unformatted file, respectively).
-  To avoid introducing lots of different function names for reading text or
-  binary files, we use multiple dispatch to distinguish them: the type of the
-  2nd argument (`FortranText` or `FortranBinary`) is used to distinguish the
-  file type we want to read.
-- However, asking the user to manually specify the file format is tedious,
-  therefore, we provide a high-level user-friendly function (the 1st one), which
-  automatically detects the file format and calls the corresponding low-level
-  (2nd or 3rd) function
+- high-level functions are convenient and automatically detect formats,
+- low-level methods remain available when explicit format control is needed.
 
 Thus,
 
-- In most cases using the high-level function is enough, e.g.,
+- In most cases, use the high-level function:
 
   ```julia-repl
   julia> using WannierIO
@@ -105,8 +96,7 @@ Thus,
    [...]
   ```
 
-- Use the low-level functions if you
-  - want to control the file format (text or binary) when reading/writing files
+- Use low-level methods when you need explicit format control.
 
   ```julia-repl
   julia> using WannierIO
@@ -115,16 +105,10 @@ Thus,
   "Created on  9Sep2022 at 16:41: 5"
   ```
 
-When writing files, the user can specify whether to write in text or binary by
-a keyword argument `binary` of the high-level function
+When writing files, high-level methods commonly expose a `binary` keyword:
 
 ```julia-repl
 julia> write_amn("si2.amn", A; binary=true)
 ```
 
-The `binary` keyword argument avoids the user specifying the file type
-when calling the low-level functions, e.g.,
-
-```julia-repl
-julia> write_amn("si2.amn", A, WannierIO.FortranBinaryStream())
-```
+This avoids the need to call format-specific low-level methods in typical use.

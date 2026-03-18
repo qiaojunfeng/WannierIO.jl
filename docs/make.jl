@@ -22,10 +22,9 @@ makedocs(;
             "Convention" => "api/convention.md",
             "Utilities" => "api/util.md",
             "Wannier90" => "api/w90.md",
-            "Tight binding" => "api/tb.md",
+            "Tight-binding" => "api/tb.md",
             "Volumetric data" => "api/volumetric.md",
             "EPW" => "api/epw.md",
-            "Index" => "api/index.md",
         ],
     ],
 )

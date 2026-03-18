@@ -4,9 +4,11 @@
 CurrentModule = WannierIO
 ```
 
-WannierIO provides a consistent IO pattern across many Wannier90-related formats.
-In most cases, you call a `read_*` function to load data into Julia structs/arrays,
-modify them, and call the matching `write_*` function.
+WannierIO follows a consistent IO pattern across Wannier90 formats:
+
+1. read with a `read_*` function,
+2. if needed, modify the returned Julia data,
+3. write back with the matching `write_*` function.
 
 ## IO conventions
 
@@ -32,7 +34,7 @@ The same pattern applies to other files such as
 [`read_eig`](@ref)/[`write_eig`](@ref), and
 [`read_nnkp`](@ref)/[`write_nnkp`](@ref).
 
-### 2. Write Fortran unformatted (binary) files
+### 2. Write Fortran binary files
 
 ```julia
 using WannierIO
@@ -59,7 +61,7 @@ write_win("silicon_new.win", win)
 
 `read_win` can parse both text and TOML-style inputs via format detection.
 
-### 4. Read/write tight-binding files
+### 4. Read and write tight-binding files
 
 ```julia
 using WannierIO
@@ -94,3 +96,6 @@ Supported volumetric formats include XSF, CUBE, and BXSF.
     compiler/platform because unformatted Fortran records are not universally portable.
 - Prefer high-level helpers like [`read_w90_tb`](@ref) unless you explicitly need
     low-level file-to-file control.
+
+For a deeper API-level reference, see [Wannier90](../api/w90.md) and
+[Tight binding](../api/tb.md).

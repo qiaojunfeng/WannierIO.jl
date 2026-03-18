@@ -15,8 +15,9 @@ At a high level, the TB API provides:
 
 ## R-vector reduction notes
 
-Wannier90 TB files may include R-degeneracies (the Wigner-Seitz method),
-or, T-vectors and degeneracies (the minima distance replica selection (MDRS) method).
+Wannier90 TB files may include R-degeneracies (Wigner-Seitz method), and
+optionally T-vectors/degeneracies from the minima distance replica selection
+(MDRS) method.
 In Wannier90, these are stored in the `*_tb.dat` and `*_wsvec.dat` files.
 
 WannierIO handles these through [`RvectorReducer`](@ref), so the resulting
@@ -28,7 +29,7 @@ inverse Fourier transform on the reduced operators.
 
 ## Core data flow
 
-The key data structures are:
+Key data structures:
 
 - [`TbDat`](@ref): dense data from `*_tb.dat`, including Hamiltonian and position operators,
 - [`WsvecDat`](@ref): data from `*_wsvec.dat` with optional MDRS information,
@@ -82,3 +83,6 @@ pack2 = read_w90_tb("silicon.h5", HDF5Format())
 
 The same high-level API works for [`JLD2Format`](@ref) and [`ZarrFormat`](@ref).
 See [sparse storage](./sparse.md) for backend-specific details and precision options.
+
+For all related type/function signatures, see the
+[tight-binding API reference](../api/tb.md).
