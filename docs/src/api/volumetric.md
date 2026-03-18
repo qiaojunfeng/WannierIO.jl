@@ -6,6 +6,8 @@ CurrentModule = WannierIO
 
 ## Read/write
 
+Readers and writers for volumetric grid formats.
+
 ```@autodocs
 Modules = [WannierIO]
 Pages   = [
@@ -13,4 +15,11 @@ Pages   = [
     "volume/bxsf.jl",
     "volume/cube.jl",
 ]
+```
+
+## Page index
+
+```@index
+Modules = [WannierIO]
+Pages   = ["volumetric.md"]
 ```

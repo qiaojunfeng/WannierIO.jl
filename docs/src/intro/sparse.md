@@ -121,3 +121,5 @@ julia --project misc/benchmark_tb_storage.jl /path/to/tb_dir 200 1e-10
 ```
 
 For the full TB workflow, see [Tight-binding operators](./tb.md).
+For complete signatures and low-level details, see
+[the tight-binding API reference](../api/tb.md).
