@@ -245,6 +245,20 @@ function write_w90_band_dat(
     return nothing
 end
 
+"""
+    $(SIGNATURES)
+
+Write `prefix_band.labelinfo.dat` file.
+
+# Arguments
+- `file`: The name of the output file, or an `IO`.
+
+# Keyword Arguments
+- `x`: length-`n_kpts` x-axis coordinates (Cartesian path length)
+- `kpoints`: length-`n_kpts` vector of fractional coordinates
+- `symm_point_indices`: indices of high-symmetry points along the path
+- `symm_point_labels`: labels of high-symmetry points
+"""
 function write_w90_band_labelinfo(
     io::IO;
     x::AbstractVector{<:Real},

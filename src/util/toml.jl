@@ -1,3 +1,11 @@
+"""
+    $(SIGNATURES)
+
+Return `true` if the input can be parsed as TOML, otherwise `false`.
+
+This helper catches `TOML.ParserError` and returns `false` for invalid TOML
+content while rethrowing other unexpected errors.
+"""
 function istoml(io::IO)
     content = read(io, String)
     try
