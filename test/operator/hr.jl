@@ -33,7 +33,7 @@ end
     @test all(isnan, pack_w90.lattice)
     @test isapprox(pack_w90.operators["H"], dpack0.operators["H"]; atol=2e-5)
 
-    # Backend formats via read_operators/write_operators
+    # Backend formats via read_operator/write_operator
     targets = [
         (WannierIO.HDF5Format(), tempname() * ".h5"),
         (WannierIO.JLD2Format(), tempname() * ".jld2"),
@@ -42,8 +42,8 @@ end
     ]
 
     for (fmt, dst) in targets
-        write_operators(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
-        pack2 = read_operators(dst, fmt)
+        write_operator(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
+        pack2 = read_operator(dst, fmt)
 
         @test pack2 isa WannierIO.OperatorPack
         @test pack2.n_wann == dpack0.n_wann

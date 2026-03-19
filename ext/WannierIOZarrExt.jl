@@ -8,7 +8,7 @@ using OrderedCollections: OrderedDict
 const _DEFAULT_ZARR_CLEVEL = 5
 const _DEFAULT_ZARR_SHUFFLE = true
 
-function WannierIO.write_operators(
+function WannierIO.write_operator(
     filename::AbstractString,
     pack::WannierIO.OperatorPack,
     fmt::Union{WannierIO.ZarrFormat,WannierIO.ZarrZipFormat};
@@ -18,11 +18,11 @@ function WannierIO.write_operators(
 )
     opt = WannierIO.SparseOption(; kwargs...)
     spack = WannierIO.sparsify(pack, opt)
-    write_operators(filename, spack, fmt; clevel, shuffle)
+    write_operator(filename, spack, fmt; clevel, shuffle)
     return nothing
 end
 
-function WannierIO.write_operators(
+function WannierIO.write_operator(
     filename::AbstractString,
     pack::WannierIO.SparseOperatorPack,
     ::WannierIO.ZarrFormat;
@@ -42,7 +42,7 @@ function WannierIO.write_operators(
     return nothing
 end
 
-function WannierIO.write_operators(
+function WannierIO.write_operator(
     filename::AbstractString,
     pack::WannierIO.SparseOperatorPack,
     ::WannierIO.ZarrZipFormat;
@@ -97,12 +97,12 @@ function _zarr_write_tb(
     return nothing
 end
 
-function WannierIO.read_operators(filename::AbstractString, ::WannierIO.ZarrFormat)
+function WannierIO.read_operator(filename::AbstractString, ::WannierIO.ZarrFormat)
     g = Zarr.zopen(filename)
     return _zarr_read_tb(g)
 end
 
-function WannierIO.read_operators(filename::AbstractString, ::WannierIO.ZarrZipFormat)
+function WannierIO.read_operator(filename::AbstractString, ::WannierIO.ZarrZipFormat)
     g = Zarr.zopen(Zarr.ZipStore(Mmap.mmap(filename)))
     return _zarr_read_tb(g)
 end

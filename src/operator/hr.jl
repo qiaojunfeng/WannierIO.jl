@@ -24,7 +24,7 @@ See also [`read_w90_hr_dat`](@ref) and [`read_w90_wsvec`](@ref) for reading just
 the `prefix_hr.dat` and `prefix_wsvec.dat` files without any reduction.
 
 This high-level API is intentionally for native Wannier90 text files only.
-For HDF5/JLD2/Zarr backends, use [`read_operators`](@ref).
+For HDF5/JLD2/Zarr backends, use [`read_operator`](@ref).
 """
 function read_w90_hr(file::AbstractString)
     hrdat = read_w90_hr_dat(file)
@@ -45,7 +45,7 @@ end
 Write Wannier90 Hamiltonian text data.
 
 This high-level API is intentionally for native Wannier90 text files only.
-For HDF5/JLD2/Zarr backends, use [`write_operators`](@ref).
+For HDF5/JLD2/Zarr backends, use [`write_operator`](@ref).
 
 For [`W90Dat`](@ref):
 - `write_w90_hr(file, hrdat)` writes only `prefix_hr.dat`.

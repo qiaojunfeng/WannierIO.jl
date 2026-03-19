@@ -41,7 +41,7 @@ It loads `*_tb.dat`, auto-detects and uses the matching `*_wsvec.dat` when avail
 and returns a reduced [`OperatorPack`](@ref) that is ready for further processing.
 
 This `read_w90_tb`/`write_w90_tb` API is for Wannier90 text files.
-For sparse/compressed backends, use [`read_operators`](@ref) and [`write_operators`](@ref)
+For sparse/compressed backends, use [`read_operator`](@ref) and [`write_operator`](@ref)
 with [`HDF5Format`](@ref), [`JLD2Format`](@ref), [`ZarrFormat`](@ref),
 or [`ZarrZipFormat`](@ref).
 

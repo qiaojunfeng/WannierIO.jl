@@ -43,9 +43,9 @@ end
     ]
 
     for (fmt, dst) in targets
-        write_operators(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
-        pack2 = read_operators(dst, fmt)
-        pack3 = read_operators(dst)
+        write_operator(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
+        pack2 = read_operator(dst, fmt)
+        pack3 = read_operator(dst)
 
         for pack in (pack2, pack3)
             @test pack isa WannierIO.OperatorPack
@@ -66,8 +66,8 @@ end
     ]
 
     for (fmt, dst) in reduced_precision_targets
-        write_operators(dst, dpack0, fmt)
-        pack2 = read_operators(dst, fmt)
+        write_operator(dst, dpack0, fmt)
+        pack2 = read_operator(dst, fmt)
 
         @test pack2 isa WannierIO.OperatorPack{Float32,Int32}
         @test pack2.n_wann == dpack0.n_wann

@@ -20,7 +20,7 @@ See also [`read_w90_tb_dat`](@ref) and [`read_w90_wsvec`](@ref) for reading just
 the `prefix_tb.dat` and `prefix_wsvec.dat` files without any reduction.
 
 This high-level API is intentionally for native Wannier90 text files only.
-For HDF5/JLD2/Zarr backends, use [`read_operators`](@ref).
+For HDF5/JLD2/Zarr backends, use [`read_operator`](@ref).
 """
 function read_w90_tb end
 
@@ -43,7 +43,7 @@ end
 Write Wannier90 tight-binding text data.
 
 This high-level API is intentionally for native Wannier90 text files only.
-For HDF5/JLD2/Zarr backends, use [`write_operators`](@ref).
+For HDF5/JLD2/Zarr backends, use [`write_operator`](@ref).
 
 For [`W90Dat`](@ref):
 - `write_w90_tb(file, tbdat, W90Dat())` writes only `prefix_tb.dat`.

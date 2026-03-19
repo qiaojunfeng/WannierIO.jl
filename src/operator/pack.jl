@@ -1,4 +1,4 @@
-export OperatorPack, pack, read_operators, write_operators
+export OperatorPack, pack, read_operator, write_operator
 
 using OrderedCollections: OrderedDict
 
@@ -133,8 +133,8 @@ e.g., from [`TbDat`](@ref) and [`WsvecDat`](@ref) structs to [`OperatorPack`](@r
 function pack end
 
 """
-    read_operators(file, format)
-    read_operators(file)
+    read_operator(file, format)
+    read_operator(file)
 
 Read operators from a backend storage format (HDF5/JLD2/Zarr) and return an
 [`OperatorPack`](@ref).
@@ -142,31 +142,31 @@ Read operators from a backend storage format (HDF5/JLD2/Zarr) and return an
 When called without a format argument, the format is inferred from the file
 extension via [`detect_operator_format`](@ref).
 """
-function read_operators end
+function read_operator end
 
 """
-    write_operators(file, pack, format; kwargs...)
-    write_operators(file, pack; kwargs...)
+    write_operator(file, pack, format; kwargs...)
+    write_operator(file, pack; kwargs...)
 
 Write an operator pack to a backend storage format (HDF5/JLD2/Zarr).
 
 When called without a format argument, the format is inferred from the file
 extension via [`detect_operator_format`](@ref).
 """
-function write_operators end
+function write_operator end
 
-function read_operators(file::AbstractString, fmt::AbstractFileFormat)
+function read_operator(file::AbstractString, fmt::AbstractFileFormat)
     error(
         "Format `$(format_name(fmt))` requires loading the corresponding package. " *
         "See the WannierIO documentation for supported formats.",
     )
 end
 
-function read_operators(file::AbstractString)
-    return read_operators(file, detect_operator_format(file))
+function read_operator(file::AbstractString)
+    return read_operator(file, detect_operator_format(file))
 end
 
-function write_operators(
+function write_operator(
     file::AbstractString, pack::AbstractOperatorPack, fmt::AbstractFileFormat; kwargs...
 )
     error(
@@ -175,6 +175,6 @@ function write_operators(
     )
 end
 
-function write_operators(file::AbstractString, pack::AbstractOperatorPack; kwargs...)
-    return write_operators(file, pack, detect_operator_format(file); kwargs...)
+function write_operator(file::AbstractString, pack::AbstractOperatorPack; kwargs...)
+    return write_operator(file, pack, detect_operator_format(file); kwargs...)
 end

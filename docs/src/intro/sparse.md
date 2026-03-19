@@ -15,7 +15,7 @@ WannierIO supports a sparse-packed representation that:
 
 ## Supported backends
 
-Sparse TB IO is exposed through [`read_operators`](@ref) and [`write_operators`](@ref)
+Sparse TB IO is exposed through [`read_operator`](@ref) and [`write_operator`](@ref)
 with format objects:
 
 - [`HDF5Format`](@ref)
@@ -44,19 +44,19 @@ using HDF5
 pack = read_w90_tb("Si2_valence_tb.dat")
 
 # Write sparse/compressed HDF5.
-write_operators("Si2_valence.h5", pack, HDF5Format(); atol=1e-10)
+write_operator("Si2_valence.h5", pack, WannierIO.HDF5Format(); atol=1e-10)
 
 # Read back (returns dense OperatorPack).
-pack_h5 = read_operators("Si2_valence.h5", HDF5Format())
+pack_h5 = read_operator("Si2_valence.h5")
 ```
 
 If no format is provided, [`detect_operator_format`](@ref) selects it from the
-filename extension when calling [`read_operators`](@ref) or [`write_operators`](@ref).
+filename extension when calling [`read_operator`](@ref) or [`write_operator`](@ref).
 
 ## Precision and sparsification controls
 
 Sparsification behavior is controlled by [`SparseOption`](@ref), usually passed
-as keyword arguments to `write_operators`:
+as keyword arguments to `write_operator`:
 
 - `atol`: threshold below which real/imaginary parts are dropped,
 - `value_type`: numeric type for stored values (for example `Float32`),
@@ -67,10 +67,10 @@ using WannierIO
 using JLD2
 
 pack = read_w90_tb("Si2_valence_tb.dat")
-write_operators(
+write_operator(
     "Si2_valence.jld2",
     pack,
-    JLD2Format();
+    WannierIO.JLD2Format();
     atol=1e-10,
     value_type=Float32,
     index_type=Int16,
@@ -90,7 +90,7 @@ using WannierIO
 using Zarr
 
 pack = read_w90_tb("Si2_valence_tb.dat")
-write_operators("Si2_valence.zarr", pack, ZarrFormat(); clevel=7, shuffle=true)
+write_operator("Si2_valence.zarr", pack, ZarrFormat(); clevel=7, shuffle=true)
 ```
 
 ## Direct sparse conversion API
