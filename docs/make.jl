@@ -9,7 +9,10 @@ makedocs(;
     clean=true,
     modules=[WannierIO],
     format=DocumenterVitepress.MarkdownVitepress(;
-        repo="github.com/qiaojunfeng/WannierIO.jl", devbranch="main", devurl="dev"
+        repo="github.com/qiaojunfeng/WannierIO.jl",
+        devbranch="main",
+        devurl="dev",
+        deploy_url="https://io.wannierjl.org/",
     ),
     pages=[
         "Home" => "index.md",
@@ -35,5 +38,5 @@ DocumenterVitepress.deploydocs(;
     target=joinpath(@__DIR__, "build"),
     branch="gh-pages",
     devbranch="main",
-    push_preview=true,
+    push_preview=false,
 )
