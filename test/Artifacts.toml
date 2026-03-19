@@ -14,12 +14,20 @@ lazy = true
     sha256 = "966ffc46f9bae5ea90df9d16f1a6da861cbca36bf1ca0238b72d758975f32106"
     url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Cu.tar.gz"
 
+[Si2_3d]
+git-tree-sha1 = "685cc8155dd50d125ecd1a0a5146c98b0c111ff0"
+lazy = true
+
+    [[Si2_3d.download]]
+    sha256 = "a421b18c9315c3ca0c03e54619397c32b7e0a2d15ba0b813f75d865cd5534787"
+    url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Si2_3d.tar.gz"
+
 [Si2_valence]
-git-tree-sha1 = "c7fd5d5070047d85872c19c320b7170fd4b155c8"
+git-tree-sha1 = "38c238af6e47cdb7a03b92fd941ea2e87bf8c2b0"
 lazy = true
 
     [[Si2_valence.download]]
-    sha256 = "34e0d38cc9e4b89eb95316b7b5d806f1a7d91943a1ac7ae8a1e4278fa1b03862"
+    sha256 = "7319e3a7a0e1acad8a2405d3a7d0f7e17be1ec3ce51ee2ffa220319a93337ad2"
     url = "https://huggingface.co/datasets/atomology/WannierDatasets/resolve/artifacts/Si2_valence.tar.gz"
 
 [CrI3]
