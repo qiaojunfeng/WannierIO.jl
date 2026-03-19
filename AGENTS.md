@@ -21,6 +21,7 @@
   - `julia --project=docs docs/make.jl`
 
 ## Code and style expectations
+- Use 4 spaces for indentation.
 - Keep implementations small and type-stable where practical.
 - Prefer explicit, readable linear algebra.
 - Update docstrings and docs pages when changing public APIs in `src/`.

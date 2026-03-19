@@ -1,4 +1,24 @@
-@testitem "unified tb api" begin
+@testitem "w90 tb wrapper api" begin
+    using LazyArtifacts
+
+    tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
+    wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
+    dpack0 = pack(tbdat, wsvec)
+
+    dst = tempname() * "_tb.dat"
+    write_w90_tb(dst, tbdat, wsvec)
+
+    pack2 = read_w90_tb(dst)
+    @test pack2 isa WannierIO.OperatorPack
+    @test pack2.n_wann == dpack0.n_wann
+    @test pack2.Rvectors == dpack0.Rvectors
+    @test pack2.lattice == dpack0.lattice
+    for name in keys(dpack0.operators)
+        @test pack2.operators[name] ≈ dpack0.operators[name]
+    end
+end
+
+@testitem "unified operator storage api" begin
     using LazyArtifacts
     using HDF5
     using JLD2
@@ -16,7 +36,6 @@
     )
 
     targets = [
-        (WannierIO.W90Dat(), tempname() * "_tb.dat"),
         (WannierIO.HDF5Format(), tempname() * ".h5"),
         (WannierIO.JLD2Format(), tempname() * ".jld2"),
         (WannierIO.ZarrFormat(), tempname() * ".zarr"),
@@ -24,9 +43,9 @@
     ]
 
     for (fmt, dst) in targets
-        write_w90_tb(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
-        pack2 = read_w90_tb(dst, fmt)
-        pack3 = read_w90_tb(dst)
+        write_operators(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
+        pack2 = read_operators(dst, fmt)
+        pack3 = read_operators(dst)
 
         for pack in (pack2, pack3)
             @test pack isa WannierIO.OperatorPack
@@ -47,8 +66,8 @@
     ]
 
     for (fmt, dst) in reduced_precision_targets
-        write_w90_tb(dst, dpack0, fmt)
-        pack2 = read_w90_tb(dst, fmt)
+        write_operators(dst, dpack0, fmt)
+        pack2 = read_operators(dst, fmt)
 
         @test pack2 isa WannierIO.OperatorPack{Float32,Int16}
         @test pack2.n_wann == dpack0.n_wann

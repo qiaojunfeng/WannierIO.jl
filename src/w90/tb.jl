@@ -4,7 +4,7 @@ export read_w90_tb, write_w90_tb
     read_w90_tb(file, format)
     read_w90_tb(file)
 
-Read Wannier90 tight-binding data.
+Read Wannier90 `prefix_tb.dat` (and optional matching `prefix_wsvec.dat`).
 
 The Rvectors and degeneracies will be reduced by [`RvectorReducer`](@ref)
 automatically, resulting in a [`OperatorPack`](@ref) with just the Rvectors
@@ -20,15 +20,8 @@ T vectors and degeneracies.
 See also [`read_w90_tb_dat`](@ref) and [`read_w90_wsvec`](@ref) for reading just
 the `prefix_tb.dat` and `prefix_wsvec.dat` files without any reduction.
 
-The format is one of:
-
-- [`W90Dat`](@ref): native Wannier90 `.dat` text file
-- [`HDF5Format`](@ref): HDF5 (requires loading `HDF5`)
-- [`JLD2Format`](@ref): JLD2 (requires loading `JLD2`)
-- [`ZarrFormat`](@ref): Zarr (requires loading `Zarr`)
-
-When called without a format argument the format is inferred from the file
-extension via [`detect_w90dat_format`](@ref).
+This high-level API is intentionally for native Wannier90 text files only.
+For HDF5/JLD2/Zarr backends, use [`read_operators`](@ref).
 """
 function read_w90_tb end
 
@@ -39,59 +32,29 @@ function read_w90_tb(file, ::W90Dat)
         wsvec = read_w90_wsvec(wsvec_path)
         return pack(tbdat, wsvec)
     else
-        @warn "No corresponding wsvec file found for tb file at $file. \
-               Reading tb.dat without wsvec information."
+        error("No corresponding wsvec file found for tb file at $file.")
     end
     return pack(tbdat)
 end
 
-"""
-    read_w90_tb backend fallback — override by loading HDF5/JLD2/Zarr.
-"""
-function read_w90_tb(file, fmt::AbstractFileFormat)
-    error("Format `$(format_name(fmt))` requires loading the corresponding package. \
-           See the WannierIO documentation for supported formats.")
-end
-
-function read_w90_tb(file)
-    return read_w90_tb(file, detect_w90dat_format(file))
+function read_w90_tb(file::AbstractString)
+    return read_w90_tb(file, W90Dat())
 end
 
 """
-    write_w90_tb(file, tbdat, format; kwargs...)
-    write_w90_tb(file, tbdat)
-
-    write_w90_tb(file, tbdat, wsvec, format; kwargs...)
+    write_w90_tb(file, tbdat, wsvec, format)
     write_w90_tb(file, tbdat, wsvec)
 
-    write_w90_tb(file, pack, format; kwargs...)
-    write_w90_tb(file, pack)
+Write Wannier90 tight-binding text data.
 
-Write Wannier90 tight-binding data. The format is one of:
-
-- [`W90Dat`](@ref): native Wannier90 `.dat` text file
-- [`HDF5Format`](@ref): HDF5 format with sparsification and compression (requires loading `HDF5`)
-- [`JLD2Format`](@ref): JLD2 format with sparsification and compression (requires loading `JLD2`)
-- [`ZarrFormat`](@ref): Zarr format with sparsification and compression (requires loading `Zarr`)
-
-When called without a format argument, the format is inferred from the file
-extension via [`detect_w90dat_format`](@ref).
-
-The `kwargs` are passed to the corresponding backend and control the sparsification
-and compression of the TB data. See the documentation of each format for details.
+This high-level API is intentionally for native Wannier90 text files only.
+For HDF5/JLD2/Zarr backends, use [`write_operators`](@ref).
 
 For [`W90Dat`](@ref):
 - `write_w90_tb(file, tbdat, W90Dat())` writes only `prefix_tb.dat`.
 - `write_w90_tb(file, tbdat, wsvec, W90Dat())` writes both `prefix_tb.dat` and `prefix_wsvec.dat`.
-- `write_w90_tb(file, pack::OperatorPack, W90Dat())` writes one `prefix_tb.dat`
-    with unit R-degeneracies.
 """
 function write_w90_tb end
-
-function write_w90_tb(file::AbstractString, tbdat::TbDat, ::W90Dat)
-    write_w90_tb_dat(file, tbdat)
-    return nothing
-end
 
 function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat, ::W90Dat)
     write_w90_tb_dat(file, tbdat)
@@ -99,45 +62,8 @@ function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat, ::W90
     return nothing
 end
 
-function write_w90_tb(file::AbstractString, pack::OperatorPack, ::W90Dat; kwargs...)
-    write_w90_tb_dat(file, TbDat(pack))
-    return nothing
-end
-
-"""
-    write_w90_tb backend fallback — override by loading HDF5/JLD2/Zarr.
-"""
-function write_w90_tb(
-    file::AbstractString, pack::AbstractOperatorPack, fmt::AbstractFileFormat; kwargs...
-)
-    error("Format `$(format_name(fmt))` requires loading the corresponding package. \
-           See the `WannierIO` documentation for supported formats.")
-end
-
-# Convenience: TbDat input is converted to OperatorPack first.
-function write_w90_tb(
-    file::AbstractString, tbdat::TbDat, fmt::AbstractFileFormat; kwargs...
-)
-    return write_w90_tb(file, pack(tbdat), fmt; kwargs...)
-end
-
-# Convenience: WsvecDat + TbDat input applies WS/MDRS reduction first.
-function write_w90_tb(
-    file::AbstractString, tbdat::TbDat, wsvec::WsvecDat, fmt::AbstractFileFormat; kwargs...
-)
-    return write_w90_tb(file, pack(tbdat, wsvec), fmt; kwargs...)
-end
-
-function write_w90_tb(file::AbstractString, tbdat::TbDat; kwargs...)
-    return write_w90_tb(file, tbdat, detect_w90dat_format(file); kwargs...)
-end
-
-function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat; kwargs...)
-    return write_w90_tb(file, tbdat, wsvec, detect_w90dat_format(file); kwargs...)
-end
-
-function write_w90_tb(file::AbstractString, pack::AbstractOperatorPack; kwargs...)
-    return write_w90_tb(file, pack, detect_w90dat_format(file); kwargs...)
+function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat)
+    return write_w90_tb(file, tbdat, wsvec, W90Dat())
 end
 
 function _wsvec_path_from_tb(tbpath::AbstractString)
@@ -205,15 +131,7 @@ function TbDat(pack::OperatorPack)
     return TbDat(pack.header, Mat3{Tr}(pack.lattice), Rvectors, Rdegens, H, r_x, r_y, r_z)
 end
 
-"""
-    $(SIGNATURES)
-
-Convert dense `TbDat` operators into a [`SparseOperatorPack`](@ref).
-"""
-function sparsify(tbdat::TbDat, opt::SparseOption=SparseOption())
-    sparsify(pack(tbdat), opt)
-end
-
-function sparsify(tbdat::TbDat, wsvec::WsvecDat, opt::SparseOption=SparseOption())
-    sparsify(pack(tbdat, wsvec), opt)
+function WsvecDat(pack::OperatorPack)
+    # Reduced OperatorPack does not preserve MDRS mapping, so export as non-MDRS.
+    return WsvecDat(Vec3{Int}.(pack.Rvectors), pack.n_wann, pack.header)
 end

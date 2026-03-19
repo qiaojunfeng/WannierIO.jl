@@ -7,7 +7,7 @@ using OrderedCollections: OrderedDict
 const _DEFAULT_HDF5_DEFLATE = 4
 const _DEFAULT_HDF5_SHUFFLE = true
 
-function WannierIO.write_w90_tb(
+function WannierIO.write_operators(
     filename::AbstractString,
     pack::WannierIO.OperatorPack,
     fmt::WannierIO.HDF5Format;
@@ -17,11 +17,11 @@ function WannierIO.write_w90_tb(
 )
     opt = WannierIO.SparseOption(; kwargs...)
     spack = WannierIO.sparsify(pack, opt)
-    write_w90_tb(filename, spack, fmt; deflate, shuffle)
+    write_operators(filename, spack, fmt; deflate, shuffle)
     return nothing
 end
 
-function WannierIO.write_w90_tb(
+function WannierIO.write_operators(
     filename::AbstractString,
     pack::WannierIO.SparseOperatorPack,
     ::WannierIO.HDF5Format;
@@ -45,7 +45,7 @@ function WannierIO.write_w90_tb(
     return nothing
 end
 
-function WannierIO.read_w90_tb(filename::AbstractString, ::WannierIO.HDF5Format)
+function WannierIO.read_operators(filename::AbstractString, ::WannierIO.HDF5Format)
     spack = HDF5.h5open(filename, "r") do fid
         header = read(fid["header"])
         n_wann = read(fid["n_wann"])
