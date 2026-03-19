@@ -47,6 +47,14 @@ function Base.show(io::IO, reducer::WsRvectorReducer)
     print(io, "WsRvectorReducer(n_Rvecs=", length(reducer.Rvectors), ")")
 end
 
+function Base.:(==)(a::WsRvectorReducer, b::WsRvectorReducer)
+    return a.Rvectors == b.Rvectors && a.degens == b.degens
+end
+
+function Base.isequal(a::WsRvectorReducer, b::WsRvectorReducer)
+    return isequal(a.Rvectors, b.Rvectors) && isequal(a.degens, b.degens)
+end
+
 function Base.show(io::IO, ::MIME"text/plain", reducer::WsRvectorReducer)
     nR = length(reducer.Rvectors)
     degen_min = nR == 0 ? 0 : minimum(reducer.degens)
@@ -147,6 +155,18 @@ end
 
 function Base.show(io::IO, reducer::MdrsRvectorReducer)
     print(io, "MdrsRvectorReducer(n_Rvecs=", length(reducer.Rvectors), ")")
+end
+
+function Base.:(==)(a::MdrsRvectorReducer, b::MdrsRvectorReducer)
+    return a.Rvectors == b.Rvectors && a.mapping == b.mapping && a.degens == b.degens
+end
+
+function Base.isequal(a::MdrsRvectorReducer, b::MdrsRvectorReducer)
+    return (
+        isequal(a.Rvectors, b.Rvectors) &&
+        isequal(a.mapping, b.mapping) &&
+        isequal(a.degens, b.degens)
+    )
 end
 
 function Base.show(io::IO, ::MIME"text/plain", reducer::MdrsRvectorReducer)
