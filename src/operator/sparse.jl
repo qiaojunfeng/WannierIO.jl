@@ -151,7 +151,7 @@ Base.@kwdef struct SparseOption
     atol::Float64 = 1e-6
 
     "Integer type for storing row and column indices in sparse matrices."
-    index_type::Type{<:Integer} = Int16
+    index_type::Type{<:Integer} = Int32
 
     """Numeric type for storing nonzero values in sparse matrices.
     Can be real or complex. If real, will attempt to convert complex values

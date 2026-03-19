@@ -1,7 +1,6 @@
 export read_w90_tb, write_w90_tb
 
 """
-    read_w90_tb(file, format)
     read_w90_tb(file)
 
 Read Wannier90 `prefix_tb.dat` (and optional matching `prefix_wsvec.dat`).
@@ -25,24 +24,20 @@ For HDF5/JLD2/Zarr backends, use [`read_operators`](@ref).
 """
 function read_w90_tb end
 
-function read_w90_tb(file, ::W90Dat)
+function read_w90_tb(file::AbstractString)
     tbdat = read_w90_tb_dat(file)
     wsvec_path = _wsvec_path_from_tb(file)
     if isfile(wsvec_path)
         wsvec = read_w90_wsvec(wsvec_path)
         return pack(tbdat, wsvec)
     else
-        error("No corresponding wsvec file found for tb file at $file.")
+        @warn("No corresponding wsvec file found for tb file at $file.")
+        return pack(tbdat)
     end
-    return pack(tbdat)
-end
-
-function read_w90_tb(file::AbstractString)
-    return read_w90_tb(file, W90Dat())
 end
 
 """
-    write_w90_tb(file, tbdat, wsvec, format)
+    write_w90_tb(file, tbdat)
     write_w90_tb(file, tbdat, wsvec)
 
 Write Wannier90 tight-binding text data.
@@ -56,14 +51,15 @@ For [`W90Dat`](@ref):
 """
 function write_w90_tb end
 
-function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat, ::W90Dat)
+function write_w90_tb(file::AbstractString, tbdat::TbDat)
     write_w90_tb_dat(file, tbdat)
-    write_w90_wsvec(_wsvec_path_from_tb(file), wsvec)
     return nothing
 end
 
 function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat)
-    return write_w90_tb(file, tbdat, wsvec, W90Dat())
+    write_w90_tb_dat(file, tbdat)
+    write_w90_wsvec(_wsvec_path_from_tb(file), wsvec)
+    return nothing
 end
 
 function _wsvec_path_from_tb(tbpath::AbstractString)
@@ -72,6 +68,13 @@ function _wsvec_path_from_tb(tbpath::AbstractString)
     else
         error("Not a valid tb.dat filename: $tbpath")
     end
+end
+
+function write_w90_tb(file::AbstractString, pack::OperatorPack)
+    tbdat = TbDat(pack)
+    wsvec = WsvecDat(pack)
+    write_w90_tb(file, tbdat, wsvec)
+    return nothing
 end
 
 function RvectorReducer(tbdat::TbDat)

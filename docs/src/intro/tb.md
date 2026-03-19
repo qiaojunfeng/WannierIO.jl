@@ -8,10 +8,10 @@ This page describes the tight-binding (TB) workflow in WannierIO.
 
 At a high level, the TB API provides:
 
-- reading and writing native Wannier90 `*_tb.dat` and `*_wsvec.dat` files,
+- reading and writing Wannier90 `*_tb.dat` and `*_wsvec.dat` files,
 - automatic reduction of R-vector degeneracies and MDRS corrections,
 - conversion to a clean operator container for interpolation and post-processing,
-- optional sparse/compressed storage backends (HDF5/JLD2/Zarr).
+- optional sparse/compressed storage backends (HDF5/JLD2/Zarr/ZarrZip).
 
 ## R-vector reduction notes
 
@@ -40,9 +40,14 @@ For most users, [`read_w90_tb`](@ref) is the recommended entry point.
 It loads `*_tb.dat`, auto-detects and uses the matching `*_wsvec.dat` when available,
 and returns a reduced [`OperatorPack`](@ref) that is ready for further processing.
 
+This `read_w90_tb`/`write_w90_tb` API is for Wannier90 text files.
+For sparse/compressed backends, use [`read_operators`](@ref) and [`write_operators`](@ref)
+with [`HDF5Format`](@ref), [`JLD2Format`](@ref), [`ZarrFormat`](@ref),
+or [`ZarrZipFormat`](@ref).
+
 ## Typical usage
 
-### 1. Read and write native Wannier90 TB files
+### 1. Read and write Wannier90 TB files
 
 ```julia
 using WannierIO
@@ -50,7 +55,7 @@ using WannierIO
 # Reads prefix_tb.dat, and if present, prefix_wsvec.dat.
 pack = read_w90_tb("silicon_tb.dat")
 
-# Write a reduced OperatorPack back to a native tb.dat file.
+# Write an OperatorPack back to a tb.dat file.
 write_w90_tb("silicon_reduced_tb.dat", pack)
 ```
 
@@ -68,21 +73,6 @@ pack = pack(tb, ws)
 # Write both files explicitly.
 write_w90_tb("silicon_out_tb.dat", tb, ws)
 ```
-
-### 3. Save in sparse/compressed formats
-
-```julia
-using WannierIO
-using HDF5   # or JLD2 / Zarr
-
-pack = read_w90_tb("silicon_tb.dat")
-write_w90_tb("silicon.h5", pack, HDF5Format(); atol=1e-10)
-
-pack2 = read_w90_tb("silicon.h5", HDF5Format())
-```
-
-The same high-level API works for [`JLD2Format`](@ref) and [`ZarrFormat`](@ref).
-See [sparse storage](./sparse.md) for backend-specific details and precision options.
 
 For all related type/function signatures, see the
 [tight-binding API reference](../api/tb.md).

@@ -30,9 +30,6 @@ include("util/header.jl")
 include("util/toml.jl")
 include("util/parser.jl")
 include("util/compare.jl")
-include("util/Rvector.jl")
-include("util/operator.jl")
-include("util/sparse.jl")
 
 using FortranFiles: FortranFile, FString, trimstring, Record
 
@@ -50,9 +47,7 @@ include("w90/uIu.jl")
 include("w90/band.jl")
 include("w90/hr_dat.jl")
 include("w90/wsvec.jl")
-include("w90/hr.jl")
 include("w90/tb_dat.jl")
-include("w90/tb.jl")
 include("w90/r.jl")
 include("w90/hh_r.jl")
 include("w90/u_mat.jl")
@@ -64,5 +59,12 @@ include("volume/cube.jl")
 include("volume/bxsf.jl")
 
 include("misc/epw.jl")
+
+# Operators
+include("operator/Rvector.jl")
+include("operator/pack.jl")
+include("operator/sparse.jl")
+include("operator/tb.jl")
+include("operator/hr.jl")
 
 end

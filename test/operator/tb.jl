@@ -18,7 +18,7 @@
     end
 end
 
-@testitem "unified operator storage api" begin
+@testitem "unified tb api" begin
     using LazyArtifacts
     using HDF5
     using JLD2
@@ -69,7 +69,7 @@ end
         write_operators(dst, dpack0, fmt)
         pack2 = read_operators(dst, fmt)
 
-        @test pack2 isa WannierIO.OperatorPack{Float32,Int16}
+        @test pack2 isa WannierIO.OperatorPack{Float32,Int32}
         @test pack2.n_wann == dpack0.n_wann
         @test pack2.Rvectors == dpack0.Rvectors
         @test pack2.lattice ≈ dpack0.lattice

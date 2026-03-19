@@ -170,16 +170,15 @@ format_name(::ZarrFormat) = "zarr"
 format_name(::ZarrZipFormat) = "zarr-zip"
 
 """
-    detect_w90dat_format(path)
+    detect_operator_format(path)
 
-Infer a tight-binding format tag from the file extension of `path`:
+Infer an operator storage format tag from the file extension of `path`:
 - `.h5` / `.hdf5` → [`HDF5Format`](@ref)
 - `.jld2`          → [`JLD2Format`](@ref)
 - `.zarr`          → [`ZarrFormat`](@ref)
 - `.zarr.zip`      → [`ZarrZipFormat`](@ref)
-    - anything else   → [`W90Dat`](@ref)
 """
-function detect_w90dat_format(path::AbstractString)
+function detect_operator_format(path::AbstractString)
     p = lowercase(path)
     if endswith(p, ".h5") || endswith(p, ".hdf5")
         return HDF5Format()
@@ -190,6 +189,10 @@ function detect_w90dat_format(path::AbstractString)
     elseif endswith(p, ".zarr.zip")
         return ZarrZipFormat()
     else
-        return W90Dat()
+        error(
+            "Could not detect operator format from file extension of $path. " *
+            "Supported extensions are: .h5/.hdf5 for HDF5Format, .jld2 for JLD2Format, " *
+            ".zarr for ZarrFormat, and .zarr.zip for ZarrZipFormat.",
+        )
     end
 end

@@ -140,7 +140,7 @@ Read operators from a backend storage format (HDF5/JLD2/Zarr) and return an
 [`OperatorPack`](@ref).
 
 When called without a format argument, the format is inferred from the file
-extension via [`detect_w90dat_format`](@ref).
+extension via [`detect_operator_format`](@ref).
 """
 function read_operators end
 
@@ -148,11 +148,10 @@ function read_operators end
     write_operators(file, pack, format; kwargs...)
     write_operators(file, pack; kwargs...)
 
-Write an [`AbstractOperatorPack`](@ref) to a backend storage format
-(HDF5/JLD2/Zarr).
+Write an operator pack to a backend storage format (HDF5/JLD2/Zarr).
 
 When called without a format argument, the format is inferred from the file
-extension via [`detect_w90dat_format`](@ref).
+extension via [`detect_operator_format`](@ref).
 """
 function write_operators end
 
@@ -164,7 +163,7 @@ function read_operators(file::AbstractString, fmt::AbstractFileFormat)
 end
 
 function read_operators(file::AbstractString)
-    return read_operators(file, detect_w90dat_format(file))
+    return read_operators(file, detect_operator_format(file))
 end
 
 function write_operators(
@@ -177,5 +176,5 @@ function write_operators(
 end
 
 function write_operators(file::AbstractString, pack::AbstractOperatorPack; kwargs...)
-    return write_operators(file, pack, detect_w90dat_format(file); kwargs...)
+    return write_operators(file, pack, detect_operator_format(file); kwargs...)
 end

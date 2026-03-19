@@ -16,16 +16,34 @@ definitions.
 
 ```@autodocs
 Modules = [WannierIO]
-Pages   = ["util/Rvector.jl"]
+Pages   = ["operator/Rvector.jl"]
+```
+
+## Tight-binding operators
+
+High-level TB API and conversions.
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["operator/tb.jl"]
+```
+
+## Hamiltonian operators
+
+High-level HR API and conversions.
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["operator/hr.jl"]
 ```
 
 ## Operator containers
 
-Container types and conversions (`TbDat`/`WsvecDat` <-> `OperatorPack`).
+Container types and conversions for generic operator storage.
 
 ```@autodocs
 Modules = [WannierIO]
-Pages   = ["util/operator.jl"]
+Pages   = ["operator/pack.jl"]
 ```
 
 ## Sparse representation
@@ -34,7 +52,7 @@ Sparse containers and conversion routines (`sparsify`, `densify`).
 
 ```@autodocs
 Modules = [WannierIO]
-Pages   = ["util/sparse.jl"]
+Pages   = ["operator/sparse.jl"]
 ```
 
 ## Page index

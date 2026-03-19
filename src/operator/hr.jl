@@ -33,6 +33,7 @@ function read_w90_hr(file::AbstractString)
         wsvec = read_w90_wsvec(wsvec_path)
         return pack(hrdat, wsvec)
     else
+        @warn("No corresponding wsvec file found for hr file at $file.")
         return pack(hrdat)
     end
 end
@@ -69,6 +70,13 @@ function _wsvec_path_from_hr(hrpath::AbstractString)
     else
         error("Not a valid hr.dat filename: $hrpath")
     end
+end
+
+function write_w90_hr(file::AbstractString, pack::OperatorPack)
+    hrdat = HrDat(pack)
+    wsvec = WsvecDat(pack)
+    write_w90_hr(file, hrdat, wsvec)
+    return nothing
 end
 
 function _missing_lattice(::Type{T}) where {T<:Real}
@@ -117,8 +125,4 @@ function HrDat(pack::OperatorPack)
         ones(Int, pack.n_Rvecs),
         [Matrix{Tc}(O) for O in H],
     )
-end
-
-function HrDat(pack::SparseOperatorPack)
-    return HrDat(densify(pack))
 end

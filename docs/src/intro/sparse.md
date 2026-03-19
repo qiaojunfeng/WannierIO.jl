@@ -15,7 +15,7 @@ WannierIO supports a sparse-packed representation that:
 
 ## Supported backends
 
-Sparse TB IO is exposed through [`read_w90_tb`](@ref) and [`write_w90_tb`](@ref)
+Sparse TB IO is exposed through [`read_operators`](@ref) and [`write_operators`](@ref)
 with format objects:
 
 - [`HDF5Format`](@ref)
@@ -40,23 +40,23 @@ using HDF5   # or JLD2 / Zarr
 using WannierIO
 using HDF5
 
-# Read native Wannier90 tb.dat (+ wsvec when available).
+# Read Wannier90 tb.dat (+ wsvec when available).
 pack = read_w90_tb("Si2_valence_tb.dat")
 
 # Write sparse/compressed HDF5.
-write_w90_tb("Si2_valence.h5", pack, HDF5Format(); atol=1e-10)
+write_operators("Si2_valence.h5", pack, HDF5Format(); atol=1e-10)
 
 # Read back (returns dense OperatorPack).
-pack_h5 = read_w90_tb("Si2_valence.h5", HDF5Format())
+pack_h5 = read_operators("Si2_valence.h5", HDF5Format())
 ```
 
-If no format is provided, [`detect_w90dat_format`](@ref) selects it from the
-filename extension.
+If no format is provided, [`detect_operator_format`](@ref) selects it from the
+filename extension when calling [`read_operators`](@ref) or [`write_operators`](@ref).
 
 ## Precision and sparsification controls
 
 Sparsification behavior is controlled by [`SparseOption`](@ref), usually passed
-as keyword arguments to `write_w90_tb`:
+as keyword arguments to `write_operators`:
 
 - `atol`: threshold below which real/imaginary parts are dropped,
 - `value_type`: numeric type for stored values (for example `Float32`),
@@ -67,7 +67,7 @@ using WannierIO
 using JLD2
 
 pack = read_w90_tb("Si2_valence_tb.dat")
-write_w90_tb(
+write_operators(
     "Si2_valence.jld2",
     pack,
     JLD2Format();
@@ -90,7 +90,7 @@ using WannierIO
 using Zarr
 
 pack = read_w90_tb("Si2_valence_tb.dat")
-write_w90_tb("Si2_valence.zarr", pack, ZarrFormat(); clevel=7, shuffle=true)
+write_operators("Si2_valence.zarr", pack, ZarrFormat(); clevel=7, shuffle=true)
 ```
 
 ## Direct sparse conversion API
@@ -114,12 +114,3 @@ operator as a [`CscPack`](@ref).
     interpolation and downstream code.
 - Choose `atol` carefully: larger values reduce file size more aggressively,
     but can remove physically relevant small matrix elements.
-- Benchmark helper script:
-
-```bash
-julia --project misc/benchmark_tb_storage.jl /path/to/tb_dir 200 1e-10
-```
-
-For the full TB workflow, see [Tight-binding operators](./tb.md).
-For complete signatures and low-level details, see
-[the tight-binding API reference](../api/tb.md).
