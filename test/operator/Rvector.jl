@@ -17,7 +17,7 @@
         artifact"Si2_valence/outputs/WS/reduced_Rvectors/Si2_valence_tb.dat"
     )
 
-    atol = 1e-10
+    atol = 1.0e-10
     @test reducer.Rvectors == ref.Rvectors
     @test reducer.degens == tbdat.Rdegens
     @test isapprox(H1, ref.H; atol)
@@ -63,7 +63,7 @@ end
     ref_r_y = ref_tbdat.r_y[idx]
     ref_r_z = ref_tbdat.r_z[idx]
 
-    atol = 1e-10
+    atol = 1.0e-10
     @test reducer.Rvectors == ref_Rvectors
     @test isapprox(H1, ref_H; atol)
     @test isapprox(r_x1, ref_r_x; atol)

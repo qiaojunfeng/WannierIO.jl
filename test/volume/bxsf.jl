@@ -13,7 +13,7 @@
     E1234 = 8.26105181
     @test bxsf.E[1, 2, 3, 4] ≈ E1234
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_bxsf(tmpfile, bxsf)
     bxsf2 = read_bxsf(tmpfile)
 

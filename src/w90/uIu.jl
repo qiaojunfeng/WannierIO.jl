@@ -25,19 +25,19 @@ Read the wannier90 `uIu` file.
 """
 function read_uIu end
 
-function read_uIu(filename::AbstractString, ::FortranText; transpose_band_indices=true)
+function read_uIu(filename::AbstractString, ::FortranText; transpose_band_indices = true)
     return read_uHu(filename, FortranText(); transpose_band_indices)
 end
 
-function read_uIu(io::IO, ::FortranText; transpose_band_indices=true)
+function read_uIu(io::IO, ::FortranText; transpose_band_indices = true)
     return read_uHu(io, FortranText(); transpose_band_indices)
 end
 
-function read_uIu(filename::AbstractString, ::FortranBinary; transpose_band_indices=true)
+function read_uIu(filename::AbstractString, ::FortranBinary; transpose_band_indices = true)
     return read_uHu(filename, FortranBinary(); transpose_band_indices)
 end
 
-function read_uIu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
+function read_uIu(io::FortranFile, ::FortranBinary; transpose_band_indices = true)
     return read_uHu(io, FortranBinary(); transpose_band_indices)
 end
 
@@ -64,52 +64,52 @@ Write the `uIu` file.
 function write_uIu end
 
 function write_uIu(
-    filename::AbstractString,
-    uIu::AbstractVector,
-    ::FortranText;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        filename::AbstractString,
+        uIu::AbstractVector,
+        ::FortranText;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     return write_uHu(filename, uIu, FortranText(); header, transpose_band_indices)
 end
 
 function write_uIu(
-    io::IO,
-    uIu::AbstractVector,
-    ::FortranText;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        io::IO,
+        uIu::AbstractVector,
+        ::FortranText;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     return write_uHu(io, uIu, FortranText(); header, transpose_band_indices)
 end
 
 function write_uIu(
-    filename::AbstractString,
-    uIu::AbstractVector,
-    ::FortranBinary;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        filename::AbstractString,
+        uIu::AbstractVector,
+        ::FortranBinary;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     return write_uHu(filename, uIu, FortranBinary(); header, transpose_band_indices)
 end
 
 function write_uIu(
-    io::FortranFile,
-    uIu::AbstractVector,
-    ::FortranBinary;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        io::FortranFile,
+        uIu::AbstractVector,
+        ::FortranBinary;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     return write_uHu(io, uIu, FortranBinary(); header, transpose_band_indices)
 end
 
 function write_uIu(
-    filename::AbstractString,
-    uIu::AbstractVector;
-    binary=false,
-    header=default_header(),
-    kwargs...,
-)
+        filename::AbstractString,
+        uIu::AbstractVector;
+        binary = false,
+        header = default_header(),
+        kwargs...,
+    )
     format = fortran_format(; binary)
     return write_uIu(filename, uIu, format; header, kwargs...)
 end

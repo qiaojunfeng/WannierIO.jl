@@ -6,7 +6,7 @@
     @test Udismat.U ≈ chk.Uml
     @test Udismat.kpoints ≈ chk.kpoints
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     WannierIO.write_u_mat(tmpfile, chk.Uml, chk.kpoints)
     Udismat2 = WannierIO.read_u_mat(tmpfile)
     @test Udismat2.U ≈ chk.Uml
@@ -23,7 +23,7 @@ end
     @test Udismat.U ≈ chk.Udis
     @test Udismat.kpoints ≈ chk.kpoints
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     WannierIO.write_u_mat(tmpfile, chk.Udis, chk.kpoints)
     Udismat2 = WannierIO.read_u_mat(tmpfile)
     @test Udismat2.U ≈ chk.Udis

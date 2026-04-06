@@ -25,7 +25,7 @@ Read the wannier90 `uHu` file.
 """
 function read_uHu end
 
-function read_uHu(io::IO, ::FortranText; transpose_band_indices=true)
+function read_uHu(io::IO, ::FortranText; transpose_band_indices = true)
     header = readline(io)
 
     arr = split(readline(io))
@@ -59,13 +59,13 @@ function read_uHu(io::IO, ::FortranText; transpose_band_indices=true)
     return (; uHu, header)
 end
 
-function read_uHu(filename::AbstractString, ::FortranText; transpose_band_indices=true)
+function read_uHu(filename::AbstractString, ::FortranText; transpose_band_indices = true)
     return open(filename) do io
         read_uHu(io, FortranText(); transpose_band_indices)
     end
 end
 
-function read_uHu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
+function read_uHu(io::FortranFile, ::FortranBinary; transpose_band_indices = true)
 
     # strip and read line
     header_len = 60
@@ -102,7 +102,7 @@ function read_uHu(io::FortranFile, ::FortranBinary; transpose_band_indices=true)
     return (; uHu, header)
 end
 
-function read_uHu(filename::AbstractString, ::FortranBinary; transpose_band_indices=true)
+function read_uHu(filename::AbstractString, ::FortranBinary; transpose_band_indices = true)
     io = FortranFile(filename)
     return read_uHu(io, FortranBinary(); transpose_band_indices)
 end
@@ -130,12 +130,12 @@ Write the `uHu` file.
 function write_uHu end
 
 function write_uHu(
-    io::IO,
-    uHu::AbstractVector,
-    ::FortranText;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        io::IO,
+        uHu::AbstractVector,
+        ::FortranText;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     n_kpts = length(uHu)
     n_kpts > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bvecs = size(uHu[1], 1)
@@ -167,12 +167,12 @@ function write_uHu(
 end
 
 function write_uHu(
-    filename::AbstractString,
-    uHu::AbstractVector,
-    ::FortranText;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        filename::AbstractString,
+        uHu::AbstractVector,
+        ::FortranText;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     open(filename, "w") do io
         write_uHu(io, uHu, FortranText(); header, transpose_band_indices)
     end
@@ -180,12 +180,12 @@ function write_uHu(
 end
 
 function write_uHu(
-    io::FortranFile,
-    uHu::AbstractVector,
-    ::FortranBinary;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        io::FortranFile,
+        uHu::AbstractVector,
+        ::FortranBinary;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     n_kpts = length(uHu)
     n_kpts > 0 || throw(ArgumentError("empty uHu matrix"))
     n_bvecs = size(uHu[1], 1)
@@ -220,23 +220,23 @@ function write_uHu(
 end
 
 function write_uHu(
-    filename::AbstractString,
-    uHu::AbstractVector,
-    ::FortranBinary;
-    header=default_header(),
-    transpose_band_indices=true,
-)
+        filename::AbstractString,
+        uHu::AbstractVector,
+        ::FortranBinary;
+        header = default_header(),
+        transpose_band_indices = true,
+    )
     io = FortranFile(filename, "w")
     return write_uHu(io, uHu, FortranBinary(); header, transpose_band_indices)
 end
 
 function write_uHu(
-    filename::AbstractString,
-    uHu::AbstractVector;
-    binary=false,
-    header=default_header(),
-    kwargs...,
-)
+        filename::AbstractString,
+        uHu::AbstractVector;
+        binary = false,
+        header = default_header(),
+        kwargs...,
+    )
     format = fortran_format(; binary)
     return write_uHu(filename, uHu, format; header, kwargs...)
 end

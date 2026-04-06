@@ -13,7 +13,7 @@ end
 @testitem "read/write nnkp" begin
     using LazyArtifacts
     nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp")
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_nnkp(tmpfile, nnkp)
 
     nnkp2 = read_nnkp(tmpfile)
@@ -26,7 +26,7 @@ end
     if VERSION > v"1.11.4"
         nnkp = read_nnkp(artifact"Si2_valence/outputs/Si2_valence.nnkp.toml")
 
-        tmpfile = tempname(; cleanup=true)
+        tmpfile = tempname(; cleanup = true)
         write_nnkp(tmpfile, nnkp, WannierIO.W90InputToml())
 
         nnkp2 = read_nnkp(tmpfile)
@@ -39,7 +39,7 @@ end
     nnkp = read_nnkp(artifact"SnSe2/outputs/SnSe2.nnkp")
     @test nnkp["auto_projections"] == 12
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_nnkp(tmpfile, nnkp, WannierIO.W90InputToml())
     nnkp2 = read_nnkp(tmpfile)
     @test nnkp["auto_projections"] == nnkp2["auto_projections"]

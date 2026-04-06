@@ -10,7 +10,7 @@
     @test length(band.x) == 511
     @test band.x[511] == 5.9004323
 
-    outdir = mktempdir(; cleanup=true)
+    outdir = mktempdir(; cleanup = true)
     outprefix = joinpath(outdir, "Si2_valence")
 
     write_w90_band(outprefix; band...)

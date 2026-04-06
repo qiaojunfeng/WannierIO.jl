@@ -12,7 +12,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Cube{T<:Real}
+struct Cube{T <: Real}
     "Atomic positions in Cartesian coordinates in Å"
     atom_positions::Vector{Vec3{T}}
 
@@ -35,7 +35,7 @@ struct Cube{T<:Real}
     Z::Vector{T}
 
     "Volumetric values, with shape (n_x, n_y, n_z)"
-    W::Array{T,3}
+    W::Array{T, 3}
 end
 
 function Base.show(io::IO, cube::Cube)
@@ -43,7 +43,7 @@ function Base.show(io::IO, cube::Cube)
     n_x = length(cube.X)
     n_y = length(cube.Y)
     n_z = length(cube.Z)
-    print(io, "Cube(n_atoms=$(n_atoms), grid=$(n_x)×$(n_y)×$(n_z))")
+    return print(io, "Cube(n_atoms=$(n_atoms), grid=$(n_x)×$(n_y)×$(n_z))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", cube::Cube)
@@ -52,7 +52,7 @@ function Base.show(io::IO, ::MIME"text/plain", cube::Cube)
     n_y = length(cube.Y)
     n_z = length(cube.Z)
 
-    print(
+    return print(
         io,
         """Cube(
           n_atoms: $(n_atoms)
@@ -81,8 +81,8 @@ Read `cube` file.
 function read_cube(io::IO)
 
     # header
-    header = readline(io; keep=true)
-    header *= readline(io; keep=true)
+    header = readline(io; keep = true)
+    header *= readline(io; keep = true)
 
     line = split(strip(readline(io)))
     n_atoms = parse(Int, line[1])

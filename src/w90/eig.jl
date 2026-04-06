@@ -8,8 +8,8 @@ Reshape a vector of eigenvalues into a matrix of eigenvalues.
 Auto detect the number of bands and kpoints.
 """
 @inline function _reshape_eig(
-    idx_b::AbstractVector, idx_k::AbstractVector, eig::AbstractVector
-)
+        idx_b::AbstractVector, idx_k::AbstractVector, eig::AbstractVector
+    )
     # find unique elements
     n_bands = length(Set(idx_b))
     n_kpts = length(Set(idx_k))
@@ -25,13 +25,14 @@ Check that eigenvalues are in order.
 
 Some times there are small noises, use `digits` to set the number of digits for comparisons.
 """
-@inline function _check_eig_order(eigenvalues::AbstractVector; digits=7)
+@inline function _check_eig_order(eigenvalues::AbstractVector; digits = 7)
     round_digits(x) = round(x; digits)
     for (ik, eig) in enumerate(eigenvalues)
-        if !issorted(eig; by=round_digits)
+        if !issorted(eig; by = round_digits)
             @warn "Eigenvalues are not sorted at " ik eig
         end
     end
+    return
 end
 
 """
@@ -96,8 +97,8 @@ function read_eig(filename::AbstractString, format::AbstractFileFormat)
     end
 end
 
-function read_eig(file::Union{IO,AbstractString})
-    format = detect_fortran_format(file; stream=true)
+function read_eig(file::Union{IO, AbstractString})
+    format = detect_fortran_format(file; stream = true)
     return read_eig(file, format)
 end
 
@@ -127,6 +128,7 @@ function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranText)
             @printf(io, "%5d%5d%18.12f\n", ib, ik, eigenvalues[ik][ib])
         end
     end
+    return
 end
 
 function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
@@ -144,19 +146,20 @@ function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
             write(io, Float64(eigenvalues[ik][ib]))
         end
     end
+    return
 end
 
 function write_eig(
-    filename::AbstractString, eigenvalues::AbstractVector, format::AbstractFileFormat
-)
-    open(filename, "w") do io
+        filename::AbstractString, eigenvalues::AbstractVector, format::AbstractFileFormat
+    )
+    return open(filename, "w") do io
         write_eig(io, eigenvalues, format)
     end
 end
 
 function write_eig(
-    file::Union{IO,AbstractString}, eigenvalues::AbstractVector; binary=false
-)
-    format = fortran_format(; binary, stream=true)
-    write_eig(file, eigenvalues, format)
+        file::Union{IO, AbstractString}, eigenvalues::AbstractVector; binary = false
+    )
+    format = fortran_format(; binary, stream = true)
+    return write_eig(file, eigenvalues, format)
 end

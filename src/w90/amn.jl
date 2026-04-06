@@ -80,8 +80,8 @@ function read_amn(filename::AbstractString, format::AbstractFileFormat)
     end
 end
 
-function read_amn(file::Union{IO,AbstractString})
-    format = detect_fortran_format(file; stream=true)
+function read_amn(file::Union{IO, AbstractString})
+    format = detect_fortran_format(file; stream = true)
     return read_amn(file, format)
 end
 
@@ -107,7 +107,7 @@ the `binary` kwargs.
 """
 function write_amn end
 
-function write_amn(io::IO, A::AbstractVector, ::FortranText; header=default_header())
+function write_amn(io::IO, A::AbstractVector, ::FortranText; header = default_header())
     n_kpts = length(A)
     n_kpts > 0 || throw(ArgumentError("A is empty"))
     n_bands, n_wann = size(A[1])
@@ -129,8 +129,8 @@ function write_amn(io::IO, A::AbstractVector, ::FortranText; header=default_head
 end
 
 function write_amn(
-    io::IO, A::AbstractVector, ::FortranBinaryStream; header=default_header()
-)
+        io::IO, A::AbstractVector, ::FortranBinaryStream; header = default_header()
+    )
     n_kpts = length(A)
     n_kpts > 0 || throw(ArgumentError("A is empty"))
     n_bands, n_wann = size(A[1])
@@ -166,11 +166,11 @@ function write_amn(
 end
 
 function write_amn(
-    filename::AbstractString,
-    A::AbstractVector,
-    format::AbstractFileFormat;
-    header=default_header(),
-)
+        filename::AbstractString,
+        A::AbstractVector,
+        format::AbstractFileFormat;
+        header = default_header(),
+    )
     open(filename, "w") do io
         write_amn(io, A, format; header)
     end
@@ -178,8 +178,8 @@ function write_amn(
 end
 
 function write_amn(
-    file::Union{IO,AbstractString}, A::AbstractVector; header=default_header(), binary=false
-)
-    format = fortran_format(; binary, stream=true)
+        file::Union{IO, AbstractString}, A::AbstractVector; header = default_header(), binary = false
+    )
+    format = fortran_format(; binary, stream = true)
     return write_amn(file, A, format; header)
 end

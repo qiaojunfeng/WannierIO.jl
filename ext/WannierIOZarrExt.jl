@@ -9,13 +9,13 @@ const _DEFAULT_ZARR_CLEVEL = 5
 const _DEFAULT_ZARR_SHUFFLE = true
 
 function WannierIO.write_operator(
-    filename::AbstractString,
-    pack::WannierIO.OperatorPack,
-    fmt::Union{WannierIO.ZarrFormat,WannierIO.ZarrZipFormat};
-    clevel::Integer=_DEFAULT_ZARR_CLEVEL,
-    shuffle::Bool=_DEFAULT_ZARR_SHUFFLE,
-    kwargs...,
-)
+        filename::AbstractString,
+        pack::WannierIO.OperatorPack,
+        fmt::Union{WannierIO.ZarrFormat, WannierIO.ZarrZipFormat};
+        clevel::Integer = _DEFAULT_ZARR_CLEVEL,
+        shuffle::Bool = _DEFAULT_ZARR_SHUFFLE,
+        kwargs...,
+    )
     opt = WannierIO.SparseOption(; kwargs...)
     spack = WannierIO.sparsify(pack, opt)
     write_operator(filename, spack, fmt; clevel, shuffle)
@@ -23,12 +23,12 @@ function WannierIO.write_operator(
 end
 
 function WannierIO.write_operator(
-    filename::AbstractString,
-    pack::WannierIO.SparseOperatorPack,
-    ::WannierIO.ZarrFormat;
-    clevel::Integer=_DEFAULT_ZARR_CLEVEL,
-    shuffle::Bool=_DEFAULT_ZARR_SHUFFLE,
-)
+        filename::AbstractString,
+        pack::WannierIO.SparseOperatorPack,
+        ::WannierIO.ZarrFormat;
+        clevel::Integer = _DEFAULT_ZARR_CLEVEL,
+        shuffle::Bool = _DEFAULT_ZARR_SHUFFLE,
+    )
     ispath(filename) && error("File $filename already exists.")
 
     # I need to set the attrs at the creation of the group, otherwise Zarr.jl
@@ -43,12 +43,12 @@ function WannierIO.write_operator(
 end
 
 function WannierIO.write_operator(
-    filename::AbstractString,
-    pack::WannierIO.SparseOperatorPack,
-    ::WannierIO.ZarrZipFormat;
-    clevel::Integer=_DEFAULT_ZARR_CLEVEL,
-    shuffle::Bool=_DEFAULT_ZARR_SHUFFLE,
-)
+        filename::AbstractString,
+        pack::WannierIO.SparseOperatorPack,
+        ::WannierIO.ZarrZipFormat;
+        clevel::Integer = _DEFAULT_ZARR_CLEVEL,
+        shuffle::Bool = _DEFAULT_ZARR_SHUFFLE,
+    )
     ispath(filename) && error("File $filename already exists.")
 
     # I need to set the attrs at the creation of the group, otherwise Zarr.jl
@@ -79,12 +79,12 @@ function _zarr_tb_attrs(pack::WannierIO.SparseOperatorPack)
 end
 
 function _zarr_write_tb(
-    g::Zarr.ZGroup,
-    pack::WannierIO.SparseOperatorPack;
-    clevel::Integer=_DEFAULT_ZARR_CLEVEL,
-    shuffle::Bool=_DEFAULT_ZARR_SHUFFLE,
-)
-    compressor = Zarr.BloscCompressor(; cname="zstd", clevel, shuffle)
+        g::Zarr.ZGroup,
+        pack::WannierIO.SparseOperatorPack;
+        clevel::Integer = _DEFAULT_ZARR_CLEVEL,
+        shuffle::Bool = _DEFAULT_ZARR_SHUFFLE,
+    )
+    compressor = Zarr.BloscCompressor(; cname = "zstd", clevel, shuffle)
 
     _zwrite(g, "lattice", Matrix(pack.lattice); compressor)
     _zwrite(g, "Rvectors", pack.Rvectors; compressor)
@@ -142,8 +142,8 @@ function _zwrite(g::Zarr.ZGroup, name::AbstractString, data::AbstractArray; comp
 end
 
 function _zwrite_cscpack(
-    g::Zarr.ZGroup, csc::WannierIO.CscPack{V,I}; compressor
-) where {V,I}
+        g::Zarr.ZGroup, csc::WannierIO.CscPack{V, I}; compressor
+    ) where {V, I}
     _zwrite(g, "nzptr", csc.nzptr; compressor)
     _zwrite(g, "colptr", csc.colptr; compressor)
     _zwrite(g, "rowval", csc.rowval; compressor)

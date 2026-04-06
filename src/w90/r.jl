@@ -9,7 +9,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct RDat{T<:Real,IT<:Integer}
+struct RDat{T <: Real, IT <: Integer}
     "Header line"
     header::String
 
@@ -28,14 +28,14 @@ end
 
 function Base.show(io::IO, rdat::RDat)
     n_wann = isempty(rdat.r_x) ? 0 : size(rdat.r_x[1], 1)
-    print(io, "RDat(n_Rvecs=$(length(rdat.r_x)), n_wann=$(n_wann))")
+    return print(io, "RDat(n_Rvecs=$(length(rdat.r_x)), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", rdat::RDat)
     n_Rvecs = length(rdat.r_x)
     n_wann = isempty(rdat.r_x) ? 0 : size(rdat.r_x[1], 1)
 
-    print(
+    return print(
         io,
         """RDat(
           header: $(rdat.header)
@@ -129,7 +129,7 @@ function write_w90_r_dat(io::IO, rdat::RDat)
 end
 
 function write_w90_r_dat(filename::AbstractString, rdat::RDat)
-    open(filename, "w") do io
+    return open(filename, "w") do io
         write_w90_r_dat(io, rdat)
     end
 end

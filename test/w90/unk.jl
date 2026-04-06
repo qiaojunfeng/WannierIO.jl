@@ -1,4 +1,3 @@
-
 @testitem "read/write unk" begin
     using LazyArtifacts
     unk = read_unk(artifact"Si2_valence/UNK/UNK00001.1")
@@ -7,11 +6,11 @@
     @test ik == 1
     @test size(ψ) == (13, 13, 13, 4, 1)
     ref_ψ234 = ComplexF64[
-        -0.82739368086-1.2362766865im; -1.1707908501+0.11631095198im; -0.25943725378+2.3452525646im; 1.090429898-1.8525861633im;;
+    -0.82739368086 - 1.2362766865im; -1.1707908501 + 0.11631095198im; -0.25943725378 + 2.3452525646im; 1.090429898 - 1.8525861633im;;
     ]
     @test ψ[2, 3, 4, :, :] == ref_ψ234
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_unk(tmpfile, ik, ψ)
     unk2 = read_unk(tmpfile)
     ik2 = unk2.ik
@@ -32,8 +31,8 @@ end
     @test ik == ik1
     @test ψ ≈ ψ1
 
-    tmpfile = tempname(; cleanup=true)
-    write_unk(tmpfile, ik, ψ; binary=true)
+    tmpfile = tempname(; cleanup = true)
+    write_unk(tmpfile, ik, ψ; binary = true)
     unk2 = read_unk(tmpfile)
     ik2 = unk2.ik
     ψ2 = unk2.Ψ

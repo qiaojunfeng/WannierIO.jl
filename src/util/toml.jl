@@ -120,5 +120,5 @@ function read_toml(io::IO)
     # TOML is unordered, we just return Dict.
     # Need to set value to Any, otherwise value type can be too narrow and then
     # I cannot assign Mat3 to it.
-    return d::Dict{String,Any}
+    return d::Dict{String, Any}
 end

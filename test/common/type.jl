@@ -57,11 +57,11 @@ end
     @test W90InputToml() isa AbstractW90InputFormat
 
     @test fortran_format() isa FortranText
-    @test fortran_format(binary=true) isa FortranBinary
-    @test fortran_format(binary=true, stream=true) isa FortranBinaryStream
+    @test fortran_format(binary = true) isa FortranBinary
+    @test fortran_format(binary = true, stream = true) isa FortranBinaryStream
 
     @test w90input_format() isa W90InputText
-    @test w90input_format(toml=true) isa W90InputToml
+    @test w90input_format(toml = true) isa W90InputToml
 
     @test format_name(FortranText()) == "fortran-text"
     @test format_name(FortranBinary()) == "fortran-binary"
@@ -73,7 +73,7 @@ end
         write(io, "1 1 0.0\n")
         close(io)
         @test detect_fortran_format(path) isa FortranText
-        @test detect_fortran_format(path; stream=true) isa FortranText
+        @test detect_fortran_format(path; stream = true) isa FortranText
         @test detect_w90input_format(path) isa W90InputText
     end
 
@@ -81,7 +81,7 @@ end
         write(io, UInt8[0x01, 0x02, 0x03, 0x04])
         close(io)
         @test detect_fortran_format(path) isa FortranBinary
-        @test detect_fortran_format(path; stream=true) isa FortranBinaryStream
+        @test detect_fortran_format(path; stream = true) isa FortranBinaryStream
     end
 
     mktemp() do path, io

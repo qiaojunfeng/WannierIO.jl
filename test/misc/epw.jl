@@ -12,13 +12,13 @@ end
     using LazyArtifacts
     chk = read_chk(artifact"BN/outputs/bn.chk")
     # alat = QuantumEspressoIO.read_qe_xml(artifact"BN/outputs/bn.xml").alat
-    alat = 6.8330 * WannierIO.Bohr_QE
+    alat = 6.833 * WannierIO.Bohr_QE
     ukk_ref = WannierIO.Ukk(chk, alat)
 
     ukk = WannierIO.read_epw_ukk(artifact"BN/outputs/bn.ukk")
     @test ukk ≈ ukk_ref
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     WannierIO.write_epw_ukk(tmpfile, ukk)
 
     ukk2 = WannierIO.read_epw_ukk(tmpfile)

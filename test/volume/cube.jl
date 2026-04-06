@@ -5,16 +5,16 @@
     @test cube.origin ≈ [-7.10461, -9.47281, -9.47281] * Bohr
     @test cube.voxel_vectors ≈
         transpose(
-        [0.0 0.39470 0.39470; 0.39470 0.00000 0.39470; 0.39470 0.39470 0.00000]
+        [0.0 0.3947 0.3947; 0.3947 0.0 0.3947; 0.3947 0.3947 0.0]
     ) * Bohr
     @test cube.X ≈ range(0, 19, 20)
     @test cube.Y ≈ cube.X
     @test cube.Z ≈ cube.X
     @test size(cube.W) == (20, 20, 20)
     @test length(cube.atom_positions) == 8
-    @test cube.atom_positions[1] ≈ [0.00000, -5.13111, -5.13111] * Bohr
+    @test cube.atom_positions[1] ≈ [0.0, -5.13111, -5.13111] * Bohr
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_cube(tmpfile, cube)
     cube2 = read_cube(tmpfile)
 

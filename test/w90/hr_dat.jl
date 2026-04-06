@@ -6,10 +6,10 @@
     @test hrdat.Rvectors[1] == [-4, 0, 2]
     @test length(hrdat.H) == 279
     H1 = ComplexF64[
-        0.000805+0.0im -0.000431-0.0im -0.000137+0.0im -0.000431+0.0im
-        -0.000431-0.0im 0.000805+0.0im -0.000137+0.0im -0.000431-0.0im
-        -0.000299+0.0im -0.000298+0.0im 0.000534+0.0im -0.000298-0.0im
-        -0.000431+0.0im -0.000431+0.0im -0.000137-0.0im 0.000805-0.0im
+        0.000805 + 0.0im -0.000431 - 0.0im -0.000137 + 0.0im -0.000431 + 0.0im
+        -0.000431 - 0.0im 0.000805 + 0.0im -0.000137 + 0.0im -0.000431 - 0.0im
+        -0.000299 + 0.0im -0.000298 + 0.0im 0.000534 + 0.0im -0.000298 - 0.0im
+        -0.000431 + 0.0im -0.000431 + 0.0im -0.000137 - 0.0im 0.000805 - 0.0im
     ]
     @test hrdat.H[1] ≈ H1
 end
@@ -30,7 +30,7 @@ end
     using LazyArtifacts
     hrdat = read_w90_hr_dat(artifact"Si2_valence/outputs/WS/Si2_valence_hr.dat")
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_w90_hr_dat(tmpfile, hrdat)
     hrdat2 = read_w90_hr_dat(tmpfile)
 

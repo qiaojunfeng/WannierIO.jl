@@ -44,7 +44,7 @@ end
 Check if the file is in binary format.
 """
 function isbinary(filename::AbstractString)
-    open(filename) do io
+    return open(filename) do io
         return isbinary(io)
     end
 end

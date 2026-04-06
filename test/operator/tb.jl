@@ -43,7 +43,7 @@ end
     ]
 
     for (fmt, dst) in targets
-        write_operator(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
+        write_operator(dst, dpack0, fmt; atol = 0.0, value_type = ComplexF64)
         pack2 = read_operator(dst, fmt)
         pack3 = read_operator(dst)
 
@@ -69,15 +69,15 @@ end
         write_operator(dst, dpack0, fmt)
         pack2 = read_operator(dst, fmt)
 
-        @test pack2 isa WannierIO.OperatorPack{Float32,Int32}
+        @test pack2 isa WannierIO.OperatorPack{Float32, Int32}
         @test pack2.n_wann == dpack0.n_wann
         @test pack2.Rvectors == dpack0.Rvectors
         @test pack2.lattice ≈ dpack0.lattice
         for name in keys(dpack0.operators)
             op2 = pack2.operators[name]
             op0 = dpack0.operators[name]
-            @test isapprox(op2, op0; atol=2e-6)
-            @test !isapprox(op2, op0; atol=1e-7)
+            @test isapprox(op2, op0; atol = 2.0e-6)
+            @test !isapprox(op2, op0; atol = 1.0e-7)
         end
     end
 end

@@ -9,7 +9,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Mmn{T<:Real,IT<:Integer}
+struct Mmn{T <: Real, IT <: Integer}
     "Header line (1st line of the file)"
     header::String
 
@@ -40,7 +40,7 @@ function Base.show(io::IO, mmn::Mmn)
     n_kpts = length(mmn.M)
     n_bvecs = n_kpts == 0 ? 0 : length(mmn.M[1])
     n_bands = (n_kpts == 0 || n_bvecs == 0) ? 0 : size(mmn.M[1][1], 1)
-    print(io, "Mmn(n_kpts=$(n_kpts), n_bvecs=$(n_bvecs), n_bands=$(n_bands))")
+    return print(io, "Mmn(n_kpts=$(n_kpts), n_bvecs=$(n_bvecs), n_bands=$(n_bands))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", mmn::Mmn)
@@ -48,7 +48,7 @@ function Base.show(io::IO, ::MIME"text/plain", mmn::Mmn)
     n_bvecs = n_kpts == 0 ? 0 : length(mmn.M[1])
     n_bands = (n_kpts == 0 || n_bvecs == 0) ? 0 : size(mmn.M[1][1], 1)
 
-    print(
+    return print(
         io,
         """Mmn(
           header: $(mmn.header)
@@ -160,8 +160,8 @@ function read_mmn(filename::AbstractString, format::AbstractFileFormat)
     end
 end
 
-function read_mmn(file::Union{IO,AbstractString})
-    format = detect_fortran_format(file; stream=true)
+function read_mmn(file::Union{IO, AbstractString})
+    format = detect_fortran_format(file; stream = true)
     mmn = read_mmn(file, format)
     _check_dimensions_M_kpb(mmn.M, mmn.kpb_k, mmn.kpb_G)
     return mmn
@@ -198,7 +198,7 @@ Check the dimensions between the quantities are consistent.
         throw(DimensionMismatch("kpb_k has different n_bvecs among kpts"))
     all(length.(kpb_G) .== n_bvecs) ||
         throw(DimensionMismatch("kpb_G has different n_bvecs among kpts"))
-    all(all(length.(Gk) .== 3) for Gk in kpb_G) ||
+    return all(all(length.(Gk) .== 3) for Gk in kpb_G) ||
         throw(DimensionMismatch("kpb_G[ib][ib] are not 3-vectors"))
 end
 
@@ -216,7 +216,7 @@ end
 
     n_bands = size(M[1][1], 1)
     n_bands > 0 || throw(ArgumentError("Empty M, n_bands = 0"))
-    all(all(size.(Mk) .== Ref((n_bands, n_bands))) for Mk in M) ||
+    return all(all(size.(Mk) .== Ref((n_bands, n_bands))) for Mk in M) ||
         throw(DimensionMismatch("M[ik][ib] are not square matrices"))
 end
 
@@ -290,7 +290,7 @@ function write_mmn(filename::AbstractString, mmn::Mmn, format::AbstractFileForma
     return nothing
 end
 
-function write_mmn(filename::AbstractString, mmn::Mmn; binary=false)
-    format = fortran_format(; binary, stream=true)
+function write_mmn(filename::AbstractString, mmn::Mmn; binary = false)
+    format = fortran_format(; binary, stream = true)
     return write_mmn(filename, mmn, format)
 end

@@ -9,7 +9,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct HHRDat{T<:Real,IT<:Integer}
+struct HHRDat{T <: Real, IT <: Integer}
     "Header line"
     header::String
 
@@ -17,7 +17,7 @@ struct HHRDat{T<:Real,IT<:Integer}
     Rvectors::Vector{Vec3{IT}}
 
     "Degeneracy vector for each R vector, or `nothing`"
-    Rdegens::Union{Vector{IT},Nothing}
+    Rdegens::Union{Vector{IT}, Nothing}
 
     "Hamiltonian of length `n_rvecs`, each element is a matrix with shape `(n_wann, n_wann)`"
     H::Vector{Matrix{Complex{T}}}
@@ -25,7 +25,7 @@ end
 
 function Base.show(io::IO, hhr::HHRDat)
     n_wann = isempty(hhr.H) ? 0 : size(hhr.H[1], 1)
-    print(io, "HHRDat(n_Rvecs=$(length(hhr.H)), n_wann=$(n_wann))")
+    return print(io, "HHRDat(n_Rvecs=$(length(hhr.H)), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", hhr::HHRDat)
@@ -39,7 +39,7 @@ function Base.show(io::IO, ::MIME"text/plain", hhr::HHRDat)
         "[$(degen_min), ..., $(degen_max)]"
     end
 
-    print(
+    return print(
         io,
         """HHRDat(
           header: $(hhr.header)
@@ -136,7 +136,7 @@ function write_HH_R(filename::AbstractString, hhr::HHRDat)
     # of R vector), and assume that N = 1 for all the R vectors.
     # I write it, and also implement the reading of wsvec.dat as well,
     # to use MDRS interpolation.
-    if !isnothing(hhr.Rdegens)
+    return if !isnothing(hhr.Rdegens)
         ndegen_filename = filename * ".ndegen"
         vec2str(v) = join([@sprintf "%5d" x for x in v], "")
         open(ndegen_filename, "w") do io

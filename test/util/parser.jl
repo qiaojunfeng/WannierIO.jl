@@ -2,19 +2,19 @@
     using WannierIO: strip_comment
 
     line = " 1 2 3 ! this is a comment"
-    res = strip_comment(line; spaces=true)
+    res = strip_comment(line; spaces = true)
     @test res == " 1 2 3 "
 
     line = " 1 2 3 # this is a comment"
-    res = strip_comment(line; spaces=true)
+    res = strip_comment(line; spaces = true)
     @test res == " 1 2 3 "
 
     line = " 1 2 3 "
-    res = strip_comment(line; spaces=true)
+    res = strip_comment(line; spaces = true)
     @test res == " 1 2 3 "
 
     line = " # 1 2 3 "
-    res = strip_comment(line; spaces=true)
+    res = strip_comment(line; spaces = true)
     @test res == " "
 
     line = " 1 2 3 ! this is a comment # with a hash"
@@ -25,17 +25,21 @@ end
 @testitem "parse_vector" begin
     using WannierIO: parse_vector
 
-    io = IOBuffer("""1  2  3  4  5  6  7  8  9  10
-    11 12 13 14 15 16 17 18 19 20
-    21 22 23""")
+    io = IOBuffer(
+        """1  2  3  4  5  6  7  8  9  10
+        11 12 13 14 15 16 17 18 19 20
+        21 22 23"""
+    )
     vec = parse_vector(io, Int, 23)
     @test vec == collect(1:23)
     close(io)
 
     # different number of elements per line
-    io = IOBuffer("""1  2  3  4  5
-    6
-    7 8 9""")
+    io = IOBuffer(
+        """1  2  3  4  5
+        6
+        7 8 9"""
+    )
     vec = parse_vector(io, Int, 9)
     @test vec == collect(1:9)
     close(io)
@@ -124,21 +128,21 @@ end
 
     # Test 11: keep comment
     io = IOBuffer("data ! this is a comment")
-    @test nextline(io; comment=true) == "data ! this is a comment"
+    @test nextline(io; comment = true) == "data ! this is a comment"
     close(io)
 
     # Test 12: lowercase option
     io = IOBuffer("HELLO WORLD")
-    @test nextline(io; lower=true) == "hello world"
+    @test nextline(io; lower = true) == "hello world"
     close(io)
 
     # Test 13: lowercase with empty lines
     io = IOBuffer(join(["", "", "MIXED Case"], "\n"))
-    @test nextline(io; lower=true) == "mixed case"
+    @test nextline(io; lower = true) == "mixed case"
     close(io)
 
     # Test 14: both comment and lower
     io = IOBuffer("DATA VALUE ! comment")
-    @test nextline(io; comment=true, lower=true) == "data value ! comment"
+    @test nextline(io; comment = true, lower = true) == "data value ! comment"
     close(io)
 end

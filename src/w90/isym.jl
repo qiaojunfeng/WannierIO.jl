@@ -17,7 +17,7 @@ struct SymOp
     time_reversal::Bool
 
     """SU(2) rotation matrix for spinors."""
-    u::SMatrix{2,2,ComplexF64}
+    u::SMatrix{2, 2, ComplexF64}
 
     """Index of this symmetry operation in all the symmetry operations."""
     isym::Int64
@@ -27,7 +27,7 @@ struct SymOp
 end
 
 function Base.show(io::IO, ::MIME"text/plain", s::SymOp)
-    print(
+    return print(
         io,
         """SymOp ($(s.comment))
           isym = $(s.isym), isym_inv = $(s.isym_inv)
@@ -55,7 +55,7 @@ struct RepMatBand{N}
     isym::Int64
 
     """Representation matrix acting on the bands."""
-    d::SMatrix{N,N,ComplexF64}
+    d::SMatrix{N, N, ComplexF64}
 end
 
 """
@@ -71,7 +71,7 @@ struct RepMatWann{N}
     isym::Int64
 
     """Representation matrix acting on the Wannier functions."""
-    D::SMatrix{N,N,ComplexF64}
+    D::SMatrix{N, N, ComplexF64}
 end
 
 """
@@ -83,7 +83,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Isym{RB<:RepMatBand,RW<:RepMatWann}
+struct Isym{RB <: RepMatBand, RW <: RepMatWann}
     "Header line"
     header::String
 
@@ -264,10 +264,10 @@ end
 Build the index mapping from `ik_ibz` and `isym` to the index in `repmat_band`.
 """
 function build_mapping_ik_isym(
-    repmat_band::AbstractVector{<:RepMatBand};
-    nkpts_ibz::Union{Integer,Nothing}=nothing,
-    n_symops::Union{Integer,Nothing}=nothing,
-)
+        repmat_band::AbstractVector{<:RepMatBand};
+        nkpts_ibz::Union{Integer, Nothing} = nothing,
+        n_symops::Union{Integer, Nothing} = nothing,
+    )
     n_repmat = length(repmat_band)
     if isnothing(nkpts_ibz)
         nkpts_ibz = maximum(r.ik_ibz for r in repmat_band)
@@ -275,7 +275,7 @@ function build_mapping_ik_isym(
     if isnothing(n_symops)
         n_symops = maximum(r.isym for r in repmat_band)
     end
-    mapping = [Vector{Union{Int64,Nothing}}(nothing, n_symops) for _ in 1:nkpts_ibz]
+    mapping = [Vector{Union{Int64, Nothing}}(nothing, n_symops) for _ in 1:nkpts_ibz]
 
     for ir in 1:n_repmat
         ik_ibz = repmat_band[ir].ik_ibz

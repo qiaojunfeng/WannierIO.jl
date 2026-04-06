@@ -22,8 +22,8 @@ Read wannier90 input `win` file.
 """
 function read_win end
 
-function read_win(io::IO, ::W90InputText; standardize::Bool=true)
-    params = OrderedDict{String,Any}()
+function read_win(io::IO, ::W90InputText; standardize::Bool = true)
+    params = OrderedDict{String, Any}()
 
     while !eof(io)
         line = nextline(io)
@@ -43,21 +43,21 @@ function read_win(io::IO, ::W90InputText; standardize::Bool=true)
     return params
 end
 
-function read_win(io::IO, ::W90InputToml; standardize::Bool=true)
+function read_win(io::IO, ::W90InputToml; standardize::Bool = true)
     win = read_toml(io)
     standardize && standardize_win!(win)
     return win
 end
 
 function read_win(
-    filename::AbstractString, format::AbstractFileFormat; standardize::Bool=true
-)
+        filename::AbstractString, format::AbstractFileFormat; standardize::Bool = true
+    )
     return open(filename) do io
         read_win(io, format; standardize)
     end
 end
 
-function read_win(file::Union{IO,AbstractString}; standardize::Bool=true)
+function read_win(file::Union{IO, AbstractString}; standardize::Bool = true)
     format = detect_w90input_format(file)
     win = read_win(file, format; standardize)
     return win
@@ -82,8 +82,8 @@ end
 
 """Check if a line marks the end of a named block in a win file."""
 @inline function _win_block_isend(
-    line::AbstractString, block_name::AbstractString; lower::Bool=true
-)
+        line::AbstractString, block_name::AbstractString; lower::Bool = true
+    )
     block_name = lower ? lowercase(block_name) : block_name
     line = lower ? lowercase(line) : line
     return occursin(r"^end\s+" * block_name, line)
@@ -91,10 +91,10 @@ end
 
 """Assert that a line marks the end of a named block, or raise an error."""
 @inline function _win_block_mustend(
-    line::AbstractString, block_name::AbstractString; lower::Bool=true
-)
+        line::AbstractString, block_name::AbstractString; lower::Bool = true
+    )
     isend = _win_block_isend(line, block_name; lower)
-    isend || error("Error parsing $block_name: `end $block_name` not found")
+    return isend || error("Error parsing $block_name: `end $block_name` not found")
 end
 
 """Parse a `unit_cell_cart` block from a win file.
@@ -137,7 +137,7 @@ function _win_parse_block_atoms(io::IO, block_name::AbstractString)
         error("Invalid atoms block: $block_name")
     iscart = block_name == "atoms_cart"
     # do not lowercase due to atomic label
-    line = _win_block_nextline(io, block_name; lower=false)
+    line = _win_block_nextline(io, block_name; lower = false)
 
     if iscart
         unit = lowercase(line)
@@ -145,14 +145,14 @@ function _win_parse_block_atoms(io::IO, block_name::AbstractString)
             unit = "ang"
         else
             # do not lowercase due to atomic label
-            line = _win_block_nextline(io, block_name; lower=false)
+            line = _win_block_nextline(io, block_name; lower = false)
         end
     end
 
     lines = String[]
     while !_win_block_isend(line, block_name)
         push!(lines, line)
-        line = _win_block_nextline(io, block_name; lower=false)
+        line = _win_block_nextline(io, block_name; lower = false)
     end
 
     atoms = StringVec3{Float64}[]
@@ -205,7 +205,7 @@ function _win_parse_block_kpoint_path(io::IO)
     kpoint_path = Vector{Vector{StringVec3{Float64}}}()
 
     # allow uppercase
-    line = _win_block_nextline(io, block_name; lower=false)
+    line = _win_block_nextline(io, block_name; lower = false)
     while !_win_block_isend(line, block_name)
         l = split(line)
         length(l) == 8 || error("Invalid kpoint_path line: $line")
@@ -217,7 +217,7 @@ function _win_parse_block_kpoint_path(io::IO)
         end_kpt = vec3(parse_vector(l[6:8]))
         push!(kpoint_path, [start_label => start_kpt, end_label => end_kpt])
 
-        line = _win_block_nextline(io, block_name; lower=false)
+        line = _win_block_nextline(io, block_name; lower = false)
     end
     return kpoint_path
 end
@@ -249,14 +249,14 @@ function _win_parse_block_explicit_kpath_labels(io::IO)
     explicit_kpath_labels = StringVec3{Float64}[]
 
     # allow uppercase
-    line = _win_block_nextline(io, block_name; lower=false)
+    line = _win_block_nextline(io, block_name; lower = false)
     while !_win_block_isend(line, block_name)
         l = split(line)
         length(l) == 4 || error("Invalid $block_name line: $line")
         label = l[1]
         kpt = vec3(parse_vector(l[2:4]))
         push!(explicit_kpath_labels, label => kpt)
-        line = _win_block_nextline(io, block_name; lower=false)
+        line = _win_block_nextline(io, block_name; lower = false)
     end
     return explicit_kpath_labels
 end
@@ -265,10 +265,10 @@ end
 function _win_parse_block_string(io::IO, block_name::AbstractString)
     block_content = String[]
     # allow uppercase
-    line = _win_block_nextline(io, block_name; lower=false)
+    line = _win_block_nextline(io, block_name; lower = false)
     while !_win_block_isend(line, block_name)
         push!(block_content, line)
-        line = _win_block_nextline(io, block_name; lower=false)
+        line = _win_block_nextline(io, block_name; lower = false)
     end
     return block_content
 end
@@ -299,24 +299,24 @@ end
 Used to determine how to parse key-value pairs from win files.
 """
 function _win_keyval_types()
-    key_types = Dict{String,Symbol}()
+    key_types = Dict{String, Symbol}()
 
     for key in [
-        "num_wann",
-        "num_bands",
-        "num_iter",
-        "dis_num_iter",
-        "dis_conv_window",
-        "conv_window",
-        "num_cg_steps",
-        "num_print_cycles",
-        "iprint",
-        "search_shells",
-        "bands_num_points",
-        "ws_search_size",
-        "num_guide_cycles",
-        "num_no_guide_iter",
-    ]
+            "num_wann",
+            "num_bands",
+            "num_iter",
+            "dis_num_iter",
+            "dis_conv_window",
+            "conv_window",
+            "num_cg_steps",
+            "num_print_cycles",
+            "iprint",
+            "search_shells",
+            "bands_num_points",
+            "ws_search_size",
+            "num_guide_cycles",
+            "num_no_guide_iter",
+        ]
         key_types[key] = :int
     end
 
@@ -325,40 +325,40 @@ function _win_keyval_types()
     end
 
     for key in [
-        "kmesh_tol",
-        "conv_tol",
-        "dis_froz_min",
-        "dis_froz_max",
-        "dis_win_min",
-        "dis_win_max",
-        "dis_mix_ratio",
-        "dis_conv_tol",
-        "fermi_energy",
-        "fermi_energy_min",
-        "fermi_energy_max",
-        "fermi_energy_step",
-        "ws_distance_tol",
-    ]
+            "kmesh_tol",
+            "conv_tol",
+            "dis_froz_min",
+            "dis_froz_max",
+            "dis_win_min",
+            "dis_win_max",
+            "dis_mix_ratio",
+            "dis_conv_tol",
+            "fermi_energy",
+            "fermi_energy_min",
+            "fermi_energy_max",
+            "fermi_energy_step",
+            "ws_distance_tol",
+        ]
         key_types[key] = :float
     end
 
     for key in [
-        "use_ws_distance",
-        "wannier_plot",
-        "bands_plot",
-        "wvfn_formatted",
-        "spn_formatted",
-        "write_hr",
-        "write_tb",
-        "write_xyz",
-        "write_rmn",
-        "guiding_centres",
-        "gamma_only",
-        "spinors",
-        "postproc_setup",
-        "auto_projections",
-        "restart",
-    ]
+            "use_ws_distance",
+            "wannier_plot",
+            "bands_plot",
+            "wvfn_formatted",
+            "spn_formatted",
+            "write_hr",
+            "write_tb",
+            "write_xyz",
+            "write_rmn",
+            "guiding_centres",
+            "gamma_only",
+            "spinors",
+            "postproc_setup",
+            "auto_projections",
+            "restart",
+        ]
         key_types[key] = :bool
     end
 
@@ -372,7 +372,7 @@ end
 """Parse a key-value line, separating key and value by = or : delimiters."""
 function _win_parse_keyval(line::AbstractString)
     normalized_line = strip(replace(line, '=' => ' ', ':' => ' '))
-    parts = split(normalized_line; limit=2)
+    parts = split(normalized_line; limit = 2)
     length(parts) == 2 || error("Invalid key-value line: $line")
 
     key, value = parts
@@ -538,7 +538,7 @@ write_win("silicon.win", params)
 """
 function write_win end
 
-function write_win(io::IO, params::AbstractDict, ::W90InputText; header=default_header())
+function write_win(io::IO, params::AbstractDict, ::W90InputText; header = default_header())
     _win_check_required_params(params)
 
     # Copy params to an OrderedDict, to avoid modifying the input `params`.
@@ -574,7 +574,7 @@ function write_win(io::IO, params::AbstractDict, ::W90InputText; header=default_
     return nothing
 end
 
-function write_win(io::IO, params::AbstractDict, ::W90InputToml; header=default_header())
+function write_win(io::IO, params::AbstractDict, ::W90InputToml; header = default_header())
     _win_check_required_params(params)
     isnothing(header) || println(io, header, "\n")
     write_toml(io, params)
@@ -582,19 +582,19 @@ function write_win(io::IO, params::AbstractDict, ::W90InputToml; header=default_
 end
 
 function write_win(
-    filename::AbstractString,
-    params::AbstractDict,
-    format::AbstractFileFormat;
-    header=default_header(),
-)
-    open(filename, "w") do io
+        filename::AbstractString,
+        params::AbstractDict,
+        format::AbstractFileFormat;
+        header = default_header(),
+    )
+    return open(filename, "w") do io
         write_win(io, params, format; header)
     end
 end
 
 function write_win(
-    file::Union{IO,AbstractString}, params::AbstractDict; header=default_header()
-)
+        file::Union{IO, AbstractString}, params::AbstractDict; header = default_header()
+    )
     return write_win(file, params, W90InputText(); header)
 end
 
@@ -607,7 +607,7 @@ end
         haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
     end
     atoms_cart_frac = haskey.(Ref(kwargs), ["atoms_cart", "atoms_frac"])
-    if all(atoms_cart_frac)
+    return if all(atoms_cart_frac)
         error("Both atoms_cart and atoms_frac are found")
     elseif !any(atoms_cart_frac)
         error("Both atoms_frac and atoms_cart are missing")
@@ -616,14 +616,14 @@ end
 
 """Write a comment line to the output, prefixing with # if needed."""
 function _win_write_comment(io::IO, comment)
-    if !isnothing(comment)
+    return if !isnothing(comment)
         startswith(lstrip(comment), "#") || (comment = "# $comment")
         println(io, comment)
     end
 end
 
 """Format a key-value pair for output, handling special types like int3 and indices."""
-function _win_format_keyval(key::AbstractString, value, value_type::Union{Symbol,Nothing})
+function _win_format_keyval(key::AbstractString, value, value_type::Union{Symbol, Nothing})
     if value_type == :int3
         # Unpack 3-element vector/tuple into separate integers
         return join(value, "  ")
@@ -650,6 +650,7 @@ function _win_write_keyvals(io::IO, params::AbstractDict)
         formatted_value = _win_format_keyval(key, value, value_type)
         @printf io "%s = %s\n" string(key) formatted_value
     end
+    return
 end
 
 """Write a `unit_cell_cart` block to the output."""
@@ -661,7 +662,7 @@ function _win_write_block_unit_cell_cart(io::IO, unit_cell_cart)
     for vec in eachcol(unit_cell_cart)
         @printf io "%14.8f  %14.8f  %14.8f\n" vec...
     end
-    println(io, "end unit_cell_cart\n")
+    return println(io, "end unit_cell_cart\n")
 end
 
 """Write a `atoms_frac` block to the output."""
@@ -673,7 +674,7 @@ function _win_write_block_atoms_frac(io::IO, atoms_frac)
     for (element, position) in atoms_frac
         Printf.format(io, fmt, string(element), position...)
     end
-    println(io, "end atoms_frac\n")
+    return println(io, "end atoms_frac\n")
 end
 
 """Write a `atoms_cart` block to the output."""
@@ -687,7 +688,7 @@ function _win_write_block_atoms_cart(io::IO, atoms_cart)
     for (element, position) in atoms_cart
         Printf.format(io, fmt, string(element), position...)
     end
-    println(io, "end atoms_cart\n")
+    return println(io, "end atoms_cart\n")
 end
 
 """Write a `projections` block to the output."""
@@ -696,7 +697,7 @@ function _win_write_block_projections(io::IO, projections)
     for proj in projections
         println(io, proj)
     end
-    println(io, "end projections\n")
+    return println(io, "end projections\n")
 end
 
 """Write a `kpoint_path` block to the output."""
@@ -714,7 +715,7 @@ function _win_write_block_kpoint_path(io::IO, kpoint_path)
         line = rstrip(line)
         println(io, line)
     end
-    println(io, "end kpoint_path\n")
+    return println(io, "end kpoint_path\n")
 end
 
 """Write a `explicit_kpath_labels` block to the output."""
@@ -726,7 +727,7 @@ function _win_write_block_explicit_kpath_labels(io::IO, explicit_kpath_labels)
     for (label, kpt) in explicit_kpath_labels
         Printf.format(io, fmt, string(label), kpt...)
     end
-    println(io, "end explicit_kpath_labels\n")
+    return println(io, "end explicit_kpath_labels\n")
 end
 
 """Write a `explicit_kpath` block to the output."""
@@ -735,7 +736,7 @@ function _win_write_block_explicit_kpath(io::IO, explicit_kpath)
     for kpt in explicit_kpath
         @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
     end
-    println(io, "end explicit_kpath\n")
+    return println(io, "end explicit_kpath\n")
 end
 
 """Write a `kpoints` block to the output."""
@@ -744,5 +745,5 @@ function _win_write_block_kpoints(io::IO, kpoints)
     for kpt in kpoints
         @printf io "%14.8f  %14.8f  %14.8f\n" kpt...
     end
-    println(io, "end kpoints\n")
+    return println(io, "end kpoints\n")
 end

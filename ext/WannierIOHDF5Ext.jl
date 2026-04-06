@@ -8,13 +8,13 @@ const _DEFAULT_HDF5_DEFLATE = 4
 const _DEFAULT_HDF5_SHUFFLE = true
 
 function WannierIO.write_operator(
-    filename::AbstractString,
-    pack::WannierIO.OperatorPack,
-    fmt::WannierIO.HDF5Format;
-    deflate::Integer=_DEFAULT_HDF5_DEFLATE,
-    shuffle::Bool=_DEFAULT_HDF5_SHUFFLE,
-    kwargs...,
-)
+        filename::AbstractString,
+        pack::WannierIO.OperatorPack,
+        fmt::WannierIO.HDF5Format;
+        deflate::Integer = _DEFAULT_HDF5_DEFLATE,
+        shuffle::Bool = _DEFAULT_HDF5_SHUFFLE,
+        kwargs...,
+    )
     opt = WannierIO.SparseOption(; kwargs...)
     spack = WannierIO.sparsify(pack, opt)
     write_operator(filename, spack, fmt; deflate, shuffle)
@@ -22,12 +22,12 @@ function WannierIO.write_operator(
 end
 
 function WannierIO.write_operator(
-    filename::AbstractString,
-    pack::WannierIO.SparseOperatorPack,
-    ::WannierIO.HDF5Format;
-    deflate::Integer=_DEFAULT_HDF5_DEFLATE,
-    shuffle::Bool=_DEFAULT_HDF5_SHUFFLE,
-)
+        filename::AbstractString,
+        pack::WannierIO.SparseOperatorPack,
+        ::WannierIO.HDF5Format;
+        deflate::Integer = _DEFAULT_HDF5_DEFLATE,
+        shuffle::Bool = _DEFAULT_HDF5_SHUFFLE,
+    )
     HDF5.h5open(filename, "w") do fid
         _h5write(fid, "header", pack.header; deflate, shuffle)
         _h5write(fid, "n_wann", pack.n_wann; deflate, shuffle)
@@ -83,8 +83,8 @@ function _h5write(fid, name::AbstractString, value; deflate::Integer, shuffle::B
 end
 
 function _h5write_cscpack(
-    g, csc::WannierIO.CscPack{V,I}; deflate::Integer, shuffle::Bool
-) where {V,I}
+        g, csc::WannierIO.CscPack{V, I}; deflate::Integer, shuffle::Bool
+    ) where {V, I}
     _h5write(g, "nzptr", csc.nzptr; deflate, shuffle)
     _h5write(g, "colptr", csc.colptr; deflate, shuffle)
     _h5write(g, "rowval", csc.rowval; deflate, shuffle)

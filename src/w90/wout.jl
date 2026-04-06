@@ -1,26 +1,26 @@
 export read_wout
 
 const WOUT_MARKS = (;
-    lattice="Lattice Vectors (",
-    recip="Reciprocal-Space Vectors (",
-    atom_start="|   Site       Fractional Coordinate          Cartesian Coordinate",
-    atom_end="*----------------------------------------------------------------------------*",
-    kgrid="Grid size =",
-    finalstate_start="Final State",
-    finalstate_end="Sum of centres and spreads",
-    ΩI="Omega I      =",
-    ΩD="Omega D      =",
-    ΩOD="Omega OD     =",
-    Ωtotal="Omega Total  =",
-    phase="Phase Factor =",
-    imre="Maximum Im/Re Ratio =",
-    dis_start="Extraction of optimally-connected subspace",
-    dis_end="Time to disentangle bands",
-    dis_iter="<-- DIS",
-    maxloc_start="| Iter  Delta Spread     RMS Gradient      Spread (Ang^2)      Time  |<-- CONV",
-    maxloc_end="Final State",
-    maxloc_wf_c_s="WF centre and spread",
-    maxloc_sum_c_s="Sum of centres and spreads",
+    lattice = "Lattice Vectors (",
+    recip = "Reciprocal-Space Vectors (",
+    atom_start = "|   Site       Fractional Coordinate          Cartesian Coordinate",
+    atom_end = "*----------------------------------------------------------------------------*",
+    kgrid = "Grid size =",
+    finalstate_start = "Final State",
+    finalstate_end = "Sum of centres and spreads",
+    ΩI = "Omega I      =",
+    ΩD = "Omega D      =",
+    ΩOD = "Omega OD     =",
+    Ωtotal = "Omega Total  =",
+    phase = "Phase Factor =",
+    imre = "Maximum Im/Re Ratio =",
+    dis_start = "Extraction of optimally-connected subspace",
+    dis_end = "Time to disentangle bands",
+    dis_iter = "<-- DIS",
+    maxloc_start = "| Iter  Delta Spread     RMS Gradient      Spread (Ang^2)      Time  |<-- CONV",
+    maxloc_end = "Final State",
+    maxloc_wf_c_s = "WF centre and spread",
+    maxloc_sum_c_s = "Sum of centres and spreads",
 )
 
 """
@@ -49,10 +49,10 @@ Parse wannier90 `wout` file.
 - `iterations`: disentanglement and max localization convergence history,
     only parsed when kwarg `iterations=true`
 """
-function read_wout(io::IO; iterations::Bool=false)
+function read_wout(io::IO; iterations::Bool = false)
     # parsed results
-    results = OrderedDict{String,Any}()
-    iters = OrderedDict{String,Any}()
+    results = OrderedDict{String, Any}()
+    iters = OrderedDict{String, Any}()
 
     while !eof(io)
         line = readstrip(io)
@@ -102,13 +102,13 @@ function read_wout(io::IO; iterations::Bool=false)
     return results
 end
 
-function read_wout(filename::AbstractString; iterations::Bool=false)
+function read_wout(filename::AbstractString; iterations::Bool = false)
     return open(filename) do io
         read_wout(io; iterations)
     end
 end
 
-function _wout_line_kind(line::AbstractString; iterations::Bool=false)
+function _wout_line_kind(line::AbstractString; iterations::Bool = false)
     if occursin(WOUT_MARKS.lattice, line)
         return :lattice
     elseif occursin(WOUT_MARKS.recip, line)
@@ -182,8 +182,8 @@ The `line` contains the 1st, the remaining lines will be read from `io`.
 The last line should be an empty line.
 """
 function _wout_parse_repeated_equals(
-    io::IO, line::AbstractString, marker::AbstractString, ::Type{T}
-) where {T}
+        io::IO, line::AbstractString, marker::AbstractString, ::Type{T}
+    ) where {T}
     values = T[]
     while occursin(marker, line)
         s = split(line, "=")
@@ -331,7 +331,7 @@ function _wout_parse_disentangle(io::IO)
         push!(ΩI_current, parse(Float64, parts[3]))
         push!(ΔΩI, parse(Float64, parts[4]))
     end
-    return OrderedDict{String,Any}(
+    return OrderedDict{String, Any}(
         "iter" => iter,
         "ΩI_previous" => ΩI_previous,
         "ΩI_current" => ΩI_current,
@@ -362,14 +362,14 @@ function _wout_parse_wf_center_spread(io::IO)
 
     while true
         if occursin(WOUT_MARKS.maxloc_wf_c_s, line)
-            sline = split(line, r"[ ,()]"; keepempty=false)
+            sline = split(line, r"[ ,()]"; keepempty = false)
             idx = parse(Int, sline[5])
             push!(centers, Vec3(parse_float.(sline[6:8])))
             push!(spreads, parse_float(sline[9]))
             (idx != length(centers)) && error("WF index mismatch at $line")
         end
         if occursin(WOUT_MARKS.maxloc_sum_c_s, line)
-            sline = split(line, r"[ ,()]"; keepempty=false)
+            sline = split(line, r"[ ,()]"; keepempty = false)
             sum_centers = Vec3(parse_float.(sline[6:8]))
             sum_spreads = parse_float(sline[9])
         end
@@ -383,7 +383,7 @@ end
 See [`_wout_parse_wf_center_spread`](@ref) for the format of the block to be parsed.
 """
 @inline function _wout_parse_final_state(io::IO)
-    _wout_parse_wf_center_spread(io)
+    return _wout_parse_wf_center_spread(io)
 end
 
 """
@@ -492,7 +492,7 @@ function _wout_parse_wannierize(io::IO)
             append_iter!(parse(Int, split(line)[2]))
         end
     end
-    return OrderedDict{String,Any}(
+    return OrderedDict{String, Any}(
         "iter" => iter,
         "centers" => centers,
         "spreads" => spreads,

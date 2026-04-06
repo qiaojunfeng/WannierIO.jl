@@ -6,12 +6,12 @@ using JLD2: JLD2
 const _DEFAULT_JLD2_COMPRESS = true
 
 function WannierIO.write_operator(
-    filename::AbstractString,
-    pack::WannierIO.OperatorPack,
-    fmt::WannierIO.JLD2Format;
-    compress::Bool=_DEFAULT_JLD2_COMPRESS,
-    kwargs...,
-)
+        filename::AbstractString,
+        pack::WannierIO.OperatorPack,
+        fmt::WannierIO.JLD2Format;
+        compress::Bool = _DEFAULT_JLD2_COMPRESS,
+        kwargs...,
+    )
     opt = WannierIO.SparseOption(; kwargs...)
     spack = WannierIO.sparsify(pack, opt)
     write_operator(filename, spack, fmt; compress)
@@ -19,12 +19,12 @@ function WannierIO.write_operator(
 end
 
 function WannierIO.write_operator(
-    filename::AbstractString,
-    pack::WannierIO.SparseOperatorPack,
-    ::WannierIO.JLD2Format;
-    compress::Bool=_DEFAULT_JLD2_COMPRESS,
-)
-    JLD2.jldsave(filename, compress; pack)
+        filename::AbstractString,
+        pack::WannierIO.SparseOperatorPack,
+        ::WannierIO.JLD2Format;
+        compress::Bool = _DEFAULT_JLD2_COMPRESS,
+    )
+    return JLD2.jldsave(filename, compress; pack)
 end
 
 function WannierIO.read_operator(filename::AbstractString, ::WannierIO.JLD2Format)

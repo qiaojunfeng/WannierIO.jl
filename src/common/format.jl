@@ -81,7 +81,7 @@ Construct a Fortran-format tag.
 - `binary=true, stream=false` returns [`FortranBinary`](@ref)
 - `binary=true, stream=true` returns [`FortranBinaryStream`](@ref)
 """
-function fortran_format(; binary::Bool=false, stream::Bool=false)
+function fortran_format(; binary::Bool = false, stream::Bool = false)
     binary || return FortranText()
     return stream ? FortranBinaryStream() : FortranBinary()
 end
@@ -91,8 +91,8 @@ end
 
 Infer a Fortran-format tag from `file` using [`isbinary`](@ref).
 """
-function detect_fortran_format(file::Union{IO,AbstractString}; stream::Bool=false)
-    return isbinary(file) ? fortran_format(; binary=true, stream) : FortranText()
+function detect_fortran_format(file::Union{IO, AbstractString}; stream::Bool = false)
+    return isbinary(file) ? fortran_format(; binary = true, stream) : FortranText()
 end
 
 """
@@ -100,14 +100,14 @@ end
 
 Construct a format tag for `win`/`nnkp`-style input files.
 """
-w90input_format(; toml::Bool=false) = toml ? W90InputToml() : W90InputText()
+w90input_format(; toml::Bool = false) = toml ? W90InputToml() : W90InputText()
 
 """
     detect_w90input_format(file)
 
 Infer a `win`/`nnkp` format tag from `file` using [`istoml`](@ref).
 """
-function detect_w90input_format(file::Union{IO,AbstractString})
+function detect_w90input_format(file::Union{IO, AbstractString})
     return istoml(file) ? W90InputToml() : W90InputText()
 end
 
@@ -191,8 +191,8 @@ function detect_operator_format(path::AbstractString)
     else
         error(
             "Could not detect operator format from file extension of $path. " *
-            "Supported extensions are: .h5/.hdf5 for HDF5Format, .jld2 for JLD2Format, " *
-            ".zarr for ZarrFormat, and .zarr.zip for ZarrZipFormat.",
+                "Supported extensions are: .h5/.hdf5 for HDF5Format, .jld2 for JLD2Format, " *
+                ".zarr for ZarrFormat, and .zarr.zip for ZarrZipFormat.",
         )
     end
 end

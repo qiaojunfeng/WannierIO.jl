@@ -12,7 +12,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Bxsf{T<:Real}
+struct Bxsf{T <: Real}
     "Fermi energy in eV"
     fermi_energy::T
 
@@ -32,7 +32,7 @@ struct Bxsf{T<:Real}
     Z::Vector{T}
 
     "Band energies on the grid, in eV, with shape (n_bands, n_x, n_y, n_z)"
-    E::Array{T,4}
+    E::Array{T, 4}
 end
 
 function Base.show(io::IO, bxsf::Bxsf)
@@ -40,7 +40,7 @@ function Base.show(io::IO, bxsf::Bxsf)
     n_x = length(bxsf.X)
     n_y = length(bxsf.Y)
     n_z = length(bxsf.Z)
-    print(io, "Bxsf(n_bands=$(n_bands), grid=$(n_x)×$(n_y)×$(n_z))")
+    return print(io, "Bxsf(n_bands=$(n_bands), grid=$(n_x)×$(n_y)×$(n_z))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", bxsf::Bxsf)
@@ -49,7 +49,7 @@ function Base.show(io::IO, ::MIME"text/plain", bxsf::Bxsf)
     n_y = length(bxsf.Y)
     n_z = length(bxsf.Z)
 
-    print(
+    return print(
         io,
         """Bxsf(
           Fermi energy: $(bxsf.fermi_energy) eV

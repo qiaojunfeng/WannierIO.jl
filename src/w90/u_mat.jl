@@ -70,11 +70,11 @@ Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
     consider the order of disentanglement window.
 """
 function write_u_mat(
-    io::IO,
-    U::AbstractVector,
-    kpoints::AbstractVector;
-    header::AbstractString=default_header(),
-)
+        io::IO,
+        U::AbstractVector,
+        kpoints::AbstractVector;
+        header::AbstractString = default_header(),
+    )
     nkpts = length(U)
     nkpts > 0 || throw(ArgumentError("U is empty"))
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
@@ -100,16 +100,16 @@ function write_u_mat(
 end
 
 function write_u_mat(
-    filename::AbstractString,
-    U::AbstractVector,
-    kpoints::AbstractVector;
-    header::AbstractString=default_header(),
-)
+        filename::AbstractString,
+        U::AbstractVector,
+        kpoints::AbstractVector;
+        header::AbstractString = default_header(),
+    )
     nkpts = length(U)
     nkpts > 0 || throw(ArgumentError("U is empty"))
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
 
-    open(filename, "w") do io
+    return open(filename, "w") do io
         write_u_mat(io, U, kpoints; header)
     end
 end

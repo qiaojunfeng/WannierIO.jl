@@ -38,8 +38,8 @@ function read_epw_mmn(io::IO; n_kpts::Integer, n_bvecs::Integer, n_bands::Intege
 end
 
 function read_epw_mmn(
-    filename::AbstractString; n_kpts::Integer, n_bvecs::Integer, n_bands::Integer
-)
+        filename::AbstractString; n_kpts::Integer, n_bvecs::Integer, n_bands::Integer
+    )
     return open(filename) do io
         read_epw_mmn(io; n_kpts, n_bvecs, n_bands)
     end
@@ -56,7 +56,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Ukk{T<:Real}
+struct Ukk{T <: Real}
     """index of the first band"""
     ibndstart::Int
 
@@ -257,7 +257,7 @@ function write_epw_ukk(io::IO, ukk::Ukk)
 end
 
 function write_epw_ukk(filename::AbstractString, ukk::Ukk)
-    open(filename, "w") do io
+    return open(filename, "w") do io
         write_epw_ukk(io, ukk)
     end
 end

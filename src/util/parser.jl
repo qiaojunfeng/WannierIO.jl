@@ -9,7 +9,7 @@ Strip comments (`!` or `#`) from a line.
 # Keyword Arguments
 - `spaces::Bool=false`: if true, preserve leading and trailing whitespace.
 """
-function strip_comment(line::AbstractString; spaces::Bool=false)
+function strip_comment(line::AbstractString; spaces::Bool = false)
     i = findfirst(r"!|#", line)
     res = isnothing(i) ? line : line[1:(i.start - 1)]
     return spaces ? res : strip(res)
@@ -34,7 +34,7 @@ Returns the first non-empty line found, or empty string if EOF is reached.
 # Returns
 - A string containing the first non-empty line, with leading and trailing whitespace removed, or empty string if EOF is reached.
 """
-function nextline(io::IO; comment::Bool=false, lower::Bool=false)
+function nextline(io::IO; comment::Bool = false, lower::Bool = false)
     while !eof(io)
         line = readstrip(io)
         if !comment
@@ -130,11 +130,11 @@ function parse_vector(io::IO, T::Type, n_elements::Integer)
     return vec
 end
 
-@inline function parse_vector(parts::AbstractVector{<:AbstractString}, T::Type=Float64)
-    map(x -> parse(T, x), parts)
+@inline function parse_vector(parts::AbstractVector{<:AbstractString}, T::Type = Float64)
+    return map(x -> parse(T, x), parts)
 end
-@inline function parse_vector(line::AbstractString, T::Type=Float64)
-    parse_vector(split(line), T)
+@inline function parse_vector(line::AbstractString, T::Type = Float64)
+    return parse_vector(split(line), T)
 end
 
 """
@@ -199,7 +199,7 @@ julia> format_indices([1, 2, 5, 8, 9, 10])
 "1-2 5 8-10"
 ```
 """
-function format_indices(indices::AbstractVector{T}) where {T<:Integer}
+function format_indices(indices::AbstractVector{T}) where {T <: Integer}
     groups = Vector{Vector{T}}()
     for (i, n) in enumerate(indices)
         if (i > 1) && (n == indices[i - 1] + 1)

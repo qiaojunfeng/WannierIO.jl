@@ -20,7 +20,7 @@ Read a `prefix_band.kpt` file.
 """
 function read_w90_band_kpt(io::IO)
     # in fractional coordinates
-    kpoints = readdlm(io, Float64; skipstart=1)
+    kpoints = readdlm(io, Float64; skipstart = 1)
     kweights = kpoints[:, 4]
     # remove weights
     kpoints = map(1:size(kpoints, 1)) do i
@@ -160,10 +160,10 @@ Write `prefix_band.kpt` file.
 - `kweights`: `n_kpts`, optional, weights of kpoints, default to 1.0.
 """
 function write_w90_band_kpt(
-    io::IO;
-    kpoints::AbstractVector,
-    kweights::AbstractVector=default_band_kpt_kweights(kpoints),
-)
+        io::IO;
+        kpoints::AbstractVector,
+        kweights::AbstractVector = default_band_kpt_kweights(kpoints),
+    )
     n_kpts = length(kpoints)
     length(kweights) == n_kpts ||
         throw(DimensionMismatch("kweights must have same length as kpoints"))
@@ -177,10 +177,10 @@ function write_w90_band_kpt(
 end
 
 function write_w90_band_kpt(
-    filename::AbstractString;
-    kpoints::AbstractVector,
-    kweights::AbstractVector=default_band_kpt_kweights(kpoints),
-)
+        filename::AbstractString;
+        kpoints::AbstractVector,
+        kweights::AbstractVector = default_band_kpt_kweights(kpoints),
+    )
     open(filename, "w") do io
         write_w90_band_kpt(io; kpoints, kweights)
     end
@@ -204,11 +204,11 @@ Write `prefix_band.dat` file.
     `postw90.x` sometimes has a third column for e.g. the color of the eigenvalues
 """
 function write_w90_band_dat(
-    io::IO;
-    x::AbstractVector,
-    eigenvalues::AbstractVector{<:AbstractVector},
-    extras::Union{AbstractVector,Nothing}=nothing,
-)
+        io::IO;
+        x::AbstractVector,
+        eigenvalues::AbstractVector{<:AbstractVector},
+        extras::Union{AbstractVector, Nothing} = nothing,
+    )
     n_kpts = length(eigenvalues)
     n_kpts > 0 || throw(ArgumentError("eigenvalues is empty"))
     n_bands = length(eigenvalues[1])
@@ -234,11 +234,11 @@ function write_w90_band_dat(
 end
 
 function write_w90_band_dat(
-    filename::AbstractString;
-    x::AbstractVector,
-    eigenvalues::AbstractVector{<:AbstractVector},
-    extras::Union{AbstractVector,Nothing}=nothing,
-)
+        filename::AbstractString;
+        x::AbstractVector,
+        eigenvalues::AbstractVector{<:AbstractVector},
+        extras::Union{AbstractVector, Nothing} = nothing,
+    )
     open(filename, "w") do io
         write_w90_band_dat(io; x, eigenvalues, extras)
     end
@@ -260,12 +260,12 @@ Write `prefix_band.labelinfo.dat` file.
 - `symm_point_labels`: labels of high-symmetry points
 """
 function write_w90_band_labelinfo(
-    io::IO;
-    x::AbstractVector{<:Real},
-    kpoints::AbstractVector,
-    symm_point_indices::AbstractVector{<:Integer},
-    symm_point_labels::AbstractVector,
-)
+        io::IO;
+        x::AbstractVector{<:Real},
+        kpoints::AbstractVector,
+        symm_point_indices::AbstractVector{<:Integer},
+        symm_point_labels::AbstractVector,
+    )
     n_symm = length(symm_point_indices)
     n_symm == length(symm_point_labels) ||
         throw(DimensionMismatch("symm_idx and symm_label must have same length"))
@@ -287,12 +287,12 @@ function write_w90_band_labelinfo(
 end
 
 function write_w90_band_labelinfo(
-    filename::AbstractString;
-    x::AbstractVector{<:Real},
-    kpoints::AbstractVector,
-    symm_point_indices::AbstractVector{<:Integer},
-    symm_point_labels::AbstractVector,
-)
+        filename::AbstractString;
+        x::AbstractVector{<:Real},
+        kpoints::AbstractVector,
+        symm_point_indices::AbstractVector{<:Integer},
+        symm_point_labels::AbstractVector,
+    )
     open(filename, "w") do io
         write_w90_band_labelinfo(io; x, kpoints, symm_point_indices, symm_point_labels)
     end
@@ -316,14 +316,14 @@ Write `prefix_band.dat, prefix_band.kpt, prefix_band.labelinfo.dat`.
 - `symm_point_labels`: name of high-symmetry points
 """
 function write_w90_band(
-    prefix::AbstractString;
-    x::AbstractVector,
-    eigenvalues::AbstractVector{<:AbstractVector},
-    kpoints::AbstractVector,
-    kweights::AbstractVector=default_band_kpt_kweights(kpoints),
-    symm_point_indices::AbstractVector,
-    symm_point_labels::AbstractVector,
-)
+        prefix::AbstractString;
+        x::AbstractVector,
+        eigenvalues::AbstractVector{<:AbstractVector},
+        kpoints::AbstractVector,
+        kweights::AbstractVector = default_band_kpt_kweights(kpoints),
+        symm_point_indices::AbstractVector,
+        symm_point_labels::AbstractVector,
+    )
     n_kpts = length(kpoints)
     length(eigenvalues) == n_kpts ||
         throw(DimensionMismatch("kpoints and eigenvalues have different n_kpts"))

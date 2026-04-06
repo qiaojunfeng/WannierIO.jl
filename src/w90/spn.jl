@@ -1,4 +1,3 @@
-
 export read_spn, write_spn
 
 """
@@ -10,7 +9,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Spn{T<:Real}
+struct Spn{T <: Real}
     "Header line"
     header::String
 
@@ -33,14 +32,14 @@ end
 function Base.show(io::IO, spn::Spn)
     n_kpts = length(spn.Sx)
     n_bands = n_kpts == 0 ? 0 : size(spn.Sx[1], 1)
-    print(io, "Spn(n_kpts=$(n_kpts), n_bands=$(n_bands))")
+    return print(io, "Spn(n_kpts=$(n_kpts), n_bands=$(n_bands))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", spn::Spn)
     n_kpts = length(spn.Sx)
     n_bands = n_kpts == 0 ? 0 : size(spn.Sx[1], 1)
 
-    print(
+    return print(
         io,
         """Spn(
           header: $(spn.header)
@@ -235,7 +234,7 @@ function write_spn(filename::AbstractString, spn::Spn, ::FortranBinary)
     return write_spn(io, spn, FortranBinary())
 end
 
-function write_spn(filename::AbstractString, spn::Spn; binary=false)
+function write_spn(filename::AbstractString, spn::Spn; binary = false)
     format = fortran_format(; binary)
     return write_spn(filename, spn, format)
 end

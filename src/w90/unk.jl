@@ -17,7 +17,7 @@ Read wannier90 `UNK` file for the periodic part of Bloch wavefunctions.
 """
 function read_unk end
 
-function read_unk(io::IO, ::FortranText; n_spin::Integer=1)
+function read_unk(io::IO, ::FortranText; n_spin::Integer = 1)
     line = split(strip(readline(io)))
     n_gx, n_gy, n_gz, ik, n_bands = parse.(Int, line)
 
@@ -47,7 +47,7 @@ function read_unk(filename::AbstractString, ::FortranText)
     end
 end
 
-function read_unk(io::FortranFile, ::FortranBinary; n_spin::Integer=1)
+function read_unk(io::FortranFile, ::FortranBinary; n_spin::Integer = 1)
 
     # gfortran default integer is 4 bytes
     Tint = Int32
@@ -58,7 +58,7 @@ function read_unk(io::FortranFile, ::FortranBinary; n_spin::Integer=1)
     for ib in 1:n_bands
         for is in 1:n_spin
             record = Record(io)
-            read!(record, view(Ψ,:,:,:,ib,is))
+            read!(record, view(Ψ, :, :, :, ib, is))
             close(record)
         end
     end
@@ -96,7 +96,7 @@ Write `UNK` file for the periodic part of Bloch wavefunctions.
 """
 function write_unk end
 
-function write_unk(io::IO, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranText)
+function write_unk(io::IO, ik::Integer, Ψ::Array{<:Complex, 5}, ::FortranText)
     n_gx, n_gy, n_gz, n_bands, n_spin = size(Ψ)
 
     @printf(io, " %11d %11d %11d %11d %11d\n", n_gx, n_gy, n_gz, ik, n_bands)
@@ -118,15 +118,15 @@ function write_unk(io::IO, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranText)
 end
 
 function write_unk(
-    filename::AbstractString, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranText
-)
+        filename::AbstractString, ik::Integer, Ψ::Array{<:Complex, 5}, ::FortranText
+    )
     open(filename, "w") do io
         write_unk(io, ik, Ψ, FortranText())
     end
     return nothing
 end
 
-function write_unk(io::FortranFile, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranBinary)
+function write_unk(io::FortranFile, ik::Integer, Ψ::Array{<:Complex, 5}, ::FortranBinary)
     n_gx, n_gy, n_gz, n_bands, n_spin = size(Ψ)
 
     # gfortran default integer is 4 bytes
@@ -143,14 +143,14 @@ function write_unk(io::FortranFile, ik::Integer, Ψ::Array{<:Complex,5}, ::Fortr
 end
 
 function write_unk(
-    filename::AbstractString, ik::Integer, Ψ::Array{<:Complex,5}, ::FortranBinary
-)
+        filename::AbstractString, ik::Integer, Ψ::Array{<:Complex, 5}, ::FortranBinary
+    )
     # not Fortran stream IO, so using `FortranFile`
     io = FortranFile(filename, "w")
     return write_unk(io, ik, Ψ, FortranBinary())
 end
 
-function write_unk(filename::AbstractString, ik, Ψ; binary=false)
+function write_unk(filename::AbstractString, ik, Ψ; binary = false)
     format = fortran_format(; binary)
     return write_unk(filename, ik, Ψ, format)
 end

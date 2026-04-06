@@ -9,7 +9,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct WsvecDat{IT<:Integer}
+struct WsvecDat{IT <: Integer}
     "Header line"
     header::String
 
@@ -22,24 +22,24 @@ struct WsvecDat{IT<:Integer}
     Rvectors::Vector{Vec3{IT}}
 
     "MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
-    Tvectors::Union{Vector{Matrix{Vector{Vec3{IT}}}},Nothing}
+    Tvectors::Union{Vector{Matrix{Vector{Vec3{IT}}}}, Nothing}
 
     "Degeneracies of MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
-    Tdegens::Union{Vector{Matrix{IT}},Nothing}
+    Tdegens::Union{Vector{Matrix{IT}}, Nothing}
 
     "Number of Wannier functions"
     n_wann::Int
 end
 
 function Base.show(io::IO, wsvec::WsvecDat)
-    print(
+    return print(
         io,
         "WsvecDat(n_Rvecs=$(length(wsvec.Rvectors)), n_wann=$(wsvec.n_wann), mdrs=$(wsvec.mdrs))",
     )
 end
 
 function Base.show(io::IO, ::MIME"text/plain", wsvec::WsvecDat)
-    print(
+    return print(
         io,
         """WsvecDat(
           header: $(wsvec.header)
@@ -63,11 +63,11 @@ end
 For MDRS Rvectors, the `n_wann` is optional and can be automatically determined from the `Tvectors`.
 """
 function WsvecDat(
-    Rvectors::Vector{<:Vec3},
-    Tvectors::Vector{<:Matrix},
-    Tdegens::Vector{<:Matrix},
-    header::String,
-)
+        Rvectors::Vector{<:Vec3},
+        Tvectors::Vector{<:Matrix},
+        Tdegens::Vector{<:Matrix},
+        header::String,
+    )
     n_wann = size(Tvectors[1], 1)
     return WsvecDat(header, true, Rvectors, Tvectors, Tdegens, n_wann)
 end
@@ -200,7 +200,7 @@ function write_w90_wsvec(io::IO, wsvec::WsvecDat)
 end
 
 function write_w90_wsvec(filename::AbstractString, wsvec::WsvecDat)
-    open(filename, "w") do io
+    return open(filename, "w") do io
         write_w90_wsvec(io, wsvec)
     end
 end

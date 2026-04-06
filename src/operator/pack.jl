@@ -20,9 +20,9 @@ function _infer_n_wann(operators::AbstractDict)
     return n_wann
 end
 
-function _normalize_operators(::Type{Tv}, operators::AbstractDict) where {Tv<:Real}
-    Tval = Union{Vector{Matrix{Tv}},Vector{Matrix{Complex{Tv}}}}
-    out = OrderedDict{String,Tval}()
+function _normalize_operators(::Type{Tv}, operators::AbstractDict) where {Tv <: Real}
+    Tval = Union{Vector{Matrix{Tv}}, Vector{Matrix{Complex{Tv}}}}
+    out = OrderedDict{String, Tval}()
     for (name, op) in pairs(operators)
         key = String(name)
         if eltype(eltype(op)) <: Real
@@ -35,12 +35,12 @@ function _normalize_operators(::Type{Tv}, operators::AbstractDict) where {Tv<:Re
 end
 
 function _validate_operator_pack(
-    Tv::Type{<:Real},
-    n_wann::Integer,
-    n_Rvecs::Integer,
-    Rvectors::AbstractVector{<:Vec3{<:Integer}},
-    operators::AbstractDict,
-)
+        Tv::Type{<:Real},
+        n_wann::Integer,
+        n_Rvecs::Integer,
+        Rvectors::AbstractVector{<:Vec3{<:Integer}},
+        operators::AbstractDict,
+    )
     length(Rvectors) == n_Rvecs || error("length(Rvectors) != n_Rvecs")
     for (name, op) in pairs(operators)
         length(op) == n_Rvecs ||
@@ -54,6 +54,7 @@ function _validate_operator_pack(
             )
         end
     end
+    return
 end
 
 """
@@ -65,7 +66,7 @@ or [`MdrsRvectorReducer`](@ref), i.e., no `Rdegens` or `Tvectors`.
 # Fields
 $(FIELDS)
 """
-struct OperatorPack{Tv<:Real,Ti<:Integer} <: AbstractOperatorPack
+struct OperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
     "Short description of the operator set"
     header::String
 
@@ -78,7 +79,7 @@ struct OperatorPack{Tv<:Real,Ti<:Integer} <: AbstractOperatorPack
     """Mapping operator names to vectors of dense matrices.
     The operators can be either real or complex.
     """
-    operators::OrderedDict{String,Union{Vector{Matrix{Tv}},Vector{Matrix{Complex{Tv}}}}}
+    operators::OrderedDict{String, Union{Vector{Matrix{Tv}}, Vector{Matrix{Complex{Tv}}}}}
 
     "Number of R-vectors."
     n_Rvecs::Ti
@@ -87,11 +88,11 @@ struct OperatorPack{Tv<:Real,Ti<:Integer} <: AbstractOperatorPack
     n_wann::Ti
 
     function OperatorPack(
-        header::AbstractString,
-        lattice::AbstractMatrix{Tv},
-        Rvectors::AbstractVector{<:Vec3{Ti}},
-        operators::AbstractDict,
-    ) where {Tv<:Real,Ti<:Integer}
+            header::AbstractString,
+            lattice::AbstractMatrix{Tv},
+            Rvectors::AbstractVector{<:Vec3{Ti}},
+            operators::AbstractDict,
+        ) where {Tv <: Real, Ti <: Integer}
         header = String(header)
         lattice = Mat3{Tv}(lattice)
         n_Rvecs = Ti(length(Rvectors))
@@ -99,13 +100,13 @@ struct OperatorPack{Tv<:Real,Ti<:Integer} <: AbstractOperatorPack
         _validate_operator_pack(Tv, n_wann, n_Rvecs, Rvectors, operators)
         Rvectors = collect(Vec3{Ti}.(Rvectors))
         operators = _normalize_operators(Tv, operators)
-        return new{Tv,Ti}(header, lattice, Rvectors, operators, n_Rvecs, n_wann)
+        return new{Tv, Ti}(header, lattice, Rvectors, operators, n_Rvecs, n_wann)
     end
 end
 
 function Base.show(io::IO, op::OperatorPack)
     n_ops = length(op.operators)
-    print(
+    return print(
         io, "OperatorPack(n_Rvecs=$(op.n_Rvecs), n_wann=$(op.n_wann), n_operators=$(n_ops))"
     )
 end
@@ -114,7 +115,7 @@ function Base.show(io::IO, ::MIME"text/plain", op::OperatorPack)
     n_ops = length(op.operators)
     op_names = collect(keys(op.operators))
 
-    print(
+    return print(
         io,
         """OperatorPack(
           header: $(op.header)
@@ -158,7 +159,7 @@ function write_operator end
 function read_operator(file::AbstractString, fmt::AbstractFileFormat)
     error(
         "Format `$(format_name(fmt))` requires loading the corresponding package. " *
-        "See the WannierIO documentation for supported formats.",
+            "See the WannierIO documentation for supported formats.",
     )
 end
 
@@ -167,11 +168,11 @@ function read_operator(file::AbstractString)
 end
 
 function write_operator(
-    file::AbstractString, pack::AbstractOperatorPack, fmt::AbstractFileFormat; kwargs...
-)
+        file::AbstractString, pack::AbstractOperatorPack, fmt::AbstractFileFormat; kwargs...
+    )
     error(
         "Format `$(format_name(fmt))` requires loading the corresponding package. " *
-        "See the WannierIO documentation for supported formats.",
+            "See the WannierIO documentation for supported formats.",
     )
 end
 

@@ -165,7 +165,7 @@ function read_nnkp(io::IO, ::W90InputText)
     lattice = Mat3(lattice)
     recip_lattice = Mat3(recip_lattice)
     # note I keep the order here: projections first, then auto_projections, ...
-    res = OrderedDict{String,Any}()
+    res = OrderedDict{String, Any}()
     isnothing(projections) || (res["projections"] = projections)
     isnothing(auto_projections) || (res["auto_projections"] = auto_projections)
     res["lattice"] = lattice
@@ -197,7 +197,7 @@ function read_nnkp(filename::AbstractString, format::AbstractFileFormat)
     end
 end
 
-function read_nnkp(file::Union{IO,AbstractString})
+function read_nnkp(file::Union{IO, AbstractString})
     format = detect_w90input_format(file)
     nnkp = read_nnkp(file, format)
     return nnkp
@@ -211,6 +211,7 @@ end
     for k in required_keys
         haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
     end
+    return
 end
 
 """
@@ -251,8 +252,8 @@ The following keys are optional:
 """
 function write_nnkp end
 
-function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header=default_header())
-    params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
+function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header = default_header())
+    params = OrderedDict{String, Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
 
     lattice = params["lattice"]
@@ -354,8 +355,8 @@ function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header=default
     return nothing
 end
 
-function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header=default_header())
-    params = OrderedDict{String,Any}(string(k) => v for (k, v) in pairs(params))
+function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header = default_header())
+    params = OrderedDict{String, Any}(string(k) => v for (k, v) in pairs(params))
     _check_nnkp_required_params(params)
     kpb_k = params["kpb_k"]
     _check_dimensions_kpb(kpb_k, params["kpb_G"])
@@ -368,19 +369,19 @@ function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header=default
 end
 
 function write_nnkp(
-    filename::AbstractString,
-    params::AbstractDict,
-    format::AbstractFileFormat;
-    header=default_header(),
-)
-    open(filename, "w") do io
+        filename::AbstractString,
+        params::AbstractDict,
+        format::AbstractFileFormat;
+        header = default_header(),
+    )
+    return open(filename, "w") do io
         write_nnkp(io, params, format; header)
     end
 end
 
 function write_nnkp(
-    file::Union{IO,AbstractString}, params::AbstractDict; header=default_header()
-)
+        file::Union{IO, AbstractString}, params::AbstractDict; header = default_header()
+    )
     format = w90input_format()
-    write_nnkp(file, params, format; header)
+    return write_nnkp(file, params, format; header)
 end

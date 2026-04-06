@@ -31,7 +31,7 @@ end
     @test pack_w90.Rvectors == dpack0.Rvectors
     @test collect(keys(pack_w90.operators)) == ["H"]
     @test all(isnan, pack_w90.lattice)
-    @test isapprox(pack_w90.operators["H"], dpack0.operators["H"]; atol=2e-5)
+    @test isapprox(pack_w90.operators["H"], dpack0.operators["H"]; atol = 2.0e-5)
 
     # Backend formats via read_operator/write_operator
     targets = [
@@ -42,13 +42,13 @@ end
     ]
 
     for (fmt, dst) in targets
-        write_operator(dst, dpack0, fmt; atol=0.0, value_type=ComplexF64)
+        write_operator(dst, dpack0, fmt; atol = 0.0, value_type = ComplexF64)
         pack2 = read_operator(dst, fmt)
 
         @test pack2 isa WannierIO.OperatorPack
         @test pack2.n_wann == dpack0.n_wann
         @test pack2.Rvectors == dpack0.Rvectors
         @test collect(keys(pack2.operators)) == ["H", "r_x", "r_y", "r_z"]
-        @test isapprox(pack2.operators["H"], dpack0.operators["H"]; atol=0.0)
+        @test isapprox(pack2.operators["H"], dpack0.operators["H"]; atol = 0.0)
     end
 end

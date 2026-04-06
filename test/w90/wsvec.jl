@@ -27,7 +27,7 @@ end
     using LazyArtifacts
     wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_w90_wsvec(tmpfile, wsvec)
     wsvec2 = read_w90_wsvec(tmpfile)
 
@@ -43,7 +43,7 @@ end
     using LazyArtifacts
     wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/MDRS/Si2_valence_wsvec.dat")
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_w90_wsvec(tmpfile, wsvec)
     wsvec2 = read_w90_wsvec(tmpfile)
 

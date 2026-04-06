@@ -9,7 +9,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct TbDat{T<:Real,IT<:Integer}
+struct TbDat{T <: Real, IT <: Integer}
     "Header line"
     header::String
 
@@ -37,7 +37,7 @@ end
 
 function Base.show(io::IO, tbdat::TbDat)
     n_wann = isempty(tbdat.H) ? 0 : size(tbdat.H[1], 1)
-    print(io, "TbDat(n_Rvecs=$(length(tbdat.H)), n_wann=$(n_wann))")
+    return print(io, "TbDat(n_Rvecs=$(length(tbdat.H)), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", tbdat::TbDat)
@@ -46,7 +46,7 @@ function Base.show(io::IO, ::MIME"text/plain", tbdat::TbDat)
     degen_min = length(tbdat.Rdegens) == 0 ? 0 : minimum(tbdat.Rdegens)
     degen_max = length(tbdat.Rdegens) == 0 ? 0 : maximum(tbdat.Rdegens)
 
-    print(
+    return print(
         io,
         """TbDat(
           header: $(tbdat.header)
@@ -215,7 +215,7 @@ function write_w90_tb_dat(io::IO, tbdat::TbDat)
 end
 
 function write_w90_tb_dat(filename::AbstractString, tbdat::TbDat)
-    open(filename, "w") do io
+    return open(filename, "w") do io
         write_w90_tb_dat(io, tbdat)
     end
 end

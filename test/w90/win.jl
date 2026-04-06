@@ -15,7 +15,7 @@ end
     using LazyArtifacts
     win = read_win(artifact"Si2_valence/Si2_valence.win")
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_win(tmpfile, win)
     win2 = read_win(tmpfile)
     # Compare without order
@@ -27,7 +27,7 @@ end
     toml_path = artifact"Si2_valence/outputs/Si2_valence.win.toml"
     win = read_win(toml_path)
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_win(tmpfile, win, WannierIO.W90InputToml())
     win2 = read_win(tmpfile, WannierIO.W90InputToml())
     # Compare without order
@@ -82,9 +82,9 @@ end
         "K" => [0.375, -0.375, 0.0],
     ]
     @test length(win["explicit_kpath"]) == 214
-    @test win["explicit_kpath"][[1, end-1]] == [[0.5, 0.5, 0.5], [0.012097, -0.012097, 0.0]]
+    @test win["explicit_kpath"][[1, end - 1]] == [[0.5, 0.5, 0.5], [0.012097, -0.012097, 0.0]]
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_win(tmpfile, win)
     win2 = read_win(tmpfile)
     # compare without order
@@ -95,7 +95,7 @@ end
     using LazyArtifacts
     win = read_win(artifact"GaAs/GaAs.win")
 
-    tmpfile = tempname(; cleanup=true)
+    tmpfile = tempname(; cleanup = true)
     write_win(tmpfile, win)
     win2 = read_win(tmpfile)
     # compare without order
@@ -107,12 +107,12 @@ end
     # This might standardize some params, I will write it then read again
     win = read_win(artifact"Si2_valence/Si2_valence.win")
 
-    tmpfile1 = tempname(; cleanup=true)
+    tmpfile1 = tempname(; cleanup = true)
     write_win(tmpfile1, win)
     win1 = read_win(tmpfile1)
 
     # This time, write then read should be idempotent: the order should be preserved
-    tmpfile2 = tempname(; cleanup=true)
+    tmpfile2 = tempname(; cleanup = true)
     write_win(tmpfile2, win1)
     win2 = read_win(tmpfile2)
 
@@ -126,8 +126,8 @@ end
     win = read_win(p)
     win_lines = readlines(p)
 
-    tmpfile = tempname(; cleanup=true)
-    write_win(tmpfile, win; header=nothing)
+    tmpfile = tempname(; cleanup = true)
+    write_win(tmpfile, win; header = nothing)
     win2_lines = readlines(tmpfile)
 
     # Compare the kpoint_path and explicit_kpath_labels, especially all the

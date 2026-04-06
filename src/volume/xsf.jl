@@ -12,36 +12,36 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Xsf{T<:Real}
+struct Xsf{T <: Real}
     "Primitive lattice vectors, each column is a primitive lattice vector in Å"
-    primvec::Union{Mat3{T},Nothing}
+    primvec::Union{Mat3{T}, Nothing}
 
     "Conventional lattice vectors, each column is a conventional lattice vector in Å"
-    convvec::Union{Mat3{T},Nothing}
+    convvec::Union{Mat3{T}, Nothing}
 
     "Atomic labels or numbers"
-    atoms::Union{Vector{String},Nothing}
+    atoms::Union{Vector{String}, Nothing}
 
     "Atomic positions in Cartesian coordinates in Å"
-    atom_positions::Union{Vector{Vec3{T}},Nothing}
+    atom_positions::Union{Vector{Vec3{T}}, Nothing}
 
     "Grid origin in Cartesian coordinates in Å"
-    origin::Union{Vec3{T},Nothing}
+    origin::Union{Vec3{T}, Nothing}
 
     "Grid spanning vectors, each column is a spanning vector in Å"
-    span_vectors::Union{Mat3{T},Nothing}
+    span_vectors::Union{Mat3{T}, Nothing}
 
     "Fractional grid coordinates along first spanning vector"
-    X::Union{Vector{T},Nothing}
+    X::Union{Vector{T}, Nothing}
 
     "Fractional grid coordinates along second spanning vector"
-    Y::Union{Vector{T},Nothing}
+    Y::Union{Vector{T}, Nothing}
 
     "Fractional grid coordinates along third spanning vector"
-    Z::Union{Vector{T},Nothing}
+    Z::Union{Vector{T}, Nothing}
 
     "Volumetric values, with shape (n_x, n_y, n_z)"
-    W::Union{Array{T,3},Nothing}
+    W::Union{Array{T, 3}, Nothing}
 end
 
 function Base.show(io::IO, xsf::Xsf)
@@ -49,7 +49,7 @@ function Base.show(io::IO, xsf::Xsf)
     n_y = isnothing(xsf.Y) ? 0 : length(xsf.Y)
     n_z = isnothing(xsf.Z) ? 0 : length(xsf.Z)
     n_atoms = isnothing(xsf.atom_positions) ? 0 : length(xsf.atom_positions)
-    print(io, "Xsf(n_atoms=$(n_atoms), grid=$(n_x)×$(n_y)×$(n_z))")
+    return print(io, "Xsf(n_atoms=$(n_atoms), grid=$(n_x)×$(n_y)×$(n_z))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", xsf::Xsf)
@@ -58,7 +58,7 @@ function Base.show(io::IO, ::MIME"text/plain", xsf::Xsf)
     n_z = isnothing(xsf.Z) ? 0 : length(xsf.Z)
     n_atoms = isnothing(xsf.atom_positions) ? 0 : length(xsf.atom_positions)
 
-    print(
+    return print(
         io,
         """Xsf(
           n_atoms: $(n_atoms)

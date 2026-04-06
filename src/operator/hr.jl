@@ -79,7 +79,7 @@ function write_w90_hr(file::AbstractString, pack::OperatorPack)
     return nothing
 end
 
-function _missing_lattice(::Type{T}) where {T<:Real}
+function _missing_lattice(::Type{T}) where {T <: Real}
     return Mat3{T}(fill(T(NaN), 3, 3))
 end
 
@@ -107,7 +107,7 @@ function pack(hrdat::HrDat, wsvec::WsvecDat)
     return pack(hrdat, reducer)
 end
 
-function pack(hrdat::HrDat{T}, reducer::AbstractRvectorReducer) where {T<:Real}
+function pack(hrdat::HrDat{T}, reducer::AbstractRvectorReducer) where {T <: Real}
     Tr = float(T)
     lattice = _missing_lattice(Tr)
     Rvectors = Vec3{Int}.(reducer.Rvectors)

@@ -9,7 +9,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct HrDat{T<:Real,IT<:Integer}
+struct HrDat{T <: Real, IT <: Integer}
     "Header line"
     header::String
 
@@ -25,7 +25,7 @@ end
 
 function Base.show(io::IO, hrdat::HrDat)
     n_wann = isempty(hrdat.H) ? 0 : size(hrdat.H[1], 1)
-    print(io, "HrDat(n_Rvecs=$(length(hrdat.H)), n_wann=$(n_wann))")
+    return print(io, "HrDat(n_Rvecs=$(length(hrdat.H)), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", hrdat::HrDat)
@@ -34,7 +34,7 @@ function Base.show(io::IO, ::MIME"text/plain", hrdat::HrDat)
     degen_min = length(hrdat.Rdegens) == 0 ? 0 : minimum(hrdat.Rdegens)
     degen_max = length(hrdat.Rdegens) == 0 ? 0 : maximum(hrdat.Rdegens)
 
-    print(
+    return print(
         io,
         """HrDat(
           header: $(hrdat.header)
@@ -136,7 +136,7 @@ function write_w90_hr_dat(io::IO, hrdat::HrDat)
 end
 
 function write_w90_hr_dat(filename::AbstractString, hrdat::HrDat)
-    open(filename, "w") do io
+    return open(filename, "w") do io
         write_w90_hr_dat(io, hrdat)
     end
 end

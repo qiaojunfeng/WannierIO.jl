@@ -12,7 +12,7 @@ names so that they are consistent with the rest of the code.
 
 $(FIELDS)
 """
-struct Chk{T<:Real}
+struct Chk{T <: Real}
     "The header line, usually contains date and time"
     header::String
 
@@ -102,11 +102,11 @@ struct Chk{T<:Real}
 end
 
 function Base.show(io::IO, chk::Chk)
-    print(io, "Chk(n_kpts=$(chk.n_kpts), n_bands=$(chk.n_bands), n_wann=$(chk.n_wann))")
+    return print(io, "Chk(n_kpts=$(chk.n_kpts), n_bands=$(chk.n_bands), n_wann=$(chk.n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", chk::Chk)
-    print(
+    return print(
         io,
         """Chk(
           header: $(chk.header)
@@ -127,22 +127,22 @@ end
 Convenience constructor of [`Chk`](@ref) struct that auto set some fields.
 """
 function Chk(
-    header::AbstractString,
-    exclude_bands::AbstractVector{Int},
-    lattice::AbstractMatrix,
-    recip_lattice::AbstractMatrix,
-    kgrid::AbstractVector{<:Integer},
-    kpoints::AbstractVector,
-    checkpoint::AbstractString,
-    have_disentangled::Bool,
-    ΩI::Real,
-    dis_bands::AbstractVector{BitVector},
-    Udis::AbstractVector,
-    Uml::AbstractVector,
-    M::AbstractVector,
-    r::AbstractVector,
-    ω::AbstractVector,
-)
+        header::AbstractString,
+        exclude_bands::AbstractVector{Int},
+        lattice::AbstractMatrix,
+        recip_lattice::AbstractMatrix,
+        kgrid::AbstractVector{<:Integer},
+        kpoints::AbstractVector,
+        checkpoint::AbstractString,
+        have_disentangled::Bool,
+        ΩI::Real,
+        dis_bands::AbstractVector{BitVector},
+        Udis::AbstractVector,
+        Uml::AbstractVector,
+        M::AbstractVector,
+        r::AbstractVector,
+        ω::AbstractVector,
+    )
     if have_disentangled
         length(Udis) > 0 || error("empty Udis")
         n_bands = size(Udis[1], 1)
@@ -643,7 +643,7 @@ function write_chk(io::FortranFile, chk::Chk, ::FortranBinary)
     write(io, Tint(chk.have_disentangled))
 
     # concatenate along dims=3
-    cat3(A...) = cat(A...; dims=3)
+    cat3(A...) = cat(A...; dims = 3)
 
     if chk.have_disentangled
         # omega_invariant
@@ -686,7 +686,7 @@ function write_chk(filename::AbstractString, chk::Chk, ::FortranBinary)
     return write_chk(io, chk, FortranBinary())
 end
 
-function write_chk(filename::AbstractString, chk::Chk; binary=false)
+function write_chk(filename::AbstractString, chk::Chk; binary = false)
     format = fortran_format(; binary)
     return write_chk(filename, chk, format)
 end
@@ -736,7 +736,7 @@ function gauge_matrices_dis(chk::Chk)
     return map(1:n_kpts) do ik
         # sortperm is stable, and
         # need descending order (dis bands at the front)
-        p = sortperm(chk.dis_bands[ik]; order=Base.Order.Reverse)
+        p = sortperm(chk.dis_bands[ik]; order = Base.Order.Reverse)
         # usually we don't need this permutation, but if
         # 1. the dis_win_min > minimum(E), then these below
         #    dis_win_min bands are shifted to the last rows of Udis
