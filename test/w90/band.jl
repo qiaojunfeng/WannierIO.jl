@@ -17,3 +17,38 @@
     band2 = read_w90_band(outprefix)
     @test band == band2
 end
+
+@testitem "read/write w90 band" begin
+    using LazyArtifacts
+
+    win = read_win(artifact"Si2_valence/Si2_valence.win")
+    recip_lattice = WannierIO.reciprocal_lattice(win["unit_cell_cart"])
+    kpath, eigenvalues = read_w90_band(
+        artifact"Si2_valence/outputs/MDRS/Si2_valence", recip_lattice
+    )
+
+    outdir = mktempdir(; cleanup = true)
+    outprefix = joinpath(outdir, "Si2_valence")
+    write_w90_band(outprefix, kpath, eigenvalues)
+    kpath2, eigenvalues2 = read_w90_band(outprefix, recip_lattice)
+
+    @test kpath ≈ kpath2
+    @test eigenvalues ≈ eigenvalues2
+end
+
+@testitem "read/write_w90_band_kpt_labelinfo" begin
+    using LazyArtifacts
+
+    win = read_win(artifact"Si2_valence/Si2_valence.win")
+    recip_lattice = WannierIO.reciprocal_lattice(win["unit_cell_cart"])
+    kpath, eigenvalues = read_w90_band(
+        artifact"Si2_valence/outputs/MDRS/Si2_valence", recip_lattice
+    )
+
+    outdir = mktempdir(; cleanup = true)
+    outprefix = joinpath(outdir, "Si2_valence")
+    WannierIO.write_w90_band_kpt_labelinfo(outprefix, kpath)
+    kpath2 = WannierIO.read_w90_band_kpt_labelinfo(outprefix, recip_lattice)
+
+    @test kpath ≈ kpath2
+end

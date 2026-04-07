@@ -143,6 +143,31 @@ end
 """
     $(SIGNATURES)
 
+# Arguments
+- `prefix`: prefix of the output files `prefix_band.dat`, `prefix_band.kpt`, and `prefix_band.labelinfo.dat`
+- `recip_lattice`: each column is a reciprocal lattice vector in Å.
+
+# Return
+- `kpath`: a `CrystalBase.KPath` object
+- `eigenvalues`: the eigenvalues of the band structure
+
+!!! note
+
+    The `read_w90_band(prefix)` function returns a `NamedTuple`
+    containing basis variables such as `kpoints`, `symm_point_indices`, etc.
+    Here, once we know the `recip_lattice`, we can return a more convenient `KPath`.
+"""
+function read_w90_band(prefix::AbstractString, recip_lattice::AbstractMatrix)
+    band = WannierIO.read_w90_band(prefix)
+    kpath = KPath(
+        recip_lattice, band.kpoints, band.symm_point_indices, band.symm_point_labels
+    )
+    return kpath, band.eigenvalues
+end
+
+"""
+    $(SIGNATURES)
+
 Wannier90 default kweights in `prefix_band.kpt` is all 1.0.
 """
 default_band_kpt_kweights(kpoints::AbstractVector) = ones(length(kpoints))
@@ -343,4 +368,78 @@ function write_w90_band(
     return write_w90_band_labelinfo(
         band_labelinfo; x, kpoints, symm_point_indices, symm_point_labels
     )
+end
+
+"""
+    $(SIGNATURES)
+
+Write `prefix_band.dat, prefix_band.kpt, prefix_band.labelinfo.dat`.
+
+This is a more user-friendly version that works with `CrystalBase.KPath`;
+the `WannierIO.write_w90_band(prefix; kwargs...)` is the low-level version.
+"""
+function write_w90_band(
+        prefix::AbstractString, kpath::CrystalBase.KPath, eigenvalues::AbstractVector
+    )
+    x, symm_point_indices, symm_point_labels = linear_path(kpath)
+    kpoints = kpath.points
+    return WannierIO.write_w90_band(prefix; x, eigenvalues, kpoints, symm_point_indices, symm_point_labels)
+end
+
+"""
+    $(SIGNATURES)
+
+Write kpoints into wannier90 formats: `prefix_band.kpt`, `prefix_band.labelinfo.dat`.
+
+# Arguments
+- `prefix`: the prefix of the output files `prefix_band.kpt` and `prefix_band.labelinfo.dat`
+- `kpath`: a `CrystalBase.KPath` object
+
+!!! tip
+
+    This allows writing auto generated high-symmetry kpoints and labels from crystal
+    structure (by `CrystalBase.KSegment()`) into files. Then other codes
+    can use the kpoints for band structure calculations, e.g., QE `pw.x` `bands`
+    calculation, or in the `win` input file for `Wannier90`.
+
+# Example
+```julia
+using Spglib, Brillouin, CrystalBase, WannierIO
+win = read_win("si2.win")
+kseg = KSegment(win.unit_cell_cart, win.atoms_frac, win.atom_labels)
+# Set the number of kpoints along the 1st segment to 100 points
+kp = KPath(kseg, 100)
+write_w90_kpt_label("si2", kp)
+```
+"""
+function write_w90_band_kpt_labelinfo(prefix::AbstractString, kpath::KPath)
+    kpoints = kpath.points
+    x, symm_point_indices, symm_point_labels = linear_path(kpath)
+
+    filename = prefix * "_band.kpt"
+    write_w90_band_kpt(filename; kpoints)
+
+    filename = prefix * "_band.labelinfo.dat"
+    return write_w90_band_labelinfo(
+        filename; x, kpoints, symm_point_indices, symm_point_labels
+    )
+end
+
+"""
+    $(SIGNATURES)
+
+Read kpoints and labels from wannier90 formats: `prefix_band.kpt`, `prefix_band.labelinfo.dat`.
+
+# Arguments
+- `prefix`: the prefix of the input files `prefix_band.kpt` and `prefix_band.labelinfo.dat`
+- `recip_lattice`: the reciprocal lattice matrix
+
+# Returns
+- `kpath`: a `CrystalBase.KPath` object
+"""
+function read_w90_band_kpt_labelinfo(prefix::AbstractString, recip_lattice::AbstractMatrix)
+    kpt = read_w90_band_kpt(prefix * "_band.kpt")
+    labelinfo = read_w90_band_labelinfo(prefix * "_band.labelinfo.dat")
+    kpath = KPath(recip_lattice, kpt.kpoints, labelinfo.symm_point_indices, labelinfo.symm_point_labels)
+    return kpath
 end
