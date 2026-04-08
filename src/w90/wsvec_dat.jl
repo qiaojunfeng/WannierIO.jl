@@ -55,7 +55,7 @@ end
 """
 For Wigner-Seitz Rvectors, needs to provide a `n_wann` for number of Wannier functions.
 """
-function WsvecDat(Rvectors::Vector{<:Vec3}, n_wann::Integer, header::String)
+function WsvecDat(header::String, Rvectors::Vector{<:Vec3}, n_wann::Integer)
     return WsvecDat(header, false, Rvectors, nothing, nothing, n_wann)
 end
 
@@ -63,10 +63,10 @@ end
 For MDRS Rvectors, the `n_wann` is optional and can be automatically determined from the `Tvectors`.
 """
 function WsvecDat(
+        header::String,
         Rvectors::Vector{<:Vec3},
         Tvectors::Vector{<:Matrix},
         Tdegens::Vector{<:Matrix},
-        header::String,
     )
     n_wann = size(Tvectors[1], 1)
     return WsvecDat(header, true, Rvectors, Tvectors, Tdegens, n_wann)
@@ -135,7 +135,7 @@ function read_w90_wsvec_dat(io::IO)
     end
 
     if !mdrs
-        return WsvecDat(Rvectors, n_wann, String(header))
+        return WsvecDat(String(header), Rvectors, n_wann)
     end
 
     # Objective: reorder Tvectors_flat -> Tvectors, Tdegens_flat -> Tdegens
@@ -155,7 +155,7 @@ function read_w90_wsvec_dat(io::IO)
         end
     end
 
-    return WsvecDat(Rvectors, Tvectors, Tdegens, String(header))
+    return WsvecDat(String(header), Rvectors, Tvectors, Tdegens)
 end
 
 function read_w90_wsvec_dat(filename::AbstractString)

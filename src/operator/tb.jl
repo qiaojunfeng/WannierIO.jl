@@ -136,5 +136,5 @@ end
 
 function WsvecDat(pack::OperatorPack)
     # Reduced OperatorPack does not preserve MDRS mapping, so export as non-MDRS.
-    return WsvecDat(Vec3{Int}.(pack.Rvectors), pack.n_wann, pack.header)
+    return WsvecDat(pack.header, Vec3{Int}.(pack.Rvectors), pack.n_wann)
 end

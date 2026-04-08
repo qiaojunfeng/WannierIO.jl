@@ -23,6 +23,31 @@ end
     @test wsvec.n_wann == 4
 end
 
+@testitem "WsvecDat constructors" begin
+    using WannierIO: Vec3
+
+    Rvectors = [Vec3(0, 0, 0)]
+    wsvec = WannierIO.WsvecDat("constructor test", Rvectors, 1)
+
+    @test wsvec.header == "constructor test"
+    @test wsvec.mdrs == false
+    @test wsvec.Rvectors == Rvectors
+    @test wsvec.n_wann == 1
+
+    Tvectors = [Matrix{Vector{Vec3{Int}}}(undef, 1, 1)]
+    Tvectors[1][1, 1] = [Vec3(0, 0, 0)]
+    Tdegens = [Matrix{Int}(undef, 1, 1)]
+    Tdegens[1][1, 1] = 1
+    wsvec_mdrs = WannierIO.WsvecDat("constructor test", Rvectors, Tvectors, Tdegens)
+
+    @test wsvec_mdrs.header == "constructor test"
+    @test wsvec_mdrs.mdrs == true
+    @test wsvec_mdrs.Rvectors == Rvectors
+    @test wsvec_mdrs.Tvectors == Tvectors
+    @test wsvec_mdrs.Tdegens == Tdegens
+    @test wsvec_mdrs.n_wann == 1
+end
+
 @testitem "write wsvec WS" begin
     using LazyArtifacts
     wsvec = read_w90_wsvec_dat(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
