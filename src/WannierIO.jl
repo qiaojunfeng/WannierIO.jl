@@ -67,4 +67,6 @@ include("operator/sparse.jl")
 include("operator/tb.jl")
 include("operator/hr.jl")
 
+include("precompile.jl")
+
 end

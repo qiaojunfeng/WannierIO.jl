@@ -8,6 +8,8 @@ content while rethrowing other unexpected errors.
 """
 function istoml(io::IO)
     content = read(io, String)
+    # Reset the position of io, since we might want to read it again after this function.
+    seek(io, 0)
     try
         TOML.parse(content)
     catch err
@@ -19,6 +21,7 @@ function istoml(io::IO)
 end
 
 function istoml(filename::AbstractString)
+    endswith(filename, ".toml") && return true
     return open(filename) do io
         istoml(io)
     end
