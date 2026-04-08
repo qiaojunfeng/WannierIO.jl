@@ -18,7 +18,7 @@
 
     hhr = WannierIO.HHRDat(H, R, nothing, "HH_R test header")
     tmpfile = tempname(; cleanup=true)
-    WannierIO.write_HH_R(tmpfile, hhr)
+    WannierIO.write_HH_R_dat(tmpfile, hhr)
 
     lines = readlines(tmpfile)
     @test lines[1] == "HH_R test header"
@@ -45,7 +45,7 @@ end
 
     hhr = WannierIO.HHRDat(H, R, N, WannierIO.default_header())
     tmpfile = tempname(; cleanup=true)
-    WannierIO.write_HH_R(tmpfile, hhr)
+    WannierIO.write_HH_R_dat(tmpfile, hhr)
 
     ndegen_file = tmpfile * ".ndegen"
     @test isfile(ndegen_file)
@@ -63,12 +63,12 @@ end
     H = zeros(ComplexF64, 2, 3, 1)
     R = zeros(Int, 3, 1)
     hhr = WannierIO.HHRDat(H, R, nothing, "")
-    @test_throws ArgumentError WannierIO.write_HH_R(tempname(; cleanup=true), hhr)
+    @test_throws ArgumentError WannierIO.write_HH_R_dat(tempname(; cleanup=true), hhr)
 
     H2 = zeros(ComplexF64, 2, 2, 2)
     R2 = zeros(Int, 3, 2)
     N2 = [1]
     hhr2 = WannierIO.HHRDat(H2, R2, N2, "")
-    @test_throws ArgumentError WannierIO.write_HH_R(tempname(; cleanup=true), hhr2)
+    @test_throws ArgumentError WannierIO.write_HH_R_dat(tempname(; cleanup=true), hhr2)
 end
 =#

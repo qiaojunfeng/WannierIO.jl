@@ -2,7 +2,7 @@
     using LazyArtifacts
 
     tbdat = read_w90_tb_dat(artifact"Si2_valence/outputs/WS/Si2_valence_tb.dat")
-    wsvec = read_w90_wsvec(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
+    wsvec = read_w90_wsvec_dat(artifact"Si2_valence/outputs/WS/Si2_valence_wsvec.dat")
     dpack0 = pack(tbdat, wsvec)
 
     dst = tempname() * "_tb.dat"

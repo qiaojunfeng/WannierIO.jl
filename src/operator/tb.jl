@@ -16,7 +16,7 @@ As a consequence, the Wannier interpolation will be just a simple inverse
 Fourier transform without any complications from R-degeneracies or MDRS
 T vectors and degeneracies.
 
-See also [`read_w90_tb_dat`](@ref) and [`read_w90_wsvec`](@ref) for reading just
+See also [`read_w90_tb_dat`](@ref) and [`read_w90_wsvec_dat`](@ref) for reading just
 the `prefix_tb.dat` and `prefix_wsvec.dat` files without any reduction.
 
 This high-level API is intentionally for native Wannier90 text files only.
@@ -28,7 +28,7 @@ function read_w90_tb(file::AbstractString)
     tbdat = read_w90_tb_dat(file)
     wsvec_path = _wsvec_path_from_tb(file)
     if isfile(wsvec_path)
-        wsvec = read_w90_wsvec(wsvec_path)
+        wsvec = read_w90_wsvec_dat(wsvec_path)
         return pack(tbdat, wsvec)
     else
         @warn("No corresponding wsvec file found for tb file at $file.")
@@ -58,7 +58,7 @@ end
 
 function write_w90_tb(file::AbstractString, tbdat::TbDat, wsvec::WsvecDat)
     write_w90_tb_dat(file, tbdat)
-    write_w90_wsvec(_wsvec_path_from_tb(file), wsvec)
+    write_w90_wsvec_dat(_wsvec_path_from_tb(file), wsvec)
     return nothing
 end
 

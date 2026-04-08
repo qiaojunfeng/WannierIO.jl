@@ -65,7 +65,7 @@ write_w90_tb("silicon_reduced_tb.dat", pack)
 using WannierIO
 
 tb = read_w90_tb_dat("silicon_tb.dat")
-ws = read_w90_wsvec("silicon_wsvec.dat")
+ws = read_w90_wsvec_dat("silicon_wsvec.dat")
 
 # Apply reduction explicitly.
 pack = pack(tb, ws)

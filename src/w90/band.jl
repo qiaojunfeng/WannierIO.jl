@@ -4,10 +4,10 @@ export read_w90_band,
     write_w90_band,
     read_w90_band_kpt,
     read_w90_band_dat,
-    read_w90_band_labelinfo,
+    read_w90_band_labelinfo_dat,
     write_w90_band_kpt,
     write_w90_band_dat,
-    write_w90_band_labelinfo
+    write_w90_band_labelinfo_dat
 
 """
     $(SIGNATURES)
@@ -91,7 +91,7 @@ Read `prefix_band.labelinfo` file.
 - `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
 - `symm_point_labels`: name of high-symmetry points
 """
-function read_w90_band_labelinfo(io::IO)
+function read_w90_band_labelinfo_dat(io::IO)
     labels = readlines(io)
 
     n_symm = length(labels)
@@ -106,9 +106,9 @@ function read_w90_band_labelinfo(io::IO)
     return (; symm_point_indices, symm_point_labels)
 end
 
-function read_w90_band_labelinfo(filename::AbstractString)
+function read_w90_band_labelinfo_dat(filename::AbstractString)
     return open(filename) do io
-        read_w90_band_labelinfo(io)
+        read_w90_band_labelinfo_dat(io)
     end
 end
 
@@ -135,7 +135,7 @@ function read_w90_band(prefix::AbstractString)
 
     dat = read_w90_band_dat(band_dat)
     kpt = read_w90_band_kpt(band_kpt)
-    labelinfo = read_w90_band_labelinfo(band_labelinfo)
+    labelinfo = read_w90_band_labelinfo_dat(band_labelinfo)
 
     return (; dat..., kpt..., labelinfo...)
 end
@@ -284,7 +284,7 @@ Write `prefix_band.labelinfo.dat` file.
 - `symm_point_indices`: indices of high-symmetry points along the path
 - `symm_point_labels`: labels of high-symmetry points
 """
-function write_w90_band_labelinfo(
+function write_w90_band_labelinfo_dat(
         io::IO;
         x::AbstractVector{<:Real},
         kpoints::AbstractVector,
@@ -311,7 +311,7 @@ function write_w90_band_labelinfo(
     return nothing
 end
 
-function write_w90_band_labelinfo(
+function write_w90_band_labelinfo_dat(
         filename::AbstractString;
         x::AbstractVector{<:Real},
         kpoints::AbstractVector,
@@ -319,7 +319,7 @@ function write_w90_band_labelinfo(
         symm_point_labels::AbstractVector,
     )
     open(filename, "w") do io
-        write_w90_band_labelinfo(io; x, kpoints, symm_point_indices, symm_point_labels)
+        write_w90_band_labelinfo_dat(io; x, kpoints, symm_point_indices, symm_point_labels)
     end
     return nothing
 end
@@ -365,7 +365,7 @@ function write_w90_band(
 
     write_w90_band_dat(band_dat; x, eigenvalues)
     write_w90_band_kpt(band_kpt; kpoints, kweights)
-    return write_w90_band_labelinfo(
+    return write_w90_band_labelinfo_dat(
         band_labelinfo; x, kpoints, symm_point_indices, symm_point_labels
     )
 end
@@ -420,7 +420,7 @@ function write_w90_band_kpt_labelinfo(prefix::AbstractString, kpath::KPath)
     write_w90_band_kpt(filename; kpoints)
 
     filename = prefix * "_band.labelinfo.dat"
-    return write_w90_band_labelinfo(
+    return write_w90_band_labelinfo_dat(
         filename; x, kpoints, symm_point_indices, symm_point_labels
     )
 end
@@ -439,7 +439,7 @@ Read kpoints and labels from wannier90 formats: `prefix_band.kpt`, `prefix_band.
 """
 function read_w90_band_kpt_labelinfo(prefix::AbstractString, recip_lattice::AbstractMatrix)
     kpt = read_w90_band_kpt(prefix * "_band.kpt")
-    labelinfo = read_w90_band_labelinfo(prefix * "_band.labelinfo.dat")
+    labelinfo = read_w90_band_labelinfo_dat(prefix * "_band.labelinfo.dat")
     kpath = KPath(recip_lattice, kpt.kpoints, labelinfo.symm_point_indices, labelinfo.symm_point_labels)
     return kpath
 end

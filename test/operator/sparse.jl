@@ -46,7 +46,7 @@ end
     using LazyArtifacts
 
     tbdat = WannierIO.read_w90_tb_dat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
-    wsvec = WannierIO.read_w90_wsvec(
+    wsvec = WannierIO.read_w90_wsvec_dat(
         artifact"Si2_valence/outputs/MDRS/Si2_valence_wsvec.dat"
     )
     dpack = pack(tbdat, wsvec)

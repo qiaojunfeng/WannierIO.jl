@@ -1,4 +1,4 @@
-export read_w90_wsvec, write_w90_wsvec
+export read_w90_wsvec_dat, write_w90_wsvec_dat
 
 """
 Container for `prefix_wsvec.dat` data.
@@ -80,7 +80,7 @@ Read `prefix_wsvec.dat`.
 # Return
 - [`WsvecDat`](@ref) struct containing the data in the file
 """
-function read_w90_wsvec(io::IO)
+function read_w90_wsvec_dat(io::IO)
     header = strip(readline(io))
 
     # check `use_ws_distance`
@@ -158,9 +158,9 @@ function read_w90_wsvec(io::IO)
     return WsvecDat(Rvectors, Tvectors, Tdegens, String(header))
 end
 
-function read_w90_wsvec(filename::AbstractString)
+function read_w90_wsvec_dat(filename::AbstractString)
     return open(filename) do io
-        read_w90_wsvec(io)
+        read_w90_wsvec_dat(io)
     end
 end
 
@@ -169,7 +169,7 @@ end
 
 Write `prefix_wsvec.dat`.
 """
-function write_w90_wsvec(io::IO, wsvec::WsvecDat)
+function write_w90_wsvec_dat(io::IO, wsvec::WsvecDat)
     if wsvec.mdrs
         println(io, wsvec.header * "  with use_ws_distance=.true.")
     else
@@ -199,8 +199,8 @@ function write_w90_wsvec(io::IO, wsvec::WsvecDat)
     return nothing
 end
 
-function write_w90_wsvec(filename::AbstractString, wsvec::WsvecDat)
+function write_w90_wsvec_dat(filename::AbstractString, wsvec::WsvecDat)
     return open(filename, "w") do io
-        write_w90_wsvec(io, wsvec)
+        write_w90_wsvec_dat(io, wsvec)
     end
 end

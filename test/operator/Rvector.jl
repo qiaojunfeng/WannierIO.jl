@@ -30,7 +30,7 @@ end
     using LazyArtifacts
 
     tbdat = WannierIO.read_w90_tb_dat(artifact"Si2_valence/outputs/MDRS/Si2_valence_tb.dat")
-    wsvec = WannierIO.read_w90_wsvec(
+    wsvec = WannierIO.read_w90_wsvec_dat(
         artifact"Si2_valence/outputs/MDRS/Si2_valence_wsvec.dat"
     )
 
@@ -49,7 +49,7 @@ end
     ref_tbdat = WannierIO.read_w90_tb_dat(
         artifact"Si2_valence/outputs/MDRS/reduced_Rvectors/Si2_valence_tb.dat"
     )
-    ref_wsvec = WannierIO.read_w90_wsvec(
+    ref_wsvec = WannierIO.read_w90_wsvec_dat(
         artifact"Si2_valence/outputs/MDRS/Si2_valence_wsvec.dat"
     )
 

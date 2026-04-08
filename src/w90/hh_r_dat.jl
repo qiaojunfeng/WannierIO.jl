@@ -1,4 +1,4 @@
-export write_HH_R
+export write_HH_R_dat
 
 """
 Container for `prefix_HH_R.dat` data.
@@ -73,7 +73,7 @@ Write the real space Hamiltonian to a `prefix_HH_R.dat` file.
     `F12.6` to `E15.8`.
 
 """
-function write_HH_R(io::IO, hhr::HHRDat)
+function write_HH_R_dat(io::IO, hhr::HHRDat)
     n_rvecs = length(hhr.Rvectors)
     n_rvecs > 0 || throw(ArgumentError("Rvectors must be non-empty"))
     length(hhr.H) == n_rvecs ||
@@ -114,7 +114,7 @@ function write_HH_R(io::IO, hhr::HHRDat)
     return nothing
 end
 
-function write_HH_R(filename::AbstractString, hhr::HHRDat)
+function write_HH_R_dat(filename::AbstractString, hhr::HHRDat)
     n_rvecs = length(hhr.Rvectors)
     n_rvecs > 0 || throw(ArgumentError("Rvectors must be non-empty"))
     length(hhr.H) == n_rvecs ||
@@ -129,7 +129,7 @@ function write_HH_R(filename::AbstractString, hhr::HHRDat)
         throw(DimensionMismatch("H[ir] must all be n_wann * n_wann matrices"))
 
     open(filename, "w") do io
-        write_HH_R(io, hhr)
+        write_HH_R_dat(io, hhr)
     end
 
     # the vanilla wannier90 code does not read the N array (the degeneracy
