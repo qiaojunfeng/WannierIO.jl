@@ -4,6 +4,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://io.wannierjl.org/dev)
 [![CI](https://github.com/qiaojunfeng/WannierIO.jl/workflows/CI/badge.svg)](https://github.com/qiaojunfeng/WannierIO.jl/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/qiaojunfeng/WannierIO.jl/branch/main/graph/badge.svg?token=F7Tl05iVW9)](https://codecov.io/gh/qiaojunfeng/WannierIO.jl)
+[![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-black)](https://github.com/fredrikekre/Runic.jl)
 
 A Julia package for reading/writing [Wannier90](https://github.com/wannier-developers/wannier90)
 file formats.
