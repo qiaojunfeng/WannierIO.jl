@@ -419,7 +419,8 @@ function _win_check_line(line::AbstractString)
         block_name = strip(line[7:end])
         isempty(block_name) && error("Invalid block line: $line")
         isblock = true
-        content = block_name
+        # Force to String to be type stable
+        content = string(block_name)
     end
     return isblock, content
 end
@@ -523,18 +524,11 @@ params = OrderedDict(
         [0.5, 0.5, 0.0],
         [0.5, 0.5, 0.5],
     ],
-    # additional parameters can be passed as keyword arguments, e.g.,
+    # additional parameters, e.g.,
     "num_iter" => 500,
 )
 write_win("silicon.win", params)
 ```
-
-!!! note
-
-    The variables can also be passed as keyword arguments, e.g.,
-    ```julia
-    write_win(filename; num_wann, num_bands)
-    ```
 """
 function write_win end
 

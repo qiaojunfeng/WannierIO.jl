@@ -67,113 +67,182 @@ The 1st version auto detects the format and parse it.
 function read_nnkp end
 
 function read_nnkp(io::IO, ::W90InputText)
-    read_array(type::Type) = map(x -> parse(type, x), split(readline(io)))
-
-    lattice = zeros(Float64, 3, 3)
-    recip_lattice = zeros(Float64, 3, 3)
-
-    n_kpts = nothing
-    kpoints = nothing
-    projections = nothing
-    auto_projections = nothing
-    kpb_k = nothing
-    kpb_G = nothing
+    params = OrderedDict{String, Any}()
 
     while !eof(io)
-        line = readline(io)
+        line = strip(readline(io))
+        isempty(line) && continue
 
-        if occursin("begin real_lattice", line)
-            for i in 1:3
-                lattice[:, i] = read_array(Float64)
-            end
+        isblock, block_name = _nnkp_check_line(line)
+        !isblock && continue
+        _nnkp_parse_block!(params, io, block_name)
+    end
 
-            line = strip(readline(io))
-            line == "end real_lattice" || error("`end real_lattice` not found")
+    _nnkp_check_required_blocks(params)
+    return params
+end
 
-        elseif occursin("begin recip_lattice", line)
-            for i in 1:3
-                recip_lattice[:, i] = read_array(Float64)
-            end
+"""Read one line from an nnkp block and strip surrounding whitespace."""
+function _nnkp_block_nextline(io::IO, block_name::AbstractString)
+    eof(io) && error("Error parsing block `$block_name`: unexpected end of file")
+    return strip(readline(io))
+end
 
-            line = strip(readline(io))
-            line == "end recip_lattice" || error("`end recip_lattice` not found")
+"""Check if a line marks the end of a named block in an nnkp file."""
+@inline function _nnkp_block_isend(line::AbstractString, block_name::AbstractString)
+    return line == "end $block_name"
+end
 
-        elseif occursin("begin kpoints", line)
-            n_kpts = parse(Int, readline(io))
-            kpoints = zeros(Vec3{Float64}, n_kpts)
+"""Assert that a line marks the end of a named block."""
+@inline function _nnkp_block_mustend(line::AbstractString, block_name::AbstractString)
+    return _nnkp_block_isend(line, block_name) || error("`end $block_name` not found")
+end
 
-            for i in 1:n_kpts
-                kpoints[i] = Vec3(read_array(Float64))
-            end
+"""Parse a numeric line from nnkp blocks."""
+@inline function _nnkp_read_array(line::AbstractString, type::Type)
+    return parse.(type, split(line))
+end
 
-            line = strip(readline(io))
-            line == "end kpoints" || error("`end kpoints` not found")
+"""Check whether an nnkp line starts a block and return `(isblock, block_name)`."""
+function _nnkp_check_line(line::AbstractString)
+    if startswith(lowercase(line), "begin ")
+        block_name = strip(lowercase(line[7:end]))
+        isempty(block_name) && error("Invalid block line: $line")
+        # Force to String to be type stable
+        return true, string(block_name)
+    end
+    return false, string(line)
+end
 
-        elseif occursin("begin projections", line)
-            n_projs = parse(Int, readline(io))
-            projections = Vector{HydrogenOrbital}(undef, n_projs)
-            for i in 1:n_projs
-                sline = split(readline(io))
-                center = Vec3(parse.(Float64, sline[1:3]))
-                l, m, n = parse.(Int, sline[4:6])
-                sline = split(readline(io))
-                zaxis = Vec3(parse.(Float64, sline[1:3]))
-                xaxis = Vec3(parse.(Float64, sline[4:6]))
-                α = parse(Float64, sline[7])
-                projections[i] = HydrogenOrbital(center, n, l, m, α, zaxis, xaxis)
-            end
+"""Parse `real_lattice` block and return a 3x3 lattice matrix."""
+function _nnkp_parse_block_real_lattice(io::IO)
+    block_name = "real_lattice"
+    lattice = zeros(Float64, 3, 3)
+    for i in 1:3
+        lattice[:, i] = _nnkp_read_array(_nnkp_block_nextline(io, block_name), Float64)
+    end
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return mat3(lattice)
+end
 
-            line = strip(readline(io))
-            line == "end projections" || error("`end projections` not found")
+"""Parse `recip_lattice` block and return a 3x3 reciprocal lattice matrix."""
+function _nnkp_parse_block_recip_lattice(io::IO)
+    block_name = "recip_lattice"
+    recip_lattice = zeros(Float64, 3, 3)
+    for i in 1:3
+        recip_lattice[:, i] = _nnkp_read_array(_nnkp_block_nextline(io, block_name), Float64)
+    end
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return mat3(recip_lattice)
+end
 
-        elseif occursin("begin auto_projections", line)
-            # number of WFs
-            auto_projections = parse(Int, readline(io))
-            # magic number, useless
-            i = parse(Int, readline(io))
-            i == 0 || error("in `auto_projections`, expected 0, got $i")
-            line = strip(readline(io))
-            line == "end auto_projections" || error("`end auto_projections` not found")
+"""Parse `kpoints` block and return a vector of k-points."""
+function _nnkp_parse_block_kpoints(io::IO)
+    block_name = "kpoints"
+    n_kpts = parse(Int, _nnkp_block_nextline(io, block_name))
+    kpoints = zeros(Vec3{Float64}, n_kpts)
+    for i in eachindex(kpoints)
+        kpoints[i] = Vec3(_nnkp_read_array(_nnkp_block_nextline(io, block_name), Float64))
+    end
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return kpoints
+end
 
-        elseif occursin("begin nnkpts", line)
-            !isnothing(n_kpts) || error("no `kpoints` block before `nnkpts` block?")
+"""Parse `projections` block and return a vector of `HydrogenOrbital`."""
+function _nnkp_parse_block_projections(io::IO)
+    block_name = "projections"
+    n_projs = parse(Int, _nnkp_block_nextline(io, block_name))
+    projections = Vector{HydrogenOrbital}(undef, n_projs)
+    for i in eachindex(projections)
+        sline = split(_nnkp_block_nextline(io, block_name))
+        center = Vec3(parse.(Float64, sline[1:3]))
+        l, m, n = parse.(Int, sline[4:6])
 
-            n_bvecs = parse(Int, readline(io))
-            kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
-            kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+        sline = split(_nnkp_block_nextline(io, block_name))
+        zaxis = Vec3(parse.(Float64, sline[1:3]))
+        xaxis = Vec3(parse.(Float64, sline[4:6]))
+        α = parse(Float64, sline[7])
+        projections[i] = HydrogenOrbital(center, n, l, m, α, zaxis, xaxis)
+    end
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return projections
+end
 
-            for ik in 1:n_kpts
-                for ib in 1:n_bvecs
-                    arr = read_array(Int)
-                    ik == arr[1] || error("expected ik = $ik, got $(arr[1])")
-                    kpb_k[ik][ib] = arr[2]
-                    kpb_G[ik][ib] = Vec3(arr[3:end])
-                end
-            end
+"""Parse `auto_projections` block and return the number of Wannier functions."""
+function _nnkp_parse_block_auto_projections(io::IO)
+    block_name = "auto_projections"
+    auto_projections = parse(Int, _nnkp_block_nextline(io, block_name))
+    # magic number, useless
+    i = parse(Int, _nnkp_block_nextline(io, block_name))
+    i == 0 || error("in `auto_projections`, expected 0, got $i")
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return auto_projections
+end
 
-            line = strip(readline(io))
-            line == "end nnkpts" || error("`end nnkpts` not found")
+"""Parse `nnkpts` block and return `(kpb_k, kpb_G)`."""
+function _nnkp_parse_block_nnkpts(io::IO, n_kpts::Int)
+    block_name = "nnkpts"
+    n_bvecs = parse(Int, _nnkp_block_nextline(io, block_name))
+
+    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+    kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+
+    for ik in 1:n_kpts
+        for ib in 1:n_bvecs
+            arr = _nnkp_read_array(_nnkp_block_nextline(io, block_name), Int)
+            ik == arr[1] || error("expected ik = $ik, got $(arr[1])")
+            kpb_k[ik][ib] = arr[2]
+            kpb_G[ik][ib] = Vec3(arr[3:end])
         end
     end
 
-    !iszero(lattice) || error("`real_lattice` not found")
-    !iszero(recip_lattice) || error("`recip_lattice` not found")
-    !isnothing(kpoints) || error("`kpoints` not found")
-    !isnothing(kpb_k) || error("`nnkpts` not found")
-    !isnothing(kpb_G) || error("`nnkpts` not found")
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return kpb_k, kpb_G
+end
 
-    lattice = Mat3(lattice)
-    recip_lattice = Mat3(recip_lattice)
-    # note I keep the order here: projections first, then auto_projections, ...
-    res = OrderedDict{String, Any}()
-    isnothing(projections) || (res["projections"] = projections)
-    isnothing(auto_projections) || (res["auto_projections"] = auto_projections)
-    res["lattice"] = lattice
-    res["recip_lattice"] = recip_lattice
-    res["kpoints"] = kpoints
-    res["kpb_k"] = kpb_k
-    res["kpb_G"] = kpb_G
-    return res
+"""Skip unknown nnkp blocks by consuming lines up to the matching `end <block>`."""
+function _nnkp_skip_block(io::IO, block_name::AbstractString)
+    line = _nnkp_block_nextline(io, block_name)
+    while !_nnkp_block_isend(line, block_name)
+        line = _nnkp_block_nextline(io, block_name)
+    end
+    return nothing
+end
+
+"""Dispatch to nnkp block parsers and store parsed values in `params`."""
+function _nnkp_parse_block!(params::AbstractDict, io::IO, block_name::AbstractString)
+    if block_name == "real_lattice"
+        params["lattice"] = _nnkp_parse_block_real_lattice(io)
+    elseif block_name == "recip_lattice"
+        params["recip_lattice"] = _nnkp_parse_block_recip_lattice(io)
+    elseif block_name == "kpoints"
+        params["kpoints"] = _nnkp_parse_block_kpoints(io)
+    elseif block_name == "projections"
+        params["projections"] = _nnkp_parse_block_projections(io)
+    elseif block_name == "auto_projections"
+        params["auto_projections"] = _nnkp_parse_block_auto_projections(io)
+    elseif block_name == "nnkpts"
+        haskey(params, "kpoints") || error("no `kpoints` block before `nnkpts` block?")
+        kpb_k, kpb_G = _nnkp_parse_block_nnkpts(io, length(params["kpoints"]))
+        params["kpb_k"] = kpb_k
+        params["kpb_G"] = kpb_G
+    else
+        _nnkp_skip_block(io, block_name)
+    end
+    return nothing
+end
+
+"""Validate required nnkp blocks after parsing."""
+function _nnkp_check_required_blocks(params::AbstractDict)
+    haskey(params, "lattice") || error("`real_lattice` not found")
+    haskey(params, "recip_lattice") || error("`recip_lattice` not found")
+    haskey(params, "kpoints") || error("`kpoints` not found")
+    haskey(params, "kpb_k") || error("`nnkpts` not found")
+    haskey(params, "kpb_G") || error("`nnkpts` not found")
+
+    !iszero(params["lattice"]) || error("`real_lattice` not found")
+    !iszero(params["recip_lattice"]) || error("`recip_lattice` not found")
+    return nothing
 end
 
 function read_nnkp(io::IO, ::W90InputToml)
@@ -206,7 +275,7 @@ end
 """
     $(SIGNATURES)
 """
-@inline function _check_nnkp_required_params(kwargs)
+@inline function _nnkp_check_required_params(kwargs)
     required_keys = ["lattice", "recip_lattice", "kpoints", "kpb_k", "kpb_G"]
     for k in required_keys
         haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
@@ -242,94 +311,126 @@ The following keys are optional:
 
 # Keyword arguments
 - `header`: first line of the file
-
-!!! note
-
-    The variables can also be passed as keyword arguments, e.g.,
-    ```julia
-    write_nnkp(file; lattice, recip_lattice, kpoints, kpb_k, kpb_G)
-    ```
 """
 function write_nnkp end
 
 function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header = default_header())
-    params = OrderedDict{String, Any}(string(k) => v for (k, v) in pairs(params))
-    _check_nnkp_required_params(params)
+    _nnkp_validate_write_params(params)
+
+    _nnkp_write_header(io, header)
+    _nnkp_write_block_real_lattice(io, params["lattice"])
+    _nnkp_write_block_recip_lattice(io, params["recip_lattice"])
+    _nnkp_write_block_kpoints(io, params["kpoints"])
+
+    projections = get(params, "projections", nothing)
+    isnothing(projections) || _nnkp_write_block_projections(io, projections)
+
+    auto_projections = get(params, "auto_projections", nothing)
+    isnothing(auto_projections) || _nnkp_write_block_auto_projections(io, auto_projections)
+
+    _nnkp_write_block_nnkpts(io, params["kpb_k"], params["kpb_G"])
+    _nnkp_write_block_exclude_bands(io, get(params, "exclude_bands", nothing))
+
+    return nothing
+end
+
+"""Validate nnkp parameters required by the text writer."""
+function _nnkp_validate_write_params(params::AbstractDict)
+    _nnkp_check_required_params(params)
+
+    projections = get(params, "projections", nothing)
+    isnothing(projections) ||
+        projections isa AbstractVector{<:HydrogenOrbital} ||
+        throw(ArgumentError("projections should be a vector of HydrogenOrbital"))
 
     lattice = params["lattice"]
     recip_lattice = params["recip_lattice"]
     kpoints = params["kpoints"]
     kpb_k = params["kpb_k"]
     kpb_G = params["kpb_G"]
-    projections = get(params, "projections", nothing)
-    isnothing(projections) ||
-        projections isa AbstractVector{<:HydrogenOrbital} ||
-        throw(ArgumentError("projections should be a vector of HydrogenOrbital"))
 
-    auto_projections = get(params, "auto_projections", nothing)
-    exclude_bands = get(params, "exclude_bands", nothing)
-
-    n_kpts = length(kpoints)
-    n_bvecs = length(kpb_k[1])
-
-    size(recip_lattice) == (3, 3) ||
-        throw(DimensionMismatch("size(recip_lattice) != (3, 3)"))
     _check_dimensions_kpb(kpb_k, kpb_G)
-    n_kpts == length(kpb_k) ||
+    length(kpoints) == length(kpb_k) ||
         throw(DimensionMismatch("kpoints and kpb_k have different length"))
     size(lattice) == (3, 3) || throw(DimensionMismatch("size(lattice) != (3, 3)"))
     size(recip_lattice) == (3, 3) ||
         throw(DimensionMismatch("size(recip_lattice) != (3, 3)"))
+    return nothing
+end
 
+"""Write nnkp header and fixed metadata line."""
+function _nnkp_write_header(io::IO, header)
     @printf(io, "%s\n", header)
     @printf(io, "\n")
     # mysterious line, seems not used in W90
     @printf(io, "calc_only_A  :  F\n")
     @printf(io, "\n")
+    return nothing
+end
 
+"""Write `real_lattice` block."""
+function _nnkp_write_block_real_lattice(io::IO, lattice)
     @printf(io, "begin real_lattice\n")
     for v in eachcol(lattice)
         @printf(io, "%12.7f %12.7f %12.7f\n", v...)
     end
     @printf(io, "end real_lattice\n")
     @printf(io, "\n")
+    return nothing
+end
 
+"""Write `recip_lattice` block."""
+function _nnkp_write_block_recip_lattice(io::IO, recip_lattice)
     @printf(io, "begin recip_lattice\n")
     for v in eachcol(recip_lattice)
         @printf(io, "%12.7f %12.7f %12.7f\n", v...)
     end
     @printf(io, "end recip_lattice\n")
     @printf(io, "\n")
+    return nothing
+end
 
+"""Write `kpoints` block."""
+function _nnkp_write_block_kpoints(io::IO, kpoints)
     @printf(io, "begin kpoints\n")
-    @printf(io, "%d\n", n_kpts)
+    @printf(io, "%d\n", length(kpoints))
     for kpt in kpoints
         @printf(io, "%14.8f %14.8f %14.8f\n", kpt...)
     end
     @printf(io, "end kpoints\n")
     @printf(io, "\n")
+    return nothing
+end
 
-    if !isnothing(projections)
-        @printf(io, "begin projections\n")
-        n_projs = length(projections)
-        @printf(io, "%d\n", n_projs)
-        for p in projections
-            @printf(io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n)
-            @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
-            @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
-            @printf(io, "%8.4f\n", p.α)
-        end
-        @printf(io, "end projections\n")
-        @printf(io, "\n")
+"""Write `projections` block."""
+function _nnkp_write_block_projections(io::IO, projections)
+    @printf(io, "begin projections\n")
+    @printf(io, "%d\n", length(projections))
+    for p in projections
+        @printf(io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n)
+        @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
+        @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
+        @printf(io, "%8.4f\n", p.α)
     end
+    @printf(io, "end projections\n")
+    @printf(io, "\n")
+    return nothing
+end
 
-    if !isnothing(auto_projections)
-        @printf(io, "begin auto_projections\n")
-        @printf(io, "%d\n", auto_projections)
-        @printf(io, "%d\n", 0)  # magic number, useless
-        @printf(io, "end auto_projections\n")
-        @printf(io, "\n")
-    end
+"""Write `auto_projections` block."""
+function _nnkp_write_block_auto_projections(io::IO, auto_projections)
+    @printf(io, "begin auto_projections\n")
+    @printf(io, "%d\n", auto_projections)
+    @printf(io, "%d\n", 0)  # magic number, useless
+    @printf(io, "end auto_projections\n")
+    @printf(io, "\n")
+    return nothing
+end
+
+"""Write `nnkpts` block."""
+function _nnkp_write_block_nnkpts(io::IO, kpb_k, kpb_G)
+    n_kpts = length(kpb_k)
+    n_bvecs = length(kpb_k[1])
 
     @printf(io, "begin nnkpts\n")
     @printf(io, "%d\n", n_bvecs)
@@ -340,7 +441,11 @@ function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header = defau
     end
     @printf(io, "end nnkpts\n")
     @printf(io, "\n")
+    return nothing
+end
 
+"""Write `exclude_bands` block."""
+function _nnkp_write_block_exclude_bands(io::IO, exclude_bands)
     @printf(io, "begin exclude_bands\n")
     if isnothing(exclude_bands)
         @printf(io, "%d\n", 0)
@@ -356,10 +461,8 @@ function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header = defau
 end
 
 function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header = default_header())
-    params = OrderedDict{String, Any}(string(k) => v for (k, v) in pairs(params))
-    _check_nnkp_required_params(params)
-    kpb_k = params["kpb_k"]
-    _check_dimensions_kpb(kpb_k, params["kpb_G"])
+    _nnkp_check_required_params(params)
+    _check_dimensions_kpb(params["kpb_k"], params["kpb_G"])
     println(io, header, "\n")
     # Note that this requires https://github.com/JuliaLang/julia/pull/57584
     # otherwise it will fail at writing toml file when the `projections`
