@@ -9,9 +9,8 @@
         -0.392902559295 + 0.232501544615im 5.7803e-8 - 7.7606e-8im 0.39290241635 - 0.232501390525im 1.50756e-7 - 8.2322e-8im
     ]
 
-    @test length(A) == 216
-    @test size(A[1]) == (4, 4)
-    @test A[215] ≈ ref_A215
+    @test size(A) == (4, 4, 216)
+    @test A[:, :, 215] ≈ ref_A215
 
     tmpfile = tempname(; cleanup = true)
     write_amn(tmpfile, A)

@@ -16,10 +16,10 @@ end
     @assert wsvec.mdrs == true
     @test length(wsvec.Rvectors) == 279
     @test wsvec.Rvectors[1] == [-4, 0, 2]
-    @test length(wsvec.Tvectors) == 279
-    @test wsvec.Tvectors[1][1, 1] == Vector{Vec3}([[0, 0, 0], [6, 0, -6], [6, 0, 0]])
-    @test length(wsvec.Tdegens) == 279
-    @test wsvec.Tdegens[1] == [3 1 1 1; 1 3 1 1; 2 2 3 2; 1 1 1 3]
+    @test size(wsvec.Tvectors) == (4, 4, 279)
+    @test wsvec.Tvectors[1, 1, 1] == Vector{Vec3}([[0, 0, 0], [6, 0, -6], [6, 0, 0]])
+    @test size(wsvec.Tdegens) == (4, 4, 279)
+    @test wsvec.Tdegens[:, :, 1] == [3 1 1 1; 1 3 1 1; 2 2 3 2; 1 1 1 3]
     @test wsvec.n_wann == 4
 end
 
@@ -34,10 +34,10 @@ end
     @test wsvec.Rvectors == Rvectors
     @test wsvec.n_wann == 1
 
-    Tvectors = [Matrix{Vector{Vec3{Int}}}(undef, 1, 1)]
-    Tvectors[1][1, 1] = [Vec3(0, 0, 0)]
-    Tdegens = [Matrix{Int}(undef, 1, 1)]
-    Tdegens[1][1, 1] = 1
+    Tvectors = Array{Vector{Vec3{Int}}, 3}(undef, 1, 1, 1)
+    Tvectors[1, 1, 1] = [Vec3(0, 0, 0)]
+    Tdegens = zeros(Int, 1, 1, 1)
+    Tdegens[1, 1, 1] = 1
     wsvec_mdrs = WannierIO.WsvecDat("constructor test", Rvectors, Tvectors, Tdegens)
 
     @test wsvec_mdrs.header == "constructor test"

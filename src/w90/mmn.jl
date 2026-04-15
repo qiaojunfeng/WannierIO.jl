@@ -13,40 +13,28 @@ struct Mmn{T <: Real, IT <: Integer}
     "Header line (1st line of the file)"
     header::String
 
-    """Overlap matrices.
-    Length-`n_kpts` vector, each element is a length-`n_bvecs` vector, then
-    each element is a `n_bands * n_bands` matrix.
-    """
-    M::Vector{Vector{Matrix{Complex{T}}}}
+    """Overlap matrices with size `n_bands × n_bands × n_bvecs × n_kpts`."""
+    M::Array{Complex{T}, 4}
 
-    """Neighbor kpoint indices.
-    Length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
-    integers for the indices of the neighboring kpoints.
-    """
-    kpb_k::Vector{Vector{IT}}
+    """Neighbor kpoint indices with size `n_bvecs × n_kpts`."""
+    kpb_k::Matrix{IT}
 
-    """Translation vectors for neighboring kpoints.
-    Length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
-    of `Vec3{Int}`, which are the translation vectors.
+    """Translation vectors for neighboring kpoints with size `n_bvecs × n_kpts`.
 
     The translation vector `G` is defined as
-    `b = kpoints[kpb_k[ik][ib]] + kpb_G[ik][ib] - kpoints[ik]`,
+    `b = kpoints[kpb_k[ib, ik]] + kpb_G[ib, ik] - kpoints[ik]`,
     where `b` is the `ib`-th bvector of the `ik`-th kpoint.
     """
-    kpb_G::Vector{Vector{Vec3{IT}}}
+    kpb_G::Matrix{Vec3{IT}}
 end
 
 function Base.show(io::IO, mmn::Mmn)
-    n_kpts = length(mmn.M)
-    n_bvecs = n_kpts == 0 ? 0 : length(mmn.M[1])
-    n_bands = (n_kpts == 0 || n_bvecs == 0) ? 0 : size(mmn.M[1][1], 1)
+    n_bands, _, n_bvecs, n_kpts = size(mmn.M)
     return print(io, "Mmn(n_kpts=$(n_kpts), n_bvecs=$(n_bvecs), n_bands=$(n_bands))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", mmn::Mmn)
-    n_kpts = length(mmn.M)
-    n_bvecs = n_kpts == 0 ? 0 : length(mmn.M[1])
-    n_bands = (n_kpts == 0 || n_bvecs == 0) ? 0 : size(mmn.M[1][1], 1)
+    n_bands, _, n_bvecs, n_kpts = size(mmn.M)
 
     return print(
         io,
@@ -55,7 +43,7 @@ function Base.show(io::IO, ::MIME"text/plain", mmn::Mmn)
           n_kpts: $(n_kpts)
           n_bvecs: $(n_bvecs)
           n_bands: $(n_bands)
-          M: Vector{Vector{Matrix{Complex}}($(n_bands)×$(n_bands))}}
+                    M: Array{Complex}($(n_bands)×$(n_bands)×$(n_bvecs)×$(n_kpts))
         )""",
     )
 end
@@ -82,26 +70,26 @@ function read_mmn(io::IO, ::FortranText)
     n_bands, n_kpts, n_bvecs = map(x -> parse(Int, x), split(line))
 
     # overlap matrix
-    M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+    M = zeros(ComplexF64, n_bands, n_bands, n_bvecs, n_kpts)
     # for each point, list of neighbors
-    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
+    kpb_k = zeros(Int, n_bvecs, n_kpts)
     # the translation vector G so that the true bvector
     # b = kpoints[kpb_k] + kpb_G - kpoints[k]
-    kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+    kpb_G = zeros(Vec3{Int}, n_bvecs, n_kpts)
 
     while !eof(io)
         for ib in 1:n_bvecs
             line = readline(io)
             arr = split(line)
             ik = parse(Int, arr[1])
-            kpb_k[ik][ib] = parse(Int, arr[2])
-            kpb_G[ik][ib] = Vec3(parse.(Int, arr[3:5]))
+            kpb_k[ib, ik] = parse(Int, arr[2])
+            kpb_G[ib, ik] = Vec3(parse.(Int, arr[3:5]))
             for n in 1:n_bands
                 for m in 1:n_bands
                     line = readline(io)
                     arr = split(line)
                     o = parse(Float64, arr[1]) + im * parse(Float64, arr[2])
-                    M[ik][ib][m, n] = o
+                    M[m, n, ib, ik] = o
                 end
             end
         end
@@ -128,21 +116,21 @@ function read_mmn(io::IO, ::FortranBinaryStream)
     n_bvecs = read(io, Tint)
 
     # overlap matrix
-    M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+    M = zeros(ComplexF64, n_bands, n_bands, n_bvecs, n_kpts)
     # for each point, list of neighbors, (K) representation
-    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
-    kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+    kpb_k = zeros(Int, n_bvecs, n_kpts)
+    kpb_G = zeros(Vec3{Int}, n_bvecs, n_kpts)
 
     while !eof(io)
         for ib in 1:n_bvecs
             ik = read(io, Tint)
-            kpb_k[ik][ib] = read(io, Tint)
-            kpb_G[ik][ib] = Vec3{Int}(read(io, Tint), read(io, Tint), read(io, Tint))
+            kpb_k[ib, ik] = read(io, Tint)
+            kpb_G[ib, ik] = Vec3{Int}(read(io, Tint), read(io, Tint), read(io, Tint))
             for n in 1:n_bands
                 for m in 1:n_bands
                     r = read(io, Float64)
                     i = read(io, Float64)
-                    M[ik][ib][m, n] = r + im * i
+                    M[m, n, ib, ik] = r + im * i
                 end
             end
         end
@@ -186,45 +174,34 @@ function write_mmn end
 """
 Check the dimensions between the quantities are consistent.
 """
-@inline function _check_dimensions_kpb(kpb_k, kpb_G)
-    n_kpts = length(kpb_k)
-    n_kpts > 0 || throw(ArgumentError("Empty kpb_k, n_kpts = 0"))
-    n_bvecs = length(kpb_k[1])
-    n_bvecs > 0 || throw(ArgumentError("Empty kpb_k, n_bvecs = 0"))
-
-    length(kpb_k) == n_kpts || throw(DimensionMismatch("kpb_k has wrong n_kpts"))
-    length(kpb_G) == n_kpts || throw(DimensionMismatch("kpb_G has wrong n_kpts"))
-    all(length.(kpb_k) .== n_bvecs) ||
-        throw(DimensionMismatch("kpb_k has different n_bvecs among kpts"))
-    all(length.(kpb_G) .== n_bvecs) ||
-        throw(DimensionMismatch("kpb_G has different n_bvecs among kpts"))
-    return all(all(length.(Gk) .== 3) for Gk in kpb_G) ||
-        throw(DimensionMismatch("kpb_G[ib][ib] are not 3-vectors"))
+@inline function _check_dimensions_kpb(kpb_k::AbstractMatrix, kpb_G::AbstractMatrix)
+    n_bvecs, n_kpts = size(kpb_k)
+    size(kpb_G) == (n_bvecs, n_kpts) || throw(DimensionMismatch("kpb_G has wrong dimensions"))
+    all(length.(kpb_G) .== 3) || throw(DimensionMismatch("kpb_G entries are not 3-vectors"))
+    return nothing
 end
 
 """
     $(SIGNATURES)
 """
-@inline function _check_dimensions_M_kpb(M, kpb_k, kpb_G)
+@inline function _check_dimensions_M_kpb(M::AbstractArray, kpb_k::AbstractMatrix, kpb_G::AbstractMatrix)
     _check_dimensions_kpb(kpb_k, kpb_G)
 
-    length(M) == length(kpb_k) ||
+    n_bvecs, n_kpts = size(kpb_k)
+    size(M, 4) == n_kpts ||
         throw(DimensionMismatch("M and kpb_k have different n_kpts"))
-    n_bvecs = length(kpb_k[1])
-    all(length.(M) .== n_bvecs) ||
+    size(M, 3) == n_bvecs ||
         throw(DimensionMismatch("M and kpb_k have different n_bvecs"))
 
-    n_bands = size(M[1][1], 1)
+    n_bands = size(M, 1)
     n_bands > 0 || throw(ArgumentError("Empty M, n_bands = 0"))
-    return all(all(size.(Mk) .== Ref((n_bands, n_bands))) for Mk in M) ||
-        throw(DimensionMismatch("M[ik][ib] are not square matrices"))
+    size(M, 2) == n_bands || throw(DimensionMismatch("M[:, :, ib, ik] are not square matrices"))
+    return nothing
 end
 
 function write_mmn(io::IO, mmn::Mmn, ::FortranText)
     _check_dimensions_M_kpb(mmn.M, mmn.kpb_k, mmn.kpb_G)
-    n_kpts = length(mmn.M)
-    n_bvecs = length(mmn.M[1])
-    n_bands = size(mmn.M[1][1], 1)
+    n_bands, _, n_bvecs, n_kpts = size(mmn.M)
 
     write(io, strip(mmn.header), "\n")
 
@@ -232,11 +209,11 @@ function write_mmn(io::IO, mmn::Mmn, ::FortranText)
 
     for ik in 1:n_kpts
         for ib in 1:n_bvecs
-            @printf(io, "%d %d %d %d %d\n", ik, mmn.kpb_k[ik][ib], mmn.kpb_G[ik][ib]...)
+            @printf(io, "%d %d %d %d %d\n", ik, mmn.kpb_k[ib, ik], mmn.kpb_G[ib, ik]...)
 
             for n in 1:n_bands
                 for m in 1:n_bands
-                    o = mmn.M[ik][ib][m, n]
+                    o = mmn.M[m, n, ib, ik]
                     @printf(io, "  %16.12f  %16.12f\n", real(o), imag(o))
                 end
             end
@@ -247,9 +224,7 @@ end
 
 function write_mmn(io::IO, mmn::Mmn, ::FortranBinaryStream)
     _check_dimensions_M_kpb(mmn.M, mmn.kpb_k, mmn.kpb_G)
-    n_kpts = length(mmn.M)
-    n_bvecs = length(mmn.M[1])
-    n_bands = size(mmn.M[1][1], 1)
+    n_bands, _, n_bvecs, n_kpts = size(mmn.M)
 
     # gfortran default integer size = 4
     Tint = Int32
@@ -262,18 +237,16 @@ function write_mmn(io::IO, mmn::Mmn, ::FortranBinaryStream)
     write(io, Tint(n_bvecs))
 
     for ik in 1:n_kpts
-        kpb_k_ik = mmn.kpb_k[ik]
-        kpb_G_ik = mmn.kpb_G[ik]
         for ib in 1:n_bvecs
             write(io, Tint(ik))
-            write(io, Tint(kpb_k_ik[ib]))
-            write(io, Tint(kpb_G_ik[ib][1]))
-            write(io, Tint(kpb_G_ik[ib][2]))
-            write(io, Tint(kpb_G_ik[ib][3]))
+            write(io, Tint(mmn.kpb_k[ib, ik]))
+            write(io, Tint(mmn.kpb_G[ib, ik][1]))
+            write(io, Tint(mmn.kpb_G[ib, ik][2]))
+            write(io, Tint(mmn.kpb_G[ib, ik][3]))
 
             for n in 1:n_bands
                 for m in 1:n_bands
-                    o = mmn.M[ik][ib][m, n]
+                    o = mmn.M[m, n, ib, ik]
                     write(io, Float64(real(o)))
                     write(io, Float64(imag(o)))
                 end

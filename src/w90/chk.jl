@@ -58,9 +58,8 @@ struct Chk{T <: Real}
     "Omega invariant part of MV spreads, in Å² unit"
     ΩI::T
 
-    """
-    Indices of bands taking part in disentanglement, not frozen bands!
-    length-`n_kpts` vector, each element is a length-`n_bands` vector of bool.
+    """Indices of bands taking part in disentanglement, not frozen bands!
+    stored as a dense `n_bands × n_kpts` boolean matrix.
 
     This is needed since W90 puts all the disentanglement bands
     in the first several rows of `Udis`,
@@ -68,29 +67,25 @@ struct Chk{T <: Real}
     so directly multiplying eigenvalues e.g.
     `(Udis * U)' * diag(eigenvalues) * (Udis * U)` is wrong!
     """
-    dis_bands::Vector{BitVector}
+    dis_bands::BitMatrix
 
     """number of bands taking part in disentanglement at each kpoint.
     can be auto set in constructor from `dis_bands`"""
     n_dis::Vector{Int}
 
-    """Semi-unitary matrix for disentanglement,
-    length-`n_kpts` vector, each elment has size: `n_bands` x `n_wann`,
-    i.e., the `u_matrix_opt` in wannier90"""
-    Udis::Vector{Matrix{Complex{T}}}
+    """Semi-unitary matrix for disentanglement with size `n_bands × n_wann × n_kpts`,
+    i.e., the `u_matrix_opt` in wannier90."""
+    Udis::Array{Complex{T}, 3}
 
-    """Unitary matrix for maximal localization,
-    length-`n_kpts` vector, each element has size: `n_wann` x `n_wann`,
+    """Unitary matrix for maximal localization with size `n_wann × n_wann × n_kpts`,
     i.e., the `u_matrix` in wannier90.
     The abbreviation `ml` stands for maximal localization, so as to
     differentiate from the (combined) unitary matrix `U = Udis * Uml`."""
-    Uml::Vector{Matrix{Complex{T}}}
+    Uml::Array{Complex{T}, 3}
 
-    """Wannier-gauge overlap matrix,
-    length-`n_kpts` vector of length-`n_bvecs` vector, each element is
-    a matrix of size `n_wann` x `n_wann`,
+    """Wannier-gauge overlap matrix with size `n_wann × n_wann × n_bvecs × n_kpts`,
     i.e., the `m_matrix` in wannier90"""
-    M::Vector{Vector{Matrix{Complex{T}}}}
+    M::Array{Complex{T}, 4}
 
     """Wannier function centers, length-`n_wann` vector, Cartesian coordinates
     in Å unit, i.e., the `wannier_centres` variable in wannier90"""
@@ -136,32 +131,29 @@ function Chk(
         checkpoint::AbstractString,
         have_disentangled::Bool,
         ΩI::Real,
-        dis_bands::AbstractVector{BitVector},
-        Udis::AbstractVector,
-        Uml::AbstractVector,
-        M::AbstractVector,
+        dis_bands::AbstractMatrix{Bool},
+        Udis::AbstractArray,
+        Uml::AbstractArray,
+        M::AbstractArray,
         r::AbstractVector,
         ω::AbstractVector,
     )
-    if have_disentangled
-        length(Udis) > 0 || error("empty Udis")
-        n_bands = size(Udis[1], 1)
-    else
-        length(Uml) > 0 || error("empty Uml")
-        n_bands = size(Uml[1], 1)
-    end
+    dis_bands = BitMatrix(dis_bands)
+    Udis = Array(Udis)
+    Uml = Array(Uml)
+    M = Array(M)
 
+    n_bands = have_disentangled ? size(Udis, 1) : size(Uml, 1)
     n_exclude_bands = length(exclude_bands)
-    n_kpts = length(M)
-    n_kpts > 0 || error("empty M")
-    n_bvecs = length(M[1])
-    length(Uml) > 0 || error("empty Uml")
-    n_wann = size(Uml[1], 1)
+    n_wann, n_wann2, n_bvecs, n_kpts = size(M)
+    n_wann == n_wann2 || error("M is not square in Wannier indices")
+    size(Uml, 1) == size(Uml, 2) || error("Uml is not square")
+    n_wann == size(Uml, 1) || error("inconsistent n_wann between M and Uml")
 
     if have_disentangled
         n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
-            n_dis[ik] = count(dis_bands[ik])
+            n_dis[ik] = count(@view dis_bands[:, ik])
         end
     else
         n_dis = zeros(Int, 0)
@@ -171,9 +163,9 @@ function Chk(
         header,
         n_bands,
         n_exclude_bands,
-        exclude_bands,
-        Mat3(lattice),
-        Mat3(recip_lattice),
+        collect(exclude_bands),
+        mat3(lattice),
+        mat3(recip_lattice),
         n_kpts,
         kgrid,
         kpoints,
@@ -184,8 +176,8 @@ function Chk(
         ΩI,
         dis_bands,
         n_dis,
-        collect.(Udis),
-        collect.(Uml),
+        Udis,
+        Uml,
         M,
         r,
         ω,
@@ -206,7 +198,6 @@ Similar to [`read_amn`](@ref), the 1st version auto detect `chk` file format
 (binary or text) and read it.
 """
 function read_chk(io::IO, ::FortranText)
-    # Read formatted chk file
     header = String(readstrip(io))
 
     n_bands = parse(Int, readstrip(io))
@@ -214,11 +205,8 @@ function read_chk(io::IO, ::FortranText)
     n_exclude_bands = parse(Int, readstrip(io))
 
     exclude_bands = zeros(Int, n_exclude_bands)
-
-    if n_exclude_bands > 0
-        for i in 1:n_exclude_bands
-            exclude_bands[i] = parse(Int, readstrip(io))
-        end
+    for i in 1:n_exclude_bands
+        exclude_bands[i] = parse(Int, readstrip(io))
     end
 
     # Each column is a lattice vector
@@ -240,9 +228,7 @@ function read_chk(io::IO, ::FortranText)
     end
 
     n_bvecs = parse(Int, readstrip(io))
-
     n_wann = parse(Int, readstrip(io))
-
     checkpoint = String(readstrip(io))
 
     # 1 -> True, 0 -> False
@@ -252,58 +238,57 @@ function read_chk(io::IO, ::FortranText)
         # omega_invariant
         ΩI = parse(Float64, readstrip(io))
 
-        dis_bands = [falses(n_bands) for _ in 1:n_kpts]
+        dis_bands = falses(n_bands, n_kpts)
         for ik in 1:n_kpts
             for ib in 1:n_bands
                 # 1 -> True, 0 -> False
-                dis_bands[ik][ib] = Bool(parse(Int, readstrip(io)))
+                dis_bands[ib, ik] = Bool(parse(Int, readstrip(io)))
             end
         end
 
         n_dis = zeros(Int, n_kpts)
         for ik in 1:n_kpts
             n_dis[ik] = parse(Int, readstrip(io))
-            n_dis[ik] == count(dis_bands[ik]) ||
+            n_dis[ik] == count(@view dis_bands[:, ik]) ||
                 error("Inconsistent number of disentangled bands")
         end
 
         # u_matrix_opt
-        Udis = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+        Udis = zeros(ComplexF64, n_bands, n_wann, n_kpts)
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_bands
                     vals = parse_vector(readstrip(io))
-                    Udis[ik][ib, iw] = vals[1] + im * vals[2]
+                    Udis[ib, iw, ik] = vals[1] + im * vals[2]
                 end
             end
         end
-
     else
         ΩI = -1.0
-        dis_bands = BitVector[]
+        dis_bands = falses(0, 0)
         n_dis = Int[]
-        Udis = Matrix{ComplexF64}[]
+        Udis = zeros(ComplexF64, 0, 0, 0)
     end
 
     # u_matrix
-    Uml = [zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_kpts]
+    Uml = zeros(ComplexF64, n_wann, n_wann, n_kpts)
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_wann
                 vals = parse_vector(readstrip(io))
-                Uml[ik][ib, iw] = vals[1] + im * vals[2]
+                Uml[ib, iw, ik] = vals[1] + im * vals[2]
             end
         end
     end
 
     #  m_matrix
-    M = [[zeros(ComplexF64, n_wann, n_wann) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+    M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
     for ik in 1:n_kpts
         for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
                     vals = parse_vector(readstrip(io))
-                    M[ik][inn][ib, iw] = vals[1] + im * vals[2]
+                    M[ib, iw, inn, ik] = vals[1] + im * vals[2]
                 end
             end
         end
@@ -395,24 +380,23 @@ function read_chk(io::FortranFile, ::FortranBinary)
         ΩI = read(io, Float64)
 
         tmp = parse_bool.(read(io, (Tint, n_bands, n_kpts)))
-        dis_bands = [tmp[:, i] for i in 1:n_kpts]
+        dis_bands = BitMatrix(tmp)
         n_dis = zeros(Int, n_kpts)
         n_dis .= read(io, (Tint, n_kpts))
         for ik in 1:n_kpts
-            n_dis[ik] == count(dis_bands[ik]) ||
+            n_dis[ik] == count(@view dis_bands[:, ik]) ||
                 error("Inconsistent number of disentangled bands")
         end
 
         # u_matrix_opt
-        U_tmp = zeros(ComplexF64, n_bands, n_wann, n_kpts)
-        read(io, U_tmp)
-        Udis = [U_tmp[:, :, ik] for ik in 1:n_kpts]
+        Udis = zeros(ComplexF64, n_bands, n_wann, n_kpts)
+        read(io, Udis)
 
     else
         ΩI = -1.0
-        dis_bands = BitVector[]
+        dis_bands = falses(0, 0)
         n_dis = Int[]
-        Udis = Matrix{ComplexF64}[]
+        Udis = zeros(ComplexF64, 0, 0, 0)
     end
 
     # u_matrix
@@ -445,8 +429,8 @@ function read_chk(io::FortranFile, ::FortranBinary)
         ΩI,
         dis_bands,
         Udis,
-        [Uml[:, :, ik] for ik in 1:n_kpts],
-        [[M[:, :, ib, ik] for ib in 1:n_bvecs] for ik in 1:n_kpts],
+        Uml,
+        M,
         [vec3(r[:, iw]) for iw in 1:n_wann],
         ω,
     )
@@ -540,7 +524,7 @@ function write_chk(io::IO, chk::Chk, ::FortranText)
         for ik in 1:n_kpts
             for ib in 1:n_bands
                 # 1 -> True, 0 -> False
-                @printf(io, "%d\n", chk.dis_bands[ik][ib])
+                @printf(io, "%d\n", chk.dis_bands[ib, ik])
             end
         end
 
@@ -552,7 +536,7 @@ function write_chk(io::IO, chk::Chk, ::FortranText)
         for ik in 1:n_kpts
             for iw in 1:n_wann
                 for ib in 1:n_bands
-                    v = chk.Udis[ik][ib, iw]
+                    v = chk.Udis[ib, iw, ik]
                     @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
@@ -563,7 +547,7 @@ function write_chk(io::IO, chk::Chk, ::FortranText)
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_wann
-                v = chk.Uml[ik][ib, iw]
+                v = chk.Uml[ib, iw, ik]
                 @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
             end
         end
@@ -574,7 +558,7 @@ function write_chk(io::IO, chk::Chk, ::FortranText)
         for inn in 1:n_bvecs
             for iw in 1:n_wann
                 for ib in 1:n_wann
-                    v = chk.M[ik][inn][ib, iw]
+                    v = chk.M[ib, iw, inn, ik]
                     @printf(io, "%25.17f %25.17f\n", real(v), imag(v))
                 end
             end
@@ -642,33 +626,24 @@ function write_chk(io::FortranFile, chk::Chk, ::FortranBinary)
     # true -> 1, false -> 0
     write(io, Tint(chk.have_disentangled))
 
-    # concatenate along dims=3
-    cat3(A...) = cat(A...; dims = 3)
-
     if chk.have_disentangled
         # omega_invariant
         write(io, Float64(chk.ΩI))
 
         # true -> 1, false -> 0
-        write(io, Matrix{Tint}(reduce(hcat, chk.dis_bands)))
+        write(io, Matrix{Tint}(chk.dis_bands))
 
         write(io, Vector{Tint}(chk.n_dis))
 
         # u_matrix_opt
-        write(io, Array{ComplexF64}(reduce(cat3, chk.Udis)))
+        write(io, chk.Udis)
     end
 
     # u_matrix
-    write(io, Array{ComplexF64}(reduce(cat3, chk.Uml)))
+    write(io, chk.Uml)
 
     #  m_matrix
-    M = zeros(ComplexF64, n_wann, n_wann, n_bvecs, n_kpts)
-    for ik in 1:n_kpts
-        for ibvec in 1:n_bvecs
-            M[:, :, ibvec, ik] = chk.M[ik][ibvec]
-        end
-    end
-    write(io, M)
+    write(io, chk.M)
 
     # wannier_centres
     r = reduce(hcat, chk.r)
@@ -703,9 +678,11 @@ function gauge_matrices(chk::Chk)
     end
 
     Udis = gauge_matrices_dis(chk)
-    return map(zip(Udis, Uml)) do (d, m)
-        d * m
+    U = zeros(eltype(Uml), chk.n_bands, chk.n_wann, chk.n_kpts)
+    for ik in 1:chk.n_kpts
+        U[:, :, ik] = Udis[:, :, ik] * Uml[:, :, ik]
     end
+    return U
 end
 
 function gauge_matrices_ml(chk::Chk)
@@ -723,20 +700,26 @@ function gauge_matrices_dis(chk::Chk)
     n_bands = chk.n_bands
     n_wann = chk.n_wann
 
-    T = eltype(chk.Uml[1])
+    T = eltype(chk.Uml)
     if !chk.have_disentangled
-        return [diagm(0 => ones(T, n_wann)) for _ in 1:n_kpts]
+        U = zeros(T, n_bands, n_wann, n_kpts)
+        for ik in 1:n_kpts
+            for iw in 1:n_wann
+                U[iw, iw, ik] = 1
+            end
+        end
+        return U
     end
 
     # Need to permute wavefunctions since Udis is stored in a way that
     # the bands taking part in disentanglement are in the first few rows.
     # Construct identity matrix
     Iᵏ = Matrix{T}(I, n_bands, n_bands)
-
-    return map(1:n_kpts) do ik
+    U = zeros(T, n_bands, n_wann, n_kpts)
+    for ik in 1:n_kpts
         # sortperm is stable, and
         # need descending order (dis bands at the front)
-        p = sortperm(chk.dis_bands[ik]; order = Base.Order.Reverse)
+        p = sortperm(view(chk.dis_bands, :, ik); order = Base.Order.Reverse)
         # usually we don't need this permutation, but if
         # 1. the dis_win_min > minimum(E), then these below
         #    dis_win_min bands are shifted to the last rows of Udis
@@ -749,8 +732,9 @@ function gauge_matrices_dis(chk::Chk)
         # so we need to permute the Bloch states before multiplying Udis
         # chk.Udis: semi-unitary matrices from disentanglement
         # chk.Uml: unitary matrices from maximal localization
-        Iᵏ[:, p] * chk.Udis[ik]
+        U[:, :, ik] = Iᵏ[:, p] * chk.Udis[:, :, ik]
     end
+    return U
 end
 
 """
