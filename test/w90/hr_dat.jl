@@ -4,14 +4,14 @@
     # just some simple tests
     @test length(hrdat.Rvectors) == 279
     @test hrdat.Rvectors[1] == [-4, 0, 2]
-    @test length(hrdat.H) == 279
+    @test size(hrdat.H, 3) == 279
     H1 = ComplexF64[
         0.000805 + 0.0im -0.000431 - 0.0im -0.000137 + 0.0im -0.000431 + 0.0im
         -0.000431 - 0.0im 0.000805 + 0.0im -0.000137 + 0.0im -0.000431 - 0.0im
         -0.000299 + 0.0im -0.000298 + 0.0im 0.000534 + 0.0im -0.000298 - 0.0im
         -0.000431 + 0.0im -0.000431 + 0.0im -0.000137 - 0.0im 0.000805 - 0.0im
     ]
-    @test hrdat.H[1] ≈ H1
+    @test hrdat.H[:, :, 1] ≈ H1
 end
 
 @testitem "read hr mdrs" begin

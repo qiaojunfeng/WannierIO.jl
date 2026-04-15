@@ -16,28 +16,40 @@ struct Spn{T <: Real}
     """Spin x matrices.
     A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
     """
-    Sx::Vector{Matrix{Complex{T}}}
+    Sx::Array{Complex{T}, 3}
 
     """Spin y matrices.
     A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
     """
-    Sy::Vector{Matrix{Complex{T}}}
+    Sy::Array{Complex{T}, 3}
 
     """Spin z matrices.
     A length-`n_kpts` vector, each element is a `n_bands`-by-`n_bands` matrix.
     """
-    Sz::Vector{Matrix{Complex{T}}}
+    Sz::Array{Complex{T}, 3}
+end
+
+function Spn(
+        header::AbstractString,
+        Sx::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        Sy::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        Sz::AbstractVector{<:AbstractMatrix{Complex{T}}},
+    ) where {T <: Real}
+    return Spn(
+        String(header),
+        cat(Sx...; dims = 3),
+        cat(Sy...; dims = 3),
+        cat(Sz...; dims = 3),
+    )
 end
 
 function Base.show(io::IO, spn::Spn)
-    n_kpts = length(spn.Sx)
-    n_bands = n_kpts == 0 ? 0 : size(spn.Sx[1], 1)
+    n_bands, _, n_kpts = size(spn.Sx)
     return print(io, "Spn(n_kpts=$(n_kpts), n_bands=$(n_bands))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", spn::Spn)
-    n_kpts = length(spn.Sx)
-    n_bands = n_kpts == 0 ? 0 : size(spn.Sx[1], 1)
+    n_bands, _, n_kpts = size(spn.Sx)
 
     return print(
         io,
@@ -45,7 +57,7 @@ function Base.show(io::IO, ::MIME"text/plain", spn::Spn)
           header: $(spn.header)
           n_kpts: $(n_kpts)
           n_bands: $(n_bands)
-          Sx, Sy, Sz: Vector{Matrix{Complex}}($(n_bands)×$(n_bands))
+                    Sx, Sy, Sz: Array{Complex}($(n_bands)×$(n_bands)×$(n_kpts))
         )""",
     )
 end
@@ -71,9 +83,9 @@ function read_spn(io::IO, ::FortranText)
     arr = split(readline(io))
     n_bands, n_kpts = parse.(Int64, arr[1:2])
 
-    Sx = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
-    Sy = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
-    Sz = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+    Sx = zeros(ComplexF64, n_bands, n_bands, n_kpts)
+    Sy = zeros(ComplexF64, n_bands, n_bands, n_kpts)
+    Sz = zeros(ComplexF64, n_bands, n_bands, n_kpts)
 
     for ik in 1:n_kpts
         for m in 1:n_bands
@@ -81,12 +93,12 @@ function read_spn(io::IO, ::FortranText)
                 for Si in (Sx, Sy, Sz)
                     line = split(readline(io))
                     x, y = parse.(Float64, line)
-                    Si[ik][n, m] = x + im * y
+                    Si[n, m, ik] = x + im * y
                     # although each diagonal element of `S` should be real,
                     # actually it has a very small imaginary part,
                     # so we skip the conjugation on the diagonal elements.
                     m == n && continue
-                    Si[ik][m, n] = x - im * y
+                    Si[m, n, ik] = x - im * y
                 end
             end
         end
@@ -114,9 +126,9 @@ function read_spn(io::FortranFile, ::FortranBinary)
     Tint = Int32
     n_bands, n_kpts = read(io, (Tint, 2))
 
-    Sx = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
-    Sy = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
-    Sz = [zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_kpts]
+    Sx = zeros(ComplexF64, n_bands, n_bands, n_kpts)
+    Sy = zeros(ComplexF64, n_bands, n_bands, n_kpts)
+    Sz = zeros(ComplexF64, n_bands, n_bands, n_kpts)
 
     # upper triangle part, at each kpoint
     spn_tmp = zeros(ComplexF64, 3, n_bands * (n_bands + 1) ÷ 2)
@@ -128,12 +140,12 @@ function read_spn(io::FortranFile, ::FortranBinary)
             for n in 1:m
                 counter += 1
                 for (i, Si) in enumerate((Sx, Sy, Sz))
-                    Si[ik][n, m] = spn_tmp[i, counter]
+                    Si[n, m, ik] = spn_tmp[i, counter]
                     # although each diagonal element of `S` should be real,
                     # actually it has a very small imaginary part,
                     # so we skip the conjugation on the diagonal elements.
                     m == n && continue
-                    Si[ik][m, n] = conj(Si[ik][n, m])
+                    Si[m, n, ik] = conj(Si[n, m, ik])
                 end
             end
         end
@@ -170,9 +182,8 @@ Write the `spn` file.
 function write_spn end
 
 function write_spn(io::IO, spn::Spn, ::FortranText)
-    n_kpts = length(spn.Sx)
+    n_bands, _, n_kpts = size(spn.Sx)
     n_kpts > 0 || throw(ArgumentError("empty spn matrix"))
-    n_bands = size(spn.Sx[1], 1)
 
     write(io, strip(spn.header), "\n")
 
@@ -182,7 +193,7 @@ function write_spn(io::IO, spn::Spn, ::FortranText)
         for m in 1:n_bands
             for n in 1:m
                 for Si in (spn.Sx, spn.Sy, spn.Sz)
-                    s = Si[ik][n, m]
+                    s = Si[n, m, ik]
                     @printf(io, "%26.16e  %26.16e\n", real(s), imag(s))
                 end
             end
@@ -199,9 +210,8 @@ function write_spn(filename::AbstractString, spn::Spn, ::FortranText)
 end
 
 function write_spn(io::FortranFile, spn::Spn, ::FortranBinary)
-    n_kpts = length(spn.Sx)
+    n_bands, _, n_kpts = size(spn.Sx)
     n_kpts > 0 || throw(ArgumentError("empty spn matrix"))
-    n_bands = size(spn.Sx[1], 1)
 
     header_len = 60
     write(io, FString(header_len, string(strip(spn.header))))
@@ -219,7 +229,7 @@ function write_spn(io::FortranFile, spn::Spn, ::FortranBinary)
             for n in 1:m
                 counter += 1
                 for (i, Si) in enumerate((spn.Sx, spn.Sy, spn.Sz))
-                    spn_tmp[i, counter] = Si[ik][n, m]
+                    spn_tmp[i, counter] = Si[n, m, ik]
                 end
             end
         end

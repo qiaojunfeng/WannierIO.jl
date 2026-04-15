@@ -1,9 +1,7 @@
 @testitem "read EPW mmn" begin
     using LazyArtifacts
     M = read_mmn(artifact"BN/BN.mmn").M
-    n_kpts = length(M)
-    n_bvecs = length(M[1])
-    n_bands = size(M[1][1], 1)
+    n_bands, _, n_bvecs, n_kpts = size(M)
     M1 = WannierIO.read_epw_mmn(artifact"BN/outputs/bn.mmn"; n_kpts, n_bvecs, n_bands)
     @test M ≈ M1
 end

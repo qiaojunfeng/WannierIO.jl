@@ -15,10 +15,10 @@ of kpoints/bvectors/bands, so they need to be provided as keyword arguments.
 - `n_bands`: number of bands
 
 # Return
-- `M`: length-`n_kpts` vector of length-`n_bvecs` vector of `n_bands * n_bands` matrices
+- `M`: dense array of size `n_bands × n_bands × n_bvecs × n_kpts`
 """
 function read_epw_mmn(io::IO; n_kpts::Integer, n_bvecs::Integer, n_bands::Integer)
-    M = [[zeros(ComplexF64, n_bands, n_bands) for _ in 1:n_bvecs] for _ in 1:n_kpts]
+    M = zeros(ComplexF64, n_bands, n_bands, n_bvecs, n_kpts)
 
     for ik in 1:n_kpts
         for ib in 1:n_bvecs
@@ -27,7 +27,7 @@ function read_epw_mmn(io::IO; n_kpts::Integer, n_bvecs::Integer, n_bands::Intege
                     line = readline(io)
                     line = replace(strip(line), "(" => "", ")" => "", "," => " ")
                     line = split(line)
-                    M[ik][ib][m, n] = parse(Float64, line[1]) + parse(Float64, line[2]) * im
+                    M[m, n, ib, ik] = parse(Float64, line[1]) + parse(Float64, line[2]) * im
                 end
             end
         end
@@ -72,11 +72,11 @@ struct Ukk{T <: Real}
     """number of wannier functions"""
     n_wann::Int
 
-    """gauge matrices, length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix"""
-    U::Vector{Matrix{Complex{T}}}
+    """gauge matrices, size `n_bands * n_wann * n_kpts` array"""
+    U::Array{Complex{T}, 3}
 
-    """flag for frozen bands, length-`n_kpts` vector, each element is a length-`n_bands` vector"""
-    frozen_bands::Vector{BitVector}
+    """flag for frozen bands, size `n_bands * n_kpts` matrix"""
+    frozen_bands::BitMatrix
 
     """flag for excluded bands, length-`n_bands + n_excl_bands` vector, where
     `n_excl_bands` is the number of excluded bands"""
@@ -165,22 +165,23 @@ function read_epw_ukk(io::IO)
     n_kpts > 0 || error("n_kpts = $n_kpts ≤ 0")
     n_bands > 0 || error("n_bands = $n_bands ≤ 0")
 
-    U = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+    U = zeros(ComplexF64, n_bands, n_wann, n_kpts)
     counter = 1
     for ik in 1:n_kpts
         for ib in 1:n_bands
             for iw in 1:n_wann
-                U[ik][ib, iw] = Uflat[counter]
+                U[ib, iw, ik] = Uflat[counter]
                 counter += 1
             end
         end
     end
 
-    frozen_bands = [trues(n_bands) for _ in 1:n_kpts]
+    frozen_bands = trues(n_bands, n_kpts)
     counter = 1
     for ik in 1:n_kpts
         for ib in 1:n_bands
-            frozen_bands[ik][ib] = flags[counter]
+            frozen_bands[ib, ik] = flags[counter]
+            counter += 1
         end
     end
 
@@ -223,7 +224,7 @@ function write_epw_ukk(io::IO, ukk::Ukk)
     for ik in 1:(ukk.n_kpts)
         for ib in 1:(ukk.n_bands)
             for iw in 1:(ukk.n_wann)
-                u = ukk.U[ik][ib, iw]
+                u = ukk.U[ib, iw, ik]
                 @printf(io, "(%25.18E,%25.18E)\n", real(u), imag(u))
             end
         end
@@ -232,7 +233,7 @@ function write_epw_ukk(io::IO, ukk::Ukk)
     # needs also lwindow when disentanglement is used
     for ik in 1:(ukk.n_kpts)
         for ib in 1:(ukk.n_bands)
-            if ukk.frozen_bands[ik][ib]
+            if ukk.frozen_bands[ib, ik]
                 @printf(io, "T\n")
             else
                 @printf(io, "F\n")
@@ -298,7 +299,7 @@ function Ukk(chk::Chk, alat::Real)
     exclude_band_indices = chk.exclude_bands
     n_kpts = chk.n_kpts
     n_wann = chk.n_wann
-    frozen_bands = [trues(n_bands) for _ in 1:n_kpts]
+    frozen_bands = trues(n_bands, n_kpts)
 
     n_excl_bands = length(exclude_band_indices)
     n_bands_tot = n_bands + n_excl_bands

@@ -7,7 +7,8 @@ Read wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `U`: `Udis` (for disentanglement) or `U` (for maximal localization) matrices
+- `U`: `Udis` (for disentanglement) or `U` (for maximal localization) matrices,
+    array of size `n_bands × n_wann × n_kpts`
 - `kpoints`: fractional kpoint coordinates
 - `header`: 1st line of the file
 
@@ -24,7 +25,7 @@ function read_u_mat(io::IO)
     nkpts, nwann, nbands = parse_vector(readstrip(io), Int)
 
     kpoints = zeros(Vec3{Float64}, nkpts)
-    U = [zeros(ComplexF64, nbands, nwann) for _ in 1:nkpts]
+    U = zeros(ComplexF64, nbands, nwann, nkpts)
 
     for ik in 1:nkpts
         # empty line
@@ -34,7 +35,7 @@ function read_u_mat(io::IO)
         for iw in 1:nwann
             for ib in 1:nbands
                 vals = parse_vector(readstrip(io))
-                U[ik][ib, iw] = vals[1] + im * vals[2]
+                U[ib, iw, ik] = vals[1] + im * vals[2]
             end
         end
     end
@@ -71,14 +72,12 @@ Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 """
 function write_u_mat(
         io::IO,
-        U::AbstractVector,
+        U::AbstractArray{<:Number,3},
         kpoints::AbstractVector;
         header::AbstractString = default_header(),
     )
-    nkpts = length(U)
-    nkpts > 0 || throw(ArgumentError("U is empty"))
+    nbands, nwann, nkpts = size(U)
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
-    nbands, nwann = size(U[1])
 
     write(io, header, "\n")
     @printf(io, "%d %d %d\n", nkpts, nwann, nbands)
@@ -90,7 +89,7 @@ function write_u_mat(
 
         for iw in 1:nwann
             for ib in 1:nbands
-                u = U[ik][ib, iw]
+                u = U[ib, iw, ik]
                 @printf(io, "  %15.10f  %15.10f\n", real(u), imag(u))
             end
         end
@@ -101,11 +100,11 @@ end
 
 function write_u_mat(
         filename::AbstractString,
-        U::AbstractVector,
+        U::AbstractArray{<:Number,3},
         kpoints::AbstractVector;
         header::AbstractString = default_header(),
     )
-    nkpts = length(U)
+    nkpts = size(U, 3)
     nkpts > 0 || throw(ArgumentError("U is empty"))
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
 
