@@ -43,6 +43,7 @@ function to_toml(x)
     x isa Pair && return Dict(x)
     # x isa Symbol && return String(x)
     x isa Mat3 && return eachcol(x)
+    x isa AbstractMatrix && return eachcol(x)
     # use pairs other than Dict to preserve the order as much as possible
     x isa NamedTuple && return pairs(x)
     x isa HydrogenOrbital && return pairs(NamedTuple(x))

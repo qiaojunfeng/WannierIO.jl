@@ -20,17 +20,25 @@ struct HrDat{T <: Real, IT <: Integer}
     Rdegens::Vector{IT}
 
     "Hamiltonian matrices in real space"
-    H::Vector{Matrix{Complex{T}}}
+    H::Array{Complex{T}, 3}
+end
+
+function HrDat(
+        header::AbstractString,
+        Rvectors::Vector{<:Vec3},
+        Rdegens::AbstractVector{IT},
+        H::AbstractArray{T, 3},
+    ) where {T <: Number, IT <: Integer}
+        return HrDat(String(header), collect(Vec3{IT}.(Rvectors)), collect(IT, Rdegens), Array{Complex{T}, 3}(H))
 end
 
 function Base.show(io::IO, hrdat::HrDat)
-    n_wann = isempty(hrdat.H) ? 0 : size(hrdat.H[1], 1)
-    return print(io, "HrDat(n_Rvecs=$(length(hrdat.H)), n_wann=$(n_wann))")
+        n_wann, _, n_Rvecs = size(hrdat.H)
+    return print(io, "HrDat(n_Rvecs=$(n_Rvecs), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", hrdat::HrDat)
-    n_Rvecs = length(hrdat.H)
-    n_wann = isempty(hrdat.H) ? 0 : size(hrdat.H[1], 1)
+    n_wann, _, n_Rvecs = size(hrdat.H)
     degen_min = length(hrdat.Rdegens) == 0 ? 0 : minimum(hrdat.Rdegens)
     degen_max = length(hrdat.Rdegens) == 0 ? 0 : maximum(hrdat.Rdegens)
 
@@ -41,7 +49,7 @@ function Base.show(io::IO, ::MIME"text/plain", hrdat::HrDat)
           n_Rvecs: $(n_Rvecs)
           n_wann: $(n_wann)
           Rdegens range: [$(degen_min), ..., $(degen_max)]
-          H: Vector{Matrix{Complex}}($(n_wann)×$(n_wann))
+                    H: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
         )""",
     )
 end
@@ -64,7 +72,7 @@ function read_w90_hr_dat(io::IO)
 
     Rdegens = parse_vector(io, Int, n_Rvecs)
     Rvectors = zeros(Vec3{Int}, n_Rvecs)
-    H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+    H = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
     for iR in 1:n_Rvecs
         for n in 1:n_wann
             for m in 1:n_wann
@@ -72,7 +80,7 @@ function read_w90_hr_dat(io::IO)
                 Rvectors[iR] = parse.(Int, line[1:3])
                 m == parse(Int, line[4]) || error(line)
                 n == parse(Int, line[5]) || error(line)
-                H[iR][m, n] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
+                H[m, n, iR] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
             end
         end
     end
@@ -95,9 +103,8 @@ Write `prefix_hr.dat`.
 See the fields of [`HrDat`](@ref).
 """
 function write_w90_hr_dat(io::IO, hrdat::HrDat)
-    n_Rvecs = length(hrdat.H)
+    n_wann, _, n_Rvecs = size(hrdat.H)
     n_Rvecs > 0 || throw(ArgumentError("empty H"))
-    n_wann = size(hrdat.H[1], 1)
 
     println(io, strip(hrdat.header))
     @printf(io, "%d\n", n_wann)
@@ -117,8 +124,8 @@ function write_w90_hr_dat(io::IO, hrdat::HrDat)
     for iR in 1:n_Rvecs
         for n in 1:n_wann
             for m in 1:n_wann
-                reH = real(hrdat.H[iR][m, n])
-                imH = imag(hrdat.H[iR][m, n])
+                reH = real(hrdat.H[m, n, iR])
+                imH = imag(hrdat.H[m, n, iR])
                 @printf(
                     io,
                     " %4d %4d %4d %4d %4d %11.6f %11.6f\n",

@@ -184,15 +184,15 @@ function _nnkp_parse_block_nnkpts(io::IO, n_kpts::Int)
     block_name = "nnkpts"
     n_bvecs = parse(Int, _nnkp_block_nextline(io, block_name))
 
-    kpb_k = [zeros(Int, n_bvecs) for _ in 1:n_kpts]
-    kpb_G = [zeros(Vec3{Int}, n_bvecs) for _ in 1:n_kpts]
+    kpb_k = zeros(Int, n_bvecs, n_kpts)
+    kpb_G = zeros(Vec3{Int}, n_bvecs, n_kpts)
 
     for ik in 1:n_kpts
         for ib in 1:n_bvecs
             arr = _nnkp_read_array(_nnkp_block_nextline(io, block_name), Int)
             ik == arr[1] || error("expected ik = $ik, got $(arr[1])")
-            kpb_k[ik][ib] = arr[2]
-            kpb_G[ik][ib] = Vec3(arr[3:end])
+            kpb_k[ib, ik] = arr[2]
+            kpb_G[ib, ik] = Vec3(arr[3:end])
         end
     end
 
@@ -255,6 +255,22 @@ function read_nnkp(io::IO, ::W90InputToml)
             args = NamedTuple((Symbol(k), v) for (k, v) in proj)
             HydrogenOrbital(; args...)
         end
+    end
+
+    # To Matrix
+    if haskey(nnkp, "kpb_k") && haskey(nnkp, "kpb_G")
+        nk = length(nnkp["kpb_k"])
+        nb = isempty(nnkp["kpb_k"]) ? 0 : length(nnkp["kpb_k"][1])
+        kpb_k = zeros(Int, nb, nk)
+        kpb_G = zeros(Vec3{Int}, nb, nk)
+        for ik in 1:nk
+            for ib in 1:nb
+                kpb_k[ib, ik] = nnkp["kpb_k"][ik][ib]
+                kpb_G[ib, ik] = vec3(nnkp["kpb_G"][ik][ib])
+            end
+        end
+        nnkp["kpb_k"] = kpb_k
+        nnkp["kpb_G"] = kpb_G
     end
 
     return nnkp
@@ -350,7 +366,7 @@ function _nnkp_validate_write_params(params::AbstractDict)
     kpb_G = params["kpb_G"]
 
     _check_dimensions_kpb(kpb_k, kpb_G)
-    length(kpoints) == length(kpb_k) ||
+    length(kpoints) == size(kpb_k, 2) ||
         throw(DimensionMismatch("kpoints and kpb_k have different length"))
     size(lattice) == (3, 3) || throw(DimensionMismatch("size(lattice) != (3, 3)"))
     size(recip_lattice) == (3, 3) ||
@@ -429,14 +445,13 @@ end
 
 """Write `nnkpts` block."""
 function _nnkp_write_block_nnkpts(io::IO, kpb_k, kpb_G)
-    n_kpts = length(kpb_k)
-    n_bvecs = length(kpb_k[1])
+    n_bvecs, n_kpts = size(kpb_k)
 
     @printf(io, "begin nnkpts\n")
     @printf(io, "%d\n", n_bvecs)
     for ik in 1:n_kpts
         for ib in 1:n_bvecs
-            @printf(io, "%6d %6d %6d %6d %6d\n", ik, kpb_k[ik][ib], kpb_G[ik][ib]...)
+            @printf(io, "%6d %6d %6d %6d %6d\n", ik, kpb_k[ib, ik], kpb_G[ib, ik]...)
         end
     end
     @printf(io, "end nnkpts\n")
@@ -485,6 +500,6 @@ end
 function write_nnkp(
         file::Union{IO, AbstractString}, params::AbstractDict; header = default_header()
     )
-    format = w90input_format()
+    format = w90input_format(; toml=splitext(file)[end] == ".toml")
     return write_nnkp(file, params, format; header)
 end

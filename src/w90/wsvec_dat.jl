@@ -22,10 +22,10 @@ struct WsvecDat{IT <: Integer}
     Rvectors::Vector{Vec3{IT}}
 
     "MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
-    Tvectors::Union{Vector{Matrix{Vector{Vec3{IT}}}}, Nothing}
+    Tvectors::Union{Array{Vector{Vec3{IT}}, 3}, Nothing}
 
     "Degeneracies of MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
-    Tdegens::Union{Vector{Matrix{IT}}, Nothing}
+    Tdegens::Union{Array{IT, 3}, Nothing}
 
     "Number of Wannier functions"
     n_wann::Int
@@ -65,10 +65,10 @@ For MDRS Rvectors, the `n_wann` is optional and can be automatically determined 
 function WsvecDat(
         header::String,
         Rvectors::Vector{<:Vec3},
-        Tvectors::Vector{<:Matrix},
-        Tdegens::Vector{<:Matrix},
+        Tvectors::AbstractArray,
+        Tdegens::AbstractArray,
     )
-    n_wann = size(Tvectors[1], 1)
+    n_wann = size(Tvectors, 1)
     return WsvecDat(header, true, Rvectors, Tvectors, Tdegens, n_wann)
 end
 
@@ -140,15 +140,15 @@ function read_w90_wsvec_dat(io::IO)
 
     # Objective: reorder Tvectors_flat -> Tvectors, Tdegens_flat -> Tdegens
     # such that Tvectors[iR][m, n][iT] is Vec3 for T-vector
-    Tvectors = [Matrix{Vector{Vec3{Int}}}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+    Tvectors = Array{Vector{Vec3{Int}}, 3}(undef, n_wann, n_wann, n_Rvecs)
     # and Tdegens[iR][m, n] is the degeneracy of T-vector at iR-th Rvector &
     # between m-th and n-th WFs
-    Tdegens = [Matrix{Int}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+    Tdegens = zeros(Int, n_wann, n_wann, n_Rvecs)
     iR = 1
     for (iRmn, rmn) in enumerate(Rmn)
         m, n = rmn[(end - 1):end]
-        Tvectors[iR][m, n] = Tvectors_flat[iRmn]
-        Tdegens[iR][m, n] = Tdegens_flat[iRmn]
+        Tvectors[m, n, iR] = Tvectors_flat[iRmn]
+        Tdegens[m, n, iR] = Tdegens_flat[iRmn]
         # next Rvector
         if m == n_wann && n == n_wann
             iR += 1
@@ -184,8 +184,8 @@ function write_w90_wsvec_dat(io::IO, wsvec::WsvecDat)
                 @printf(io, "%5d %5d %5d %5d %5d\n", R..., m, n)
 
                 if wsvec.mdrs
-                    @printf(io, "%5d\n", wsvec.Tdegens[iR][m, n])
-                    for T in wsvec.Tvectors[iR][m, n]
+                    @printf(io, "%5d\n", wsvec.Tdegens[m, n, iR])
+                    for T in wsvec.Tvectors[m, n, iR]
                         @printf(io, "%5d %5d %5d\n", T...)
                     end
                 else

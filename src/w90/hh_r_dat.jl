@@ -19,18 +19,31 @@ struct HHRDat{T <: Real, IT <: Integer}
     "Degeneracy vector for each R vector, or `nothing`"
     Rdegens::Union{Vector{IT}, Nothing}
 
-    "Hamiltonian of length `n_rvecs`, each element is a matrix with shape `(n_wann, n_wann)`"
-    H::Vector{Matrix{Complex{T}}}
+    "Hamiltonian with size `n_wann × n_wann × n_rvecs`"
+    H::Array{Complex{T}, 3}
+end
+
+function HHRDat(
+        header::AbstractString,
+        Rvectors::Vector{<:Vec3},
+        Rdegens::Union{Nothing, AbstractVector{IT}},
+        H::AbstractArray{T, 3},
+    ) where {T <: Number, IT <: Integer}
+    return HHRDat(
+        String(header),
+        collect(Vec3{IT}.(Rvectors)),
+        isnothing(Rdegens) ? nothing : collect(IT, Rdegens),
+        Array{Complex{T}, 3}(H),
+    )
 end
 
 function Base.show(io::IO, hhr::HHRDat)
-    n_wann = isempty(hhr.H) ? 0 : size(hhr.H[1], 1)
-    return print(io, "HHRDat(n_Rvecs=$(length(hhr.H)), n_wann=$(n_wann))")
+    n_wann, _, n_Rvecs = size(hhr.H)
+    return print(io, "HHRDat(n_Rvecs=$(n_Rvecs), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", hhr::HHRDat)
-    n_Rvecs = length(hhr.H)
-    n_wann = isempty(hhr.H) ? 0 : size(hhr.H[1], 1)
+    n_wann, _, n_Rvecs = size(hhr.H)
     degen_str = if isnothing(hhr.Rdegens)
         "none"
     else
@@ -46,7 +59,7 @@ function Base.show(io::IO, ::MIME"text/plain", hhr::HHRDat)
           n_Rvecs: $(n_Rvecs)
           n_wann: $(n_wann)
           Rdegens: $(degen_str)
-          H: Vector{Matrix{Complex}}($(n_wann)×$(n_wann))
+                    H: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
         )""",
     )
 end
@@ -82,10 +95,8 @@ function write_HH_R_dat(io::IO, hhr::HHRDat)
         length(hhr.Rdegens) == n_rvecs ||
         throw(DimensionMismatch("Rdegens and Rvectors must have the same length"))
 
-    n_wann = size(hhr.H[1], 1)
-    n_wann > 0 || throw(ArgumentError("H matrices must be non-empty"))
-    all(size.(hhr.H) .== Ref((n_wann, n_wann))) ||
-        throw(DimensionMismatch("H[ir] must all be n_wann * n_wann matrices"))
+    n_wann = size(hhr.H, 1)
+    size(hhr.H, 2) == n_wann || throw(DimensionMismatch("H matrices must be square"))
 
     vec2str(v) = join([@sprintf "%5d" x for x in v], "")
 
@@ -97,7 +108,7 @@ function write_HH_R_dat(io::IO, hhr::HHRDat)
     for ir in 1:n_rvecs
         for j in 1:n_wann
             for i in 1:n_wann
-                h = hhr.H[ir][i, j]
+                h = hhr.H[i, j, ir]
                 # 12.6f is the wannier90 default, however, I change it to
                 # 15.8e so that it has the same accuracy as tb.dat file.
                 @printf(
@@ -116,17 +127,14 @@ end
 
 function write_HH_R_dat(filename::AbstractString, hhr::HHRDat)
     n_rvecs = length(hhr.Rvectors)
-    n_rvecs > 0 || throw(ArgumentError("Rvectors must be non-empty"))
     length(hhr.H) == n_rvecs ||
         throw(DimensionMismatch("H and Rvectors must have the same length"))
     isnothing(hhr.Rdegens) ||
         length(hhr.Rdegens) == n_rvecs ||
         throw(DimensionMismatch("Rdegens and Rvectors must have the same length"))
 
-    n_wann = size(hhr.H[1], 1)
-    n_wann > 0 || throw(ArgumentError("H matrices must be non-empty"))
-    all(size.(hhr.H) .== Ref((n_wann, n_wann))) ||
-        throw(DimensionMismatch("H[ir] must all be n_wann * n_wann matrices"))
+    n_wann = size(hhr.H, 1)
+    size(hhr.H, 2) == n_wann || throw(DimensionMismatch("H matrices must be square"))
 
     open(filename, "w") do io
         write_HH_R_dat(io, hhr)

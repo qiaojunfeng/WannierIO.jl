@@ -82,6 +82,14 @@ function (reducer::WsRvectorReducer)(operator::AbstractVector{<:AbstractMatrix})
     return operator_new
 end
 
+function (reducer::WsRvectorReducer)(operator::AbstractArray{<:Any, 3})
+    size(operator, 3) == length(reducer.degens) ||
+        throw(ArgumentError("Length of operator must match length of degens"))
+
+    operator_vec = [Matrix(operator[:, :, i]) for i in 1:size(operator, 3)]
+    return reducer(operator_vec)
+end
+
 function RvectorReducer(
         Rvectors::AbstractVector{<:AbstractVector{<:Integer}},
         Rdegens::AbstractVector{<:Integer},
@@ -274,6 +282,14 @@ function (reducer::MdrsRvectorReducer)(operator::AbstractVector{<:AbstractMatrix
         end
         O_new
     end
+end
+
+function (reducer::MdrsRvectorReducer)(operator::AbstractArray{<:Any, 3})
+    size(operator, 3) == length(reducer.degens) ||
+        throw(ArgumentError("Length of operator must match length of degens"))
+
+    operator_vec = [Matrix(operator[:, :, i]) for i in 1:size(operator, 3)]
+    return reducer(operator_vec)
 end
 
 function RvectorReducer(

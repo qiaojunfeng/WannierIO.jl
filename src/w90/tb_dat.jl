@@ -22,27 +22,48 @@ struct TbDat{T <: Real, IT <: Integer}
     "Degeneracies of each ``\\mathbf{R}``-vector"
     Rdegens::Vector{IT}
 
-    "Hamiltonian matrices ``\\mathbf{H}(\\mathbf{R})``"
-    H::Vector{Matrix{Complex{T}}}
+    "Hamiltonian matrices ``\\mathbf{H}(\\mathbf{R})`` with size `n_wann × n_wann × n_Rvecs`"
+    H::Array{Complex{T}, 3}
 
     "x-component of position operator"
-    r_x::Vector{Matrix{Complex{T}}}
+    r_x::Array{Complex{T}, 3}
 
     "y-component of position operator"
-    r_y::Vector{Matrix{Complex{T}}}
+    r_y::Array{Complex{T}, 3}
 
     "z-component of position operator"
-    r_z::Vector{Matrix{Complex{T}}}
+    r_z::Array{Complex{T}, 3}
+end
+
+function TbDat(
+        header::AbstractString,
+        lattice::AbstractMatrix{T},
+        Rvectors::Vector{<:Vec3},
+        Rdegens::AbstractVector{IT},
+        H::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        r_x::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        r_y::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        r_z::AbstractVector{<:AbstractMatrix{Complex{T}}},
+    ) where {T <: Real, IT <: Integer}
+    return TbDat(
+        String(header),
+        Mat3{T}(lattice),
+        collect(Vec3{IT}.(Rvectors)),
+        collect(IT, Rdegens),
+        cat(H...; dims = 3),
+        cat(r_x...; dims = 3),
+        cat(r_y...; dims = 3),
+        cat(r_z...; dims = 3),
+    )
 end
 
 function Base.show(io::IO, tbdat::TbDat)
-    n_wann = isempty(tbdat.H) ? 0 : size(tbdat.H[1], 1)
-    return print(io, "TbDat(n_Rvecs=$(length(tbdat.H)), n_wann=$(n_wann))")
+    n_wann, _, n_Rvecs = size(tbdat.H)
+    return print(io, "TbDat(n_Rvecs=$(n_Rvecs), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", tbdat::TbDat)
-    n_Rvecs = length(tbdat.H)
-    n_wann = isempty(tbdat.H) ? 0 : size(tbdat.H[1], 1)
+    n_wann, _, n_Rvecs = size(tbdat.H)
     degen_min = length(tbdat.Rdegens) == 0 ? 0 : minimum(tbdat.Rdegens)
     degen_max = length(tbdat.Rdegens) == 0 ? 0 : maximum(tbdat.Rdegens)
 
@@ -57,8 +78,8 @@ function Base.show(io::IO, ::MIME"text/plain", tbdat::TbDat)
           n_Rvecs: $(n_Rvecs)
           n_wann: $(n_wann)
           Rdegens range: [$(degen_min), ..., $(degen_max)]
-          H: Vector{Matrix{$(eltype(tbdat.H[1]) <: Complex ? "Complex" : "Real")}($(n_wann)×$(n_wann))}
-          r_x, r_y, r_z: Vector{Matrix{Complex}}($(n_wann)×$(n_wann))
+                    H: Array{$(eltype(tbdat.H) <: Complex ? "Complex" : "Real")}($(n_wann)×$(n_wann)×$(n_Rvecs))
+                    r_x, r_y, r_z: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
         )""",
     )
 end
@@ -86,7 +107,7 @@ function read_w90_tb_dat(io::IO)
 
     Rdegens = parse_vector(io, Int, n_Rvecs)
     Rvectors = zeros(Vec3{Int}, n_Rvecs)
-    H = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+    H = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
 
     # Hamiltonian
     for iR in 1:n_Rvecs
@@ -101,15 +122,15 @@ function read_w90_tb_dat(io::IO)
                 n == parse(Int, line[2]) || error(line)
 
                 reH, imH = parse.(Float64, line[3:4])
-                H[iR][m, n] = reH + im * imH
+                H[m, n, iR] = reH + im * imH
             end
         end
     end
 
     # WF position operator
-    r_x = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
-    r_y = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
-    r_z = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+    r_x = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
+    r_y = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
+    r_z = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
 
     for iR in 1:n_Rvecs
         line = strip(readline(io))  # empty line
@@ -123,9 +144,9 @@ function read_w90_tb_dat(io::IO)
                 n == parse(Int, line[2]) || error("inconsistent n index")
 
                 f = parse.(Float64, line[3:8])
-                r_x[iR][m, n] = f[1] + im * f[2]
-                r_y[iR][m, n] = f[3] + im * f[4]
-                r_z[iR][m, n] = f[5] + im * f[6]
+                r_x[m, n, iR] = f[1] + im * f[2]
+                r_y[m, n, iR] = f[3] + im * f[4]
+                r_z[m, n, iR] = f[5] + im * f[6]
             end
         end
     end
@@ -148,9 +169,8 @@ Write `prefix_tb.dat`.
 See the fields of [`TbDat`](@ref).
 """
 function write_w90_tb_dat(io::IO, tbdat::TbDat)
-    n_Rvecs = length(tbdat.H)
+    n_wann, _, n_Rvecs = size(tbdat.H)
     n_Rvecs > 0 || error("empty H")
-    n_wann = size(tbdat.H[1], 1)
 
     println(io, strip(tbdat.header))
 
@@ -179,8 +199,8 @@ function write_w90_tb_dat(io::IO, tbdat::TbDat)
 
         for n in 1:n_wann
             for m in 1:n_wann
-                reH = real(tbdat.H[iR][m, n])
-                imH = imag(tbdat.H[iR][m, n])
+                reH = real(tbdat.H[m, n, iR])
+                imH = imag(tbdat.H[m, n, iR])
                 @printf(io, "%5d %5d   %15.8e %15.8e\n", m, n, reH, imH)
             end
         end
@@ -192,9 +212,9 @@ function write_w90_tb_dat(io::IO, tbdat::TbDat)
 
         for n in 1:n_wann
             for m in 1:n_wann
-                x = tbdat.r_x[iR][m, n]
-                y = tbdat.r_y[iR][m, n]
-                z = tbdat.r_z[iR][m, n]
+                x = tbdat.r_x[m, n, iR]
+                y = tbdat.r_y[m, n, iR]
+                z = tbdat.r_z[m, n, iR]
                 @printf(
                     io,
                     "%5d %5d   %15.8e %15.8e %15.8e %15.8e %15.8e %15.8e\n",

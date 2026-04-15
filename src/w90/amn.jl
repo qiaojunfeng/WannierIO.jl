@@ -11,7 +11,7 @@ Read wannier90 `amn` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `A`: length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix.
+- `A`: dense array of size `n_bands × n_wann × n_kpts`.
 - `header`: first line of the file
 
 Note there are three versions of this function: the 1st one is a wrapper
@@ -33,13 +33,13 @@ function read_amn(io::IO, ::FortranText)
     line = split(readline(io))
     n_bands, n_kpts, n_wann = parse.(Int64, line[1:3])
 
-    A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+    A = zeros(ComplexF64, n_bands, n_wann, n_kpts)
 
     while !eof(io)
         line = split(readline(io))
         m, n, k = parse.(Int64, line[1:3])
         a = parse(Float64, line[4]) + im * parse(Float64, line[5])
-        A[k][m, n] = a
+        A[m, n, k] = a
     end
 
     return (; A, header)
@@ -60,7 +60,7 @@ function read_amn(io::IO, ::FortranBinaryStream)
     n_kpts = read(io, Tint)
     n_wann = read(io, Tint)
 
-    A = [zeros(ComplexF64, n_bands, n_wann) for _ in 1:n_kpts]
+    A = zeros(ComplexF64, n_bands, n_wann, n_kpts)
 
     while !eof(io)
         m = read(io, Tint)
@@ -68,7 +68,7 @@ function read_amn(io::IO, ::FortranBinaryStream)
         k = read(io, Tint)
         r = read(io, Float64)
         i = read(io, Float64)
-        A[k][m, n] = r + im * i
+        A[m, n, k] = r + im * i
     end
 
     return (; A, header)
@@ -94,7 +94,7 @@ Write wannier90 `amn` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `A`: a length-`n_kpts` vector, each element is a `n_bands * n_wann` matrix
+- `A`: dense array of size `n_bands × n_wann × n_kpts`
 
 # Keyword arguments
 - `header`: 1st line of the file
@@ -107,10 +107,8 @@ the `binary` kwargs.
 """
 function write_amn end
 
-function write_amn(io::IO, A::AbstractVector, ::FortranText; header = default_header())
-    n_kpts = length(A)
-    n_kpts > 0 || throw(ArgumentError("A is empty"))
-    n_bands, n_wann = size(A[1])
+function write_amn(io::IO, A::AbstractArray{<:Number,3}, ::FortranText; header = default_header())
+    n_bands, n_wann, n_kpts = size(A)
 
     write(io, header, "\n")
 
@@ -119,7 +117,7 @@ function write_amn(io::IO, A::AbstractVector, ::FortranText; header = default_he
     for ik in 1:n_kpts
         for iw in 1:n_wann
             for ib in 1:n_bands
-                a = A[ik][ib, iw]
+                a = A[ib, iw, ik]
                 @printf(io, "%5d %4d %4d  %16.12f  %16.12f\n", ib, iw, ik, real(a), imag(a))
             end
         end
@@ -129,11 +127,9 @@ function write_amn(io::IO, A::AbstractVector, ::FortranText; header = default_he
 end
 
 function write_amn(
-        io::IO, A::AbstractVector, ::FortranBinaryStream; header = default_header()
+        io::IO, A::AbstractArray{<:Number,3}, ::FortranBinaryStream; header = default_header()
     )
-    n_kpts = length(A)
-    n_kpts > 0 || throw(ArgumentError("A is empty"))
-    n_bands, n_wann = size(A[1])
+    n_bands, n_wann, n_kpts = size(A)
 
     # I write in Fortran stream io format.
     # I need to convert to String instead of SubString, for FString
@@ -155,7 +151,7 @@ function write_amn(
                 write(io, Tint(ib))
                 write(io, Tint(iw))
                 write(io, Tint(ik))
-                a = A[ik][ib, iw]
+                a = A[ib, iw, ik]
                 write(io, Float64(real(a)))
                 write(io, Float64(imag(a)))
             end
@@ -167,7 +163,7 @@ end
 
 function write_amn(
         filename::AbstractString,
-        A::AbstractVector,
+    A::AbstractArray{<:Number,3},
         format::AbstractFileFormat;
         header = default_header(),
     )
@@ -178,7 +174,7 @@ function write_amn(
 end
 
 function write_amn(
-        file::Union{IO, AbstractString}, A::AbstractVector; header = default_header(), binary = false
+    file::Union{IO, AbstractString}, A::AbstractArray{<:Number,3}; header = default_header(), binary = false
     )
     format = fortran_format(; binary, stream = true)
     return write_amn(file, A, format; header)

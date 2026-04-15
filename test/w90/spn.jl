@@ -12,9 +12,8 @@
         2.2580234889560057e-5 - 0.00012322780868176796im 0.6996261651438792 - 0.7076597058385461im -1.1837183322351442e-8 - 7.277568287854686e-10im -1.3997437777976164e-8 + 0.0im
     ]
 
-    @test length(Sx) == length(Sy) == length(Sz) == 8
-    @test size(Sx[1]) == size(Sy[1]) == size(Sz[1]) == (4, 4)
-    @test Sx[end] ≈ ref_Sx_end
+    @test size(Sx) == size(Sy) == size(Sz) == (4, 4, 8)
+    @test Sx[:, :, end] ≈ ref_Sx_end
 
     tmpfile = tempname(; cleanup = true)
     write_spn(tmpfile, spn; binary = false)

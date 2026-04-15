@@ -17,23 +17,38 @@ struct RDat{T <: Real, IT <: Integer}
     Rvectors::Vector{Vec3{IT}}
 
     "x-component of position operator"
-    r_x::Vector{Matrix{Complex{T}}}
+    r_x::Array{Complex{T}, 3}
 
     "y-component of position operator"
-    r_y::Vector{Matrix{Complex{T}}}
+    r_y::Array{Complex{T}, 3}
 
     "z-component of position operator"
-    r_z::Vector{Matrix{Complex{T}}}
+    r_z::Array{Complex{T}, 3}
+end
+
+function RDat(
+        header::AbstractString,
+        Rvectors::Vector{<:Vec3},
+        r_x::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        r_y::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        r_z::AbstractVector{<:AbstractMatrix{Complex{T}}},
+    ) where {T <: Real}
+    return RDat(
+        String(header),
+        collect(Vec3{eltype(first(Rvectors))}.(Rvectors)),
+        cat(r_x...; dims = 3),
+        cat(r_y...; dims = 3),
+        cat(r_z...; dims = 3),
+    )
 end
 
 function Base.show(io::IO, rdat::RDat)
-    n_wann = isempty(rdat.r_x) ? 0 : size(rdat.r_x[1], 1)
-    return print(io, "RDat(n_Rvecs=$(length(rdat.r_x)), n_wann=$(n_wann))")
+    n_wann, _, n_Rvecs = size(rdat.r_x)
+    return print(io, "RDat(n_Rvecs=$(n_Rvecs), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", rdat::RDat)
-    n_Rvecs = length(rdat.r_x)
-    n_wann = isempty(rdat.r_x) ? 0 : size(rdat.r_x[1], 1)
+    n_wann, _, n_Rvecs = size(rdat.r_x)
 
     return print(
         io,
@@ -41,7 +56,7 @@ function Base.show(io::IO, ::MIME"text/plain", rdat::RDat)
           header: $(rdat.header)
           n_Rvecs: $(n_Rvecs)
           n_wann: $(n_wann)
-          r_x, r_y, r_z: Vector{Matrix{Complex}}($(n_wann)×$(n_wann))
+                    r_x, r_y, r_z: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
         )""",
     )
 end
@@ -60,9 +75,9 @@ function read_w90_r_dat(io::IO)
     n_Rvecs = parse(Int, strip(readline(io)))
 
     Rvectors = zeros(Vec3{Int}, n_Rvecs)
-    r_x = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
-    r_y = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
-    r_z = [Matrix{ComplexF64}(undef, n_wann, n_wann) for _ in 1:n_Rvecs]
+    r_x = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
+    r_y = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
+    r_z = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
     for iR in 1:n_Rvecs
         for n in 1:n_wann
             for m in 1:n_wann
@@ -70,9 +85,9 @@ function read_w90_r_dat(io::IO)
                 Rvectors[iR] = parse.(Int, line[1:3])
                 m == parse(Int, line[4]) || error(line)
                 n == parse(Int, line[5]) || error(line)
-                r_x[iR][m, n] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
-                r_y[iR][m, n] = complex(parse(Float64, line[8]), parse(Float64, line[9]))
-                r_z[iR][m, n] = complex(parse(Float64, line[10]), parse(Float64, line[11]))
+                r_x[m, n, iR] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
+                r_y[m, n, iR] = complex(parse(Float64, line[8]), parse(Float64, line[9]))
+                r_z[m, n, iR] = complex(parse(Float64, line[10]), parse(Float64, line[11]))
             end
         end
     end
@@ -97,9 +112,9 @@ See the fields of [`RDat`](@ref).
 function write_w90_r_dat(io::IO, rdat::RDat)
     n_Rvecs = length(rdat.Rvectors)
     n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
-    n_Rvecs == length(rdat.r_x) == length(rdat.r_y) == length(rdat.r_z) ||
+    n_Rvecs == size(rdat.r_x, 3) == size(rdat.r_y, 3) == size(rdat.r_z, 3) ||
         throw(DimensionMismatch("inconsistent length"))
-    n_wann = size(rdat.r_x[1], 1)
+    n_wann, _, _ = size(rdat.r_x)
 
     println(io, strip(rdat.header))
     @printf(io, "%d\n", n_wann)
@@ -114,12 +129,12 @@ function write_w90_r_dat(io::IO, rdat::RDat)
                     rdat.Rvectors[iR]...,
                     m,
                     n,
-                    real(rdat.r_x[iR][m, n]),
-                    imag(rdat.r_x[iR][m, n]),
-                    real(rdat.r_y[iR][m, n]),
-                    imag(rdat.r_y[iR][m, n]),
-                    real(rdat.r_z[iR][m, n]),
-                    imag(rdat.r_z[iR][m, n]),
+                    real(rdat.r_x[m, n, iR]),
+                    imag(rdat.r_x[m, n, iR]),
+                    real(rdat.r_y[m, n, iR]),
+                    imag(rdat.r_y[m, n, iR]),
+                    real(rdat.r_z[m, n, iR]),
+                    imag(rdat.r_z[m, n, iR]),
                 )
             end
         end

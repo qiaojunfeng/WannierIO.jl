@@ -589,7 +589,8 @@ end
 function write_win(
         file::Union{IO, AbstractString}, params::AbstractDict; header = default_header()
     )
-    return write_win(file, params, W90InputText(); header)
+    format = w90input_format(; toml=splitext(file)[2] == ".toml")
+    return write_win(file, params, format; header)
 end
 
 """

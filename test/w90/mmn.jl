@@ -5,9 +5,7 @@
     kpb_k = mmn.kpb_k
     kpb_G = mmn.kpb_G
 
-    @test length(M) == 216
-    @test length(M[1]) == 8
-    @test size(M[1][1]) == (4, 4)
+    @test size(M) == (4, 4, 8, 216)
 
     ref_M215_2 = ComplexF64[
         0.622355772788 + 0.779341618658im -0.015531265051 + 0.027176244708im -0.003508661654 - 0.015077859568im 0.021680417129 + 0.039444115733im
@@ -16,10 +14,10 @@
         0.007094594145 - 0.002164553263im 0.15507683774 + 0.19419614694im 0.69754000164 + 0.104779280281im -0.363933244214 + 0.045670933434im
     ]
 
-    @test M[215][2] ≈ ref_M215_2
+    @test M[:, :, 2, 215] ≈ ref_M215_2
 
     ref_kpb_k_3 = [2, 4, 9, 39, 46, 33, 183, 212]
-    @test kpb_k[3] == ref_kpb_k_3
+    @test kpb_k[:, 3] == ref_kpb_k_3
 
     ref_kpb_G_3 = WannierIO.Vec3[
         [0, 0, 0],
@@ -31,7 +29,7 @@
         [-1, 0, 0],
         [-1, -1, 0],
     ]
-    @test kpb_G[3] == ref_kpb_G_3
+    @test kpb_G[:, 3] == ref_kpb_G_3
 
     tmpfile = tempname(; cleanup = true)
     write_mmn(tmpfile, mmn)
