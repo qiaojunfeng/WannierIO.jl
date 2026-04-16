@@ -106,7 +106,7 @@ function pack(tbdat::TbDat, reducer::AbstractRvectorReducer)
     Rvectors = Vec3{Int}.(reducer.Rvectors)
 
     ops = OrderedDict(
-        map([:H, :r_x, :r_y, :r_z]) do name
+        map([:H, :rx, :ry, :rz]) do name
             string(name) => reducer(getfield(tbdat, name))
         end,
     )
@@ -121,7 +121,7 @@ function TbDat(pack::OperatorPack)
     Rvectors = Vec3{Int}.(pack.Rvectors)
     Rdegens = ones(Int, pack.n_Rvecs)
 
-    H, r_x, r_y, r_z = map(["H", "r_x", "r_y", "r_z"]) do name
+    H, rx, ry, rz = map(["H", "rx", "ry", "rz"]) do name
         haskey(pack.operators, name) || error("missing operator `$name`")
         op = pack.operators[name]
         if eltype(eltype(op)) <: Real
@@ -131,7 +131,7 @@ function TbDat(pack::OperatorPack)
         end
     end
 
-    return TbDat(pack.header, Mat3{Tr}(pack.lattice), Rvectors, Rdegens, H, r_x, r_y, r_z)
+    return TbDat(pack.header, Mat3{Tr}(pack.lattice), Rvectors, Rdegens, H, rx, ry, rz)
 end
 
 function WsvecDat(pack::OperatorPack)

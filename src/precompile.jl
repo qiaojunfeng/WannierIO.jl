@@ -37,12 +37,12 @@ end kpoint_path
         ComplexF64[0.5 + 0.0im 0.1 + 0.0im; 0.1 + 0.0im 0.6 + 0.0im],
         ComplexF64[0.0 + 0.0im 0.2 + 0.0im; 0.2 + 0.0im 0.0 + 0.0im],
     ]
-    r_x = [copy(H[1]), copy(H[2])]
-    r_y = [copy(H[1]), copy(H[2])]
-    r_z = [copy(H[1]), copy(H[2])]
+    rx = [copy(H[1]), copy(H[2])]
+    ry = [copy(H[1]), copy(H[2])]
+    rz = [copy(H[1]), copy(H[2])]
 
     hrdat = HrDat("precompile", Rvectors, Rdegens, H)
-    tbdat = TbDat("precompile", lattice, Rvectors, Rdegens, H, r_x, r_y, r_z)
+    tbdat = TbDat("precompile", lattice, Rvectors, Rdegens, H, rx, ry, rz)
 
     dense = [
         ComplexF64[1.0 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im 2.0 + 0.0im],
