@@ -5,7 +5,7 @@ CurrentModule = WannierIO
 ```
 
 Wannier90 tight-binding datasets can become large because each R-vector stores
-full dense operator matrices (`H`, `r_x`, `r_y`, `r_z`).
+full dense operator matrices (`H`, `rx`, `ry`, `rz`).
 
 WannierIO supports a sparse-packed representation that:
 

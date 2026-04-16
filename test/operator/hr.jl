@@ -48,7 +48,7 @@ end
         @test pack2 isa WannierIO.OperatorPack
         @test pack2.n_wann == dpack0.n_wann
         @test pack2.Rvectors == dpack0.Rvectors
-        @test collect(keys(pack2.operators)) == ["H", "r_x", "r_y", "r_z"]
+        @test collect(keys(pack2.operators)) == ["H", "rx", "ry", "rz"]
         @test isapprox(pack2.operators["H"], dpack0.operators["H"]; atol = 0.0)
     end
 end

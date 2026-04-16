@@ -9,9 +9,9 @@
     @test reducer == reducer2
 
     H1 = reducer(tbdat.H)
-    r_x1 = reducer(tbdat.r_x)
-    r_y1 = reducer(tbdat.r_y)
-    r_z1 = reducer(tbdat.r_z)
+    rx1 = reducer(tbdat.rx)
+    ry1 = reducer(tbdat.ry)
+    rz1 = reducer(tbdat.rz)
 
     ref = WannierIO.read_w90_tb_dat(
         artifact"Si2_valence/outputs/WS/reduced_Rvectors/Si2_valence_tb.dat"
@@ -21,9 +21,9 @@
     @test reducer.Rvectors == ref.Rvectors
     @test reducer.degens == tbdat.Rdegens
     @test isapprox(H1, ref.H; atol)
-    @test isapprox(r_x1, ref.r_x; atol)
-    @test isapprox(r_y1, ref.r_y; atol)
-    @test isapprox(r_z1, ref.r_z; atol)
+    @test isapprox(rx1, ref.rx; atol)
+    @test isapprox(ry1, ref.ry; atol)
+    @test isapprox(rz1, ref.rz; atol)
 end
 
 @testitem "MdrsRvectorReducer" begin
@@ -42,9 +42,9 @@ end
     @test reducer == reducer2
 
     H1 = reducer(tbdat.H)
-    r_x1 = reducer(tbdat.r_x)
-    r_y1 = reducer(tbdat.r_y)
-    r_z1 = reducer(tbdat.r_z)
+    rx1 = reducer(tbdat.rx)
+    ry1 = reducer(tbdat.ry)
+    rz1 = reducer(tbdat.rz)
 
     ref_tbdat = WannierIO.read_w90_tb_dat(
         artifact"Si2_valence/outputs/MDRS/reduced_Rvectors/Si2_valence_tb.dat"
@@ -59,14 +59,14 @@ end
     end
     ref_Rvectors = ref_tbdat.Rvectors[idx]
     ref_H = ref_tbdat.H[idx]
-    ref_r_x = ref_tbdat.r_x[idx]
-    ref_r_y = ref_tbdat.r_y[idx]
-    ref_r_z = ref_tbdat.r_z[idx]
+    ref_rx = ref_tbdat.rx[idx]
+    ref_ry = ref_tbdat.ry[idx]
+    ref_rz = ref_tbdat.rz[idx]
 
     atol = 1.0e-10
     @test reducer.Rvectors == ref_Rvectors
     @test isapprox(H1, ref_H; atol)
-    @test isapprox(r_x1, ref_r_x; atol)
-    @test isapprox(r_y1, ref_r_y; atol)
-    @test isapprox(r_z1, ref_r_z; atol)
+    @test isapprox(rx1, ref_rx; atol)
+    @test isapprox(ry1, ref_ry; atol)
+    @test isapprox(rz1, ref_rz; atol)
 end
