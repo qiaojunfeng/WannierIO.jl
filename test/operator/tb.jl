@@ -10,7 +10,7 @@
 
     pack2 = read_w90_tb(dst)
     @test pack2 isa WannierIO.OperatorPack
-    @test pack2.n_wann == dpack0.n_wann
+    @test n_wannier(pack2) == n_wannier(dpack0)
     @test pack2.Rvectors == dpack0.Rvectors
     @test pack2.lattice == dpack0.lattice
     for name in keys(dpack0.operators)
@@ -49,7 +49,7 @@ end
 
         for pack in (pack2, pack3)
             @test pack isa WannierIO.OperatorPack
-            @test pack.n_wann == dpack0.n_wann
+            @test n_wannier(pack) == n_wannier(dpack0)
             @test pack.Rvectors == dpack0.Rvectors
             @test pack.lattice == dpack0.lattice
             for name in keys(dpack0.operators)
@@ -70,7 +70,7 @@ end
         pack2 = read_operator(dst, fmt)
 
         @test pack2 isa WannierIO.OperatorPack{Float32, Int32}
-        @test pack2.n_wann == dpack0.n_wann
+        @test n_wannier(pack2) == n_wannier(dpack0)
         @test pack2.Rvectors == dpack0.Rvectors
         @test pack2.lattice ≈ dpack0.lattice
         for name in keys(dpack0.operators)

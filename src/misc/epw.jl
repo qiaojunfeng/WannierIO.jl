@@ -63,15 +63,6 @@ struct Ukk{T <: Real}
     """index of the last band"""
     ibndend::Int
 
-    """number of kpoints"""
-    n_kpts::Int
-
-    """number of bands"""
-    n_bands::Int
-
-    """number of wannier functions"""
-    n_wann::Int
-
     """gauge matrices, size `n_bands * n_wann * n_kpts` array"""
     U::Array{Complex{T}, 3}
 
@@ -86,6 +77,10 @@ struct Ukk{T <: Real}
     Note that EPW uses Cartesian coordinates w.r.t the QE `alat`, so it is dimensionless."""
     centers::Vector{Vec3{T}}
 end
+
+n_bands(ukk::Ukk) = size(ukk.U, 1)
+n_wannier(ukk::Ukk) = size(ukk.U, 2)
+n_kpoints(ukk::Ukk) = size(ukk.U, 3)
 
 """
     $(SIGNATURES)
@@ -188,9 +183,6 @@ function read_epw_ukk(io::IO)
     return Ukk(
         ibndstart,
         ibndend,
-        n_kpts,
-        n_bands,
-        n_wann,
         U,
         frozen_bands,
         excluded_bands,
@@ -221,9 +213,9 @@ function write_epw_ukk(io::IO, ukk::Ukk)
     @printf(io, "%d %d\n", ukk.ibndstart, ukk.ibndend)
 
     # the unitary matrices
-    for ik in 1:(ukk.n_kpts)
-        for ib in 1:(ukk.n_bands)
-            for iw in 1:(ukk.n_wann)
+    for ik in 1:n_kpoints(ukk)
+        for ib in 1:n_bands(ukk)
+            for iw in 1:n_wannier(ukk)
                 u = ukk.U[ib, iw, ik]
                 @printf(io, "(%25.18E,%25.18E)\n", real(u), imag(u))
             end
@@ -231,8 +223,8 @@ function write_epw_ukk(io::IO, ukk::Ukk)
     end
 
     # needs also lwindow when disentanglement is used
-    for ik in 1:(ukk.n_kpts)
-        for ib in 1:(ukk.n_bands)
+    for ik in 1:n_kpoints(ukk)
+        for ib in 1:n_bands(ukk)
             if ukk.frozen_bands[ib, ik]
                 @printf(io, "T\n")
             else
@@ -250,7 +242,7 @@ function write_epw_ukk(io::IO, ukk::Ukk)
     end
 
     # now write the Wannier centers to files
-    for iw in 1:(ukk.n_wann)
+    for iw in 1:n_wannier(ukk)
         # meed more precision other WS are not determined properly.
         @printf(io, "%22.12E  %22.12E  %22.12E\n", ukk.centers[iw]...)
     end
@@ -298,7 +290,6 @@ function Ukk(chk::Chk, alat::Real)
     n_bands = chk.n_bands
     exclude_band_indices = chk.exclude_bands
     n_kpts = chk.n_kpts
-    n_wann = chk.n_wann
     frozen_bands = trues(n_bands, n_kpts)
 
     n_excl_bands = length(exclude_band_indices)
@@ -323,9 +314,6 @@ function Ukk(chk::Chk, alat::Real)
     return Ukk(
         ibndstart,
         ibndend,
-        n_kpts,
-        n_bands,
-        n_wann,
         Uchk,
         frozen_bands,
         excluded_bands,

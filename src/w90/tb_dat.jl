@@ -35,6 +35,9 @@ struct TbDat{T <: Real, IT <: Integer}
     rz::Array{Complex{T}, 3}
 end
 
+n_wannier(tbdat::TbDat) = size(tbdat.H, 1)
+n_Rvectors(tbdat::TbDat) = size(tbdat.H, 3)
+
 function TbDat(
         header::AbstractString,
         lattice::AbstractMatrix{T},
@@ -58,8 +61,7 @@ function TbDat(
 end
 
 function Base.show(io::IO, tbdat::TbDat)
-    n_wann, _, n_Rvecs = size(tbdat.H)
-    return print(io, "TbDat(n_Rvecs=$(n_Rvecs), n_wann=$(n_wann))")
+    return print(io, "TbDat(n_Rvecs=$(n_Rvectors(tbdat)), n_wann=$(n_wannier(tbdat)))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", tbdat::TbDat)
@@ -78,8 +80,8 @@ function Base.show(io::IO, ::MIME"text/plain", tbdat::TbDat)
           n_Rvecs: $(n_Rvecs)
           n_wann: $(n_wann)
           Rdegens range: [$(degen_min), ..., $(degen_max)]
-                    H: Array{$(eltype(tbdat.H) <: Complex ? "Complex" : "Real")}($(n_wann)×$(n_wann)×$(n_Rvecs))
-                    rx, ry, rz: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
+          H: Array{$(eltype(tbdat.H) <: Complex ? "Complex" : "Real")}($(n_wann)×$(n_wann)×$(n_Rvecs))
+          rx, ry, rz: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
         )""",
     )
 end

@@ -11,10 +11,9 @@
     dense = densify(csc)
 
     @test csc isa WannierIO.CscPack{ComplexF64, Int32}
-    @test length(csc) == length(tbdat.H)
-    @test WannierIO.matrix_order(csc) == size(first(tbdat.H), 1)
+    @test size(csc) == size(tbdat.H)
     @test dense == tbdat.H
-    @test csc[1] == sparse(tbdat.H[1])
+    @test csc[:, :, 1] == sparse(tbdat.H[:, :, 1])
 end
 
 @testitem "SparseOperatorPack WS" begin
@@ -32,8 +31,8 @@ end
     @test spack isa WannierIO.SparseOperatorPack{Float64, Int32}
     @test spack.header == dpack.header
     @test spack.lattice == dpack.lattice
-    @test spack.n_Rvecs == dpack.n_Rvecs
-    @test spack.n_wann == dpack.n_wann
+    @test n_Rvectors(spack) == n_Rvectors(dpack)
+    @test n_wannier(spack) == n_wannier(dpack)
     @test spack.Rvectors == Matrix{Int32}(reduce(hcat, dpack.Rvectors))
     @test spack.operators["H"] isa WannierIO.CscPack{ComplexF64, Int32}
     @test dpack2.header == dpack.header
@@ -60,8 +59,8 @@ end
 
     @test spack isa WannierIO.SparseOperatorPack{Float32, Int16}
     @test eltype(spack.operators["H"].nzval) == ComplexF32
-    @test spack.n_Rvecs == Int16(dpack.n_Rvecs)
-    @test spack.n_wann == Int16(dpack.n_wann)
+    @test n_Rvectors(spack) == Int16(n_Rvectors(dpack))
+    @test n_wannier(spack) == Int16(n_wannier(dpack))
     @test dpack32 isa WannierIO.OperatorPack{Float32, Int16}
     @test dpack64 isa WannierIO.OperatorPack{Float64, Int16}
     @test dpack32.lattice ≈ dpack.lattice
@@ -83,7 +82,7 @@ end
     for name in keys(dpack.operators)
         sop = spack.operators[name]
         dop = dpack.operators[name]
-        @test all(isapprox.(sop, dop; atol = (opt.atol * 10)))
-        @test !all(isapprox.(sop, dop; atol = (opt.atol / 10)))
+        @test all(isapprox(sop[:, :, i], dop[:, :, i]; atol = (opt.atol * 10)) for i in axes(dop, 3))
+        @test !all(isapprox(sop[:, :, i], dop[:, :, i]; atol = (opt.atol / 10)) for i in axes(dop, 3))
     end
 end

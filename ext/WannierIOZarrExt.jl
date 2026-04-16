@@ -70,8 +70,8 @@ end
 function _zarr_tb_attrs(pack::WannierIO.SparseOperatorPack)
     return Dict(
         "header" => pack.header,
-        "n_wann" => pack.n_wann,
-        "n_Rvecs" => pack.n_Rvecs,
+        "n_wann" => n_wannier(pack),
+        "n_Rvecs" => n_Rvectors(pack),
         # Zarr does not preserve key/group order, so we store the
         # operator list as an explicit attribute for deterministic reading.
         "operator_names" => collect(keys(pack.operators)),
@@ -122,8 +122,8 @@ function _zarr_read_tb(g::Zarr.ZGroup)
         header, WannierIO.Mat3{Tr}(lattice), Rvectors, operators
     )
     # Just one quick sanity for dimensions
-    spack.n_wann == n_wann || error("n_wann does not match operator dimensions")
-    spack.n_Rvecs == n_Rvecs || error("n_Rvecs does not match operator dimensions")
+    n_wannier(spack) == n_wann || error("n_wann does not match operator dimensions")
+    n_Rvectors(spack) == n_Rvecs || error("n_Rvecs does not match operator dimensions")
 
     return WannierIO.densify(spack)
 end

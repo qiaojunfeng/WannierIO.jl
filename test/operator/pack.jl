@@ -6,8 +6,8 @@
     lattice = [1.0 0.0 0.0; 0.0 2.0 0.0; 0.0 0.0 3.0]
     Rvectors = [Vec3(0, 0, 0), Vec3(1, 0, 0)]
     operators = OrderedDict(
-        :H => [ComplexF64[1 0; 0 2], ComplexF64[0 1; 1 0]],
-        :X => [Float64[1 2; 3 4], Float64[5 6; 7 8]],
+        "H" => stack([ComplexF64[1 0; 0 2], ComplexF64[0 1; 1 0]]),
+        "X" => stack([Float64[1 2; 3 4], Float64[5 6; 7 8]]),
     )
 
     pack = OperatorPack(header, lattice, Rvectors, operators)
@@ -21,8 +21,8 @@
     @test collect(keys(pack.operators)) == ["H", "X"]
     @test eltype(eltype(pack.operators["H"])) == ComplexF64
     @test eltype(eltype(pack.operators["X"])) == Float64
-    @test pack.n_Rvecs == 2
-    @test pack.n_wann == 2
+    @test n_Rvectors(pack) == 2
+    @test n_wannier(pack) == 2
 end
 
 @testitem "OperatorPack validation" begin

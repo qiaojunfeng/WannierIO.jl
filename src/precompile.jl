@@ -33,21 +33,21 @@ end kpoint_path
     )
     Rvectors = [vec3(0, 0, 0), vec3(1, 0, 0)]
     Rdegens = [1, 1]
-    H = [
+    H = stack([
         ComplexF64[0.5 + 0.0im 0.1 + 0.0im; 0.1 + 0.0im 0.6 + 0.0im],
         ComplexF64[0.0 + 0.0im 0.2 + 0.0im; 0.2 + 0.0im 0.0 + 0.0im],
-    ]
-    rx = [copy(H[1]), copy(H[2])]
-    ry = [copy(H[1]), copy(H[2])]
-    rz = [copy(H[1]), copy(H[2])]
+    ])
+    rx = H
+    ry = H
+    rz = H
 
     hrdat = HrDat("precompile", Rvectors, Rdegens, H)
     tbdat = TbDat("precompile", lattice, Rvectors, Rdegens, H, rx, ry, rz)
 
-    dense = [
+    dense = stack([
         ComplexF64[1.0 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im 2.0 + 0.0im],
         ComplexF64[0.0 + 0.0im 3.0 + 0.0im; 3.0 + 0.0im 0.0 + 0.0im],
-    ]
+    ])
 
     cube = Cube(
         [vec3(0.0, 0.0, 0.0)],

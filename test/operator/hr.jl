@@ -3,13 +3,15 @@
 
     Rvectors = [Vec3(0, 0, 0), Vec3(1, 0, 0)]
     Rdegens = [2, 4]
-    H = [ComplexF64[2 0; 0 6], ComplexF64[4 0; 0 8]]
+    H = zeros(ComplexF64, 2, 2, 2)
+    H[:, :, 1] = [2 0; 0 6]
+    H[:, :, 2] = [4 0; 0 8]
     hrdat = WannierIO.HrDat("hr test", Rvectors, Rdegens, H)
 
     p = pack(hrdat)
 
-    @test p.operators["H"][1] == ComplexF64[1 0; 0 3]
-    @test p.operators["H"][2] == ComplexF64[1 0; 0 2]
+    @test p.operators["H"][:, :, 1] == ComplexF64[1 0; 0 3]
+    @test p.operators["H"][:, :, 2] == ComplexF64[1 0; 0 2]
 end
 
 @testitem "unified hr api" begin
@@ -27,7 +29,7 @@ end
     write_w90_hr(w90_file, hrdat0)
     pack_w90 = read_w90_hr(w90_file)
     @test pack_w90 isa WannierIO.OperatorPack
-    @test pack_w90.n_wann == dpack0.n_wann
+    @test n_wannier(pack_w90) == n_wannier(dpack0)
     @test pack_w90.Rvectors == dpack0.Rvectors
     @test collect(keys(pack_w90.operators)) == ["H"]
     @test all(isnan, pack_w90.lattice)
@@ -46,7 +48,7 @@ end
         pack2 = read_operator(dst, fmt)
 
         @test pack2 isa WannierIO.OperatorPack
-        @test pack2.n_wann == dpack0.n_wann
+        @test n_wannier(pack2) == n_wannier(dpack0)
         @test pack2.Rvectors == dpack0.Rvectors
         @test collect(keys(pack2.operators)) == ["H", "rx", "ry", "rz"]
         @test isapprox(pack2.operators["H"], dpack0.operators["H"]; atol = 0.0)

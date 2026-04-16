@@ -4,31 +4,24 @@ using OrderedCollections: OrderedDict
 
 abstract type AbstractOperatorPack end
 
-function _infer_n_wann(operators::AbstractDict)
+function n_wannier(operators::AbstractDict{String, <:Any})
     if isempty(operators)
         n_wann = 0
     else
         first_op = first(values(operators))
-        if isempty(first_op)
-            n_wann = 0
-        else
-            O = first(first_op)
-            size(O, 1) == size(O, 2) || error("operator matrices must be square")
-            n_wann = size(O, 1)
-        end
+        n_wann = size(first_op, 1)
     end
     return n_wann
 end
 
 function _normalize_operators(::Type{Tv}, operators::AbstractDict) where {Tv <: Real}
-    Tval = Union{Vector{Matrix{Tv}}, Vector{Matrix{Complex{Tv}}}}
-    out = OrderedDict{String, Tval}()
+    out = OrderedDict{String, Union{Array{Tv, 3}, Array{Complex{Tv}, 3}}}()
     for (name, op) in pairs(operators)
         key = String(name)
-        if eltype(eltype(op)) <: Real
-            out[key] = [Matrix{Tv}(O) for O in op]
+        if eltype(op) <: Real
+            out[key] = Array{Tv, 3}(op)
         else
-            out[key] = [Matrix{Complex{Tv}}(O) for O in op]
+            out[key] = Array{Complex{Tv}, 3}(op)
         end
     end
     return out
@@ -36,25 +29,25 @@ end
 
 function _validate_operator_pack(
         Tv::Type{<:Real},
-        n_wann::Integer,
-        n_Rvecs::Integer,
         Rvectors::AbstractVector{<:Vec3{<:Integer}},
-        operators::AbstractDict,
+        operators::AbstractDict;
+        n_Rvecs::Integer = length(Rvectors),
+        n_wann::Union{Integer, Nothing} = nothing,
     )
     length(Rvectors) == n_Rvecs || error("length(Rvectors) != n_Rvecs")
+    isnothing(n_wann) && (n_wann = n_wannier(operators))
     for (name, op) in pairs(operators)
-        length(op) == n_Rvecs ||
-            error("length of operator `$name` ($(length(op))) != n_Rvecs ($n_Rvecs)")
-        To = eltype(eltype(op))
+        size(op, 3) == n_Rvecs ||
+            error("length of operator `$name` ($(size(op, 3))) != n_Rvecs ($n_Rvecs)")
+        To = eltype(op)
         To in (Tv, Complex{Tv}) ||
-            error("operator `$name` has invalid element type $To, expected $Tv or $Tc")
-        for O in op
-            size(O) == (n_wann, n_wann) || error(
-                "operator `$name` has invalid matrix size $(size(O)), expected ($(n_wann), $(n_wann))",
+            error("operator `$name` has invalid element type $To, expected $Tv or $(Complex{Tv})")
+        size(op)[1:2] == (n_wann, n_wann) ||
+            error(
+                "operator `$name` has invalid matrix size $(size(op)[1:2]), expected ($(n_wann), $(n_wann))",
             )
-        end
     end
-    return
+    return nothing
 end
 
 """
@@ -79,13 +72,7 @@ struct OperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
     """Mapping operator names to vectors of dense matrices.
     The operators can be either real or complex.
     """
-    operators::OrderedDict{String, Union{Vector{Matrix{Tv}}, Vector{Matrix{Complex{Tv}}}}}
-
-    "Number of R-vectors."
-    n_Rvecs::Ti
-
-    "Number of Wannier functions."
-    n_wann::Ti
+    operators::OrderedDict{String, Union{Array{Tv, 3}, Array{Complex{Tv}, 3}}}
 
     function OperatorPack(
             header::AbstractString,
@@ -95,20 +82,19 @@ struct OperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
         ) where {Tv <: Real, Ti <: Integer}
         header = String(header)
         lattice = Mat3{Tv}(lattice)
-        n_Rvecs = Ti(length(Rvectors))
-        n_wann = Ti(_infer_n_wann(operators))
-        _validate_operator_pack(Tv, n_wann, n_Rvecs, Rvectors, operators)
+        _validate_operator_pack(Tv, Rvectors, operators)
         Rvectors = collect(Vec3{Ti}.(Rvectors))
         operators = _normalize_operators(Tv, operators)
-        return new{Tv, Ti}(header, lattice, Rvectors, operators, n_Rvecs, n_wann)
+        return new{Tv, Ti}(header, lattice, Rvectors, operators)
     end
 end
 
+n_Rvectors(op::OperatorPack) = length(op.Rvectors)
+n_wannier(op::OperatorPack) = n_wannier(op.operators)
+
 function Base.show(io::IO, op::OperatorPack)
     n_ops = length(op.operators)
-    return print(
-        io, "OperatorPack(n_Rvecs=$(op.n_Rvecs), n_wann=$(op.n_wann), n_operators=$(n_ops))"
-    )
+    return print(io, "OperatorPack(n_Rvecs=$(n_Rvectors(op)), n_wann=$(n_wannier(op)), n_operators=$(n_ops))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", op::OperatorPack)
@@ -119,8 +105,8 @@ function Base.show(io::IO, ::MIME"text/plain", op::OperatorPack)
         io,
         """OperatorPack(
           header: $(op.header)
-          n_Rvecs: $(op.n_Rvecs)
-          n_wann: $(op.n_wann)
+          n_Rvecs: $(n_Rvectors(op))
+          n_wann: $(n_wannier(op))
           operators ($(n_ops)): $(join(op_names, ", "))
         )""",
     )

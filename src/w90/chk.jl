@@ -96,6 +96,14 @@ struct Chk{T <: Real}
     ω::Vector{T}
 end
 
+# I still save these size in the Chk struct, as these number are indeed written
+# in the chk file, the Chk struct tries to minic that layout.
+# These functions are provided to have a unified API.
+n_bands(chk::Chk) = chk.n_bands
+n_wannier(chk::Chk) = chk.n_wann
+n_bvectors(chk::Chk) = chk.n_bvecs
+n_kpoints(chk::Chk) = chk.n_kpts
+
 function Base.show(io::IO, chk::Chk)
     return print(io, "Chk(n_kpts=$(chk.n_kpts), n_bands=$(chk.n_bands), n_wann=$(chk.n_wann))")
 end
