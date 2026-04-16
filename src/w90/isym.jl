@@ -58,6 +58,8 @@ struct RepMatBand{N}
     d::SMatrix{N, N, ComplexF64}
 end
 
+n_bands(::Type{<:RepMatBand{N}}) where {N} = N
+
 """
 A representation matrix applied to the Wannier functions for a symmetry
 operation in real space.
@@ -73,6 +75,8 @@ struct RepMatWann{N}
     """Representation matrix acting on the Wannier functions."""
     D::SMatrix{N, N, ComplexF64}
 end
+
+n_wannier(::Type{<:RepMatWann{N}}) where {N} = N
 
 """
 Container for `prefix.isym` data.
@@ -105,18 +109,23 @@ struct Isym{RB <: RepMatBand, RW <: RepMatWann}
     "Number of bands"
     n_bands::Int64
 
-    "Number of band representation matrices"
+    """Number of representation matrices for symmetry operations
+    in the little groups of all IBZ kpoints"""
     n_repmat_band::Int64
 
-    "Representation matrices for bands"
+    """Representation matrices for symmetry operations in the little groups of
+    all IBZ kpoints"""
     repmat_band::Vector{RB}
 
     "Number of Wannier functions"
     n_wann::Int64
 
-    "Representation matrices for Wannier functions"
+    "Representation matrices for symmetry operations acting on the Wannier functions"
     repmat_wann::Vector{RW}
 end
+
+n_bands(::Isym{RB, RW}) where {RB <: RepMatBand, RW <: RepMatWann} = n_bands(RB)
+n_wannier(::Isym{RB, RW}) where {RB <: RepMatBand, RW <: RepMatWann} = n_wannier(RW)
 
 """
     $(SIGNATURES)
@@ -124,21 +133,7 @@ end
 Read `prefix.isym`.
 
 # Return
-A [`Isym`](@ref) with the following fields:
-- `header::String`: Header line.
-- `n_symops::Int64`: Number of symmetry operations.
-- `spinors::Bool`: Whether spinors are considered.
-- `symops::Vector{SymOp}`: Symmetry operations.
-- `nkpts_ibz::Int64`: Number of IBZ kpoints.
-- `kpoints_ibz::Vector{Vec3{Float64}}`: IBZ kpoints in fractional coordinates.
-- `n_bands::Int64`: Number of bands.
-- `n_repmat_band::Int64`: Number of representation matrices for symmetry operations
-  in the little groups of all IBZ kpoints.
-- `repmat_band::Vector{RepMatBand{n_bands}}`: Representation matrices for symmetry
-  operations in the little groups of all IBZ kpoints.
-- `n_wann::Int64`: Number of Wannier functions.
-- `repmat_wann::Vector{RepMatWann{n_wann}}`: Representation matrices for symmetry operations
-  acting on the Wannier functions.
+- A [`Isym`](@ref)
 """
 function read_isym(io::IO)
     header = readline(io)

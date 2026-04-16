@@ -21,20 +21,24 @@ struct WsvecDat{IT <: Integer}
     "The ``\\mathbf{R}`` vectors"
     Rvectors::Vector{Vec3{IT}}
 
-    "MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
+    """MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors of size `n_wann × n_wann × n_Rvecs`,
+    or `nothing` when `mdrs == false`"""
     Tvectors::Union{Array{Vector{Vec3{IT}}, 3}, Nothing}
 
-    "Degeneracies of MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors, or `nothing` when `mdrs == false`"
+    """Degeneracies of MDRS ``\\mathbf{T}_{m n \\mathbf{R}}`` vectors of size `n_wann × n_wann × n_Rvecs`, or `nothing` when `mdrs == false`"""
     Tdegens::Union{Array{IT, 3}, Nothing}
 
     "Number of Wannier functions"
     n_wann::Int
 end
 
+n_wannier(wsvec::WsvecDat) = wsvec.n_wann
+n_Rvectors(wsvec::WsvecDat) = length(wsvec.Rvectors)
+
 function Base.show(io::IO, wsvec::WsvecDat)
     return print(
         io,
-        "WsvecDat(n_Rvecs=$(length(wsvec.Rvectors)), n_wann=$(wsvec.n_wann), mdrs=$(wsvec.mdrs))",
+        "WsvecDat(n_Rvecs=$(n_Rvectors(wsvec)), n_wann=$(n_wannier(wsvec)), mdrs=$(wsvec.mdrs))",
     )
 end
 
@@ -44,8 +48,8 @@ function Base.show(io::IO, ::MIME"text/plain", wsvec::WsvecDat)
         """WsvecDat(
           header: $(wsvec.header)
           mdrs: $(wsvec.mdrs)
-          n_Rvecs: $(length(wsvec.Rvectors))
-          n_wann: $(wsvec.n_wann)
+          n_Rvecs: $(n_Rvectors(wsvec))
+          n_wann: $(n_wannier(wsvec))
           Tvectors: $(isnothing(wsvec.Tvectors) ? "nothing" : "present")
           Tdegens: $(isnothing(wsvec.Tdegens) ? "nothing" : "present")
         )""",
@@ -55,21 +59,30 @@ end
 """
 For Wigner-Seitz Rvectors, needs to provide a `n_wann` for number of Wannier functions.
 """
-function WsvecDat(header::String, Rvectors::Vector{<:Vec3}, n_wann::Integer)
-    return WsvecDat(header, false, Rvectors, nothing, nothing, n_wann)
+function WsvecDat(header::AbstractString, Rvectors::AbstractVector{<:AbstractVector}, n_wann::Integer)
+    IT = eltype(eltype(Rvectors))
+    return WsvecDat{IT}(String(header), false, collect(Vec3{IT}.(Rvectors)), nothing, nothing, n_wann)
 end
 
 """
 For MDRS Rvectors, the `n_wann` is optional and can be automatically determined from the `Tvectors`.
 """
 function WsvecDat(
-        header::String,
-        Rvectors::Vector{<:Vec3},
+        header::AbstractString,
+        Rvectors::AbstractVector{<:AbstractVector},
         Tvectors::AbstractArray,
         Tdegens::AbstractArray,
     )
     n_wann = size(Tvectors, 1)
-    return WsvecDat(header, true, Rvectors, Tvectors, Tdegens, n_wann)
+    IT = eltype(eltype(Rvectors))
+    return WsvecDat{IT}(
+        String(header),
+        true,
+        collect(Vec3{IT}.(Rvectors)),
+        Array{Vector{Vec3{IT}}, 3}(Tvectors),
+        Array{IT, 3}(Tdegens),
+        n_wann,
+    )
 end
 
 """
@@ -176,11 +189,12 @@ function write_w90_wsvec_dat(io::IO, wsvec::WsvecDat)
         println(io, wsvec.header * "  with use_ws_distance=.false.")
     end
 
-    n_Rvecs = length(wsvec.Rvectors)
+    n_Rvecs = n_Rvectors(wsvec)
+    n_wann = n_wannier(wsvec)
     for iR in 1:n_Rvecs
         R = wsvec.Rvectors[iR]
-        for m in 1:wsvec.n_wann
-            for n in 1:wsvec.n_wann
+        for m in 1:n_wann
+            for n in 1:n_wann
                 @printf(io, "%5d %5d %5d %5d %5d\n", R..., m, n)
 
                 if wsvec.mdrs

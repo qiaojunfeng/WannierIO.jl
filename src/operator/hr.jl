@@ -111,7 +111,7 @@ function pack(hrdat::HrDat{T}, reducer::AbstractRvectorReducer) where {T <: Real
     Tr = float(T)
     lattice = _missing_lattice(Tr)
     Rvectors = Vec3{Int}.(reducer.Rvectors)
-    ops = OrderedDict("H" => [Matrix{Complex{Tr}}(M) for M in reducer(hrdat.H)])
+    ops = OrderedDict("H" => Array{Complex{Tr}, 3}(reducer(hrdat.H)))
     return OperatorPack(hrdat.header, lattice, Rvectors, ops)
 end
 
@@ -122,7 +122,7 @@ function HrDat(pack::OperatorPack)
     return HrDat(
         pack.header,
         Vec3{Int}.(pack.Rvectors),
-        ones(Int, pack.n_Rvecs),
-        [Matrix{Tc}(O) for O in H],
+        ones(Int, n_Rvectors(pack)),
+        Array{Tc}(H),
     )
 end

@@ -58,10 +58,10 @@ end
         findfirst(==(R), ref_tbdat.Rvectors)
     end
     ref_Rvectors = ref_tbdat.Rvectors[idx]
-    ref_H = ref_tbdat.H[idx]
-    ref_rx = ref_tbdat.rx[idx]
-    ref_ry = ref_tbdat.ry[idx]
-    ref_rz = ref_tbdat.rz[idx]
+    ref_H = ref_tbdat.H[:, :, idx]
+    ref_rx = ref_tbdat.rx[:, :, idx]
+    ref_ry = ref_tbdat.ry[:, :, idx]
+    ref_rz = ref_tbdat.rz[:, :, idx]
 
     atol = 1.0e-10
     @test reducer.Rvectors == ref_Rvectors

@@ -25,6 +25,7 @@ using CrystalBase
 
 include("common/const.jl")
 include("common/format.jl")
+include("common/size.jl")
 include("util/fortran.jl")
 include("util/header.jl")
 include("util/toml.jl")
@@ -67,6 +68,6 @@ include("operator/sparse.jl")
 include("operator/tb.jl")
 include("operator/hr.jl")
 
-# include("precompile.jl")
+include("precompile.jl")
 
 end
