@@ -13,9 +13,7 @@ Auto detect the number of bands and kpoints.
     # find unique elements
     n_bands = length(Set(idx_b))
     n_kpts = length(Set(idx_k))
-    E = reshape(eig, (n_bands, n_kpts))
-
-    return map(ik -> E[:, ik], 1:n_kpts)
+    return reshape(eig, (n_bands, n_kpts))
 end
 
 """
@@ -25,9 +23,10 @@ Check that eigenvalues are in order.
 
 Some times there are small noises, use `digits` to set the number of digits for comparisons.
 """
-@inline function _check_eig_order(eigenvalues::AbstractVector; digits = 7)
+@inline function _check_eig_order(eigenvalues::AbstractMatrix; digits = 7)
     round_digits(x) = round(x; digits)
-    for (ik, eig) in enumerate(eigenvalues)
+    for ik in axes(eigenvalues, 2)
+        eig = view(eigenvalues, :, ik)
         if !issorted(eig; by = round_digits)
             @warn "Eigenvalues are not sorted at " ik eig
         end
@@ -46,7 +45,7 @@ Read the wannier90 `eig` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `eigenvalues`: a lenth-`n_kpts` vector, each element is a length-`n_bands` vector
+- `eigenvalues`: a matrix of size `n_bands × n_kpts`
 
 The 1st version is a convenience wrapper function for the 2nd and 3rd versions.
 """
@@ -111,30 +110,26 @@ Write `eig` file.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `eigenvalues`: a length-`n_kpts` vector, each element is a length-`n_bands` vector
+- `eigenvalues`: a matrix of size `n_bands × n_kpts`
 
 # Keyword arguments
 - `binary`: if true write in Fortran binary format.
 """
 function write_eig end
 
-function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranText)
-    n_kpts = length(eigenvalues)
-    n_kpts > 0 || throw(ArgumentError("Empty eigenvalues"))
-    n_bands = length(eigenvalues[1])
+function write_eig(io::IO, eigenvalues::AbstractMatrix, ::FortranText)
+    n_bands, n_kpts = size(eigenvalues)
 
     for ik in 1:n_kpts
         for ib in 1:n_bands
-            @printf(io, "%5d%5d%18.12f\n", ib, ik, eigenvalues[ik][ib])
+            @printf(io, "%5d%5d%18.12f\n", ib, ik, eigenvalues[ib, ik])
         end
     end
     return
 end
 
-function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
-    n_kpts = length(eigenvalues)
-    n_kpts > 0 || throw(ArgumentError("Empty eigenvalues"))
-    n_bands = length(eigenvalues[1])
+function write_eig(io::IO, eigenvalues::AbstractMatrix, ::FortranBinaryStream)
+    n_bands, n_kpts = size(eigenvalues)
 
     # gfortran integer is 4 bytes
     Tint = Int32
@@ -143,14 +138,14 @@ function write_eig(io::IO, eigenvalues::AbstractVector, ::FortranBinaryStream)
         for ib in 1:n_bands
             write(io, Tint(ib))
             write(io, Tint(ik))
-            write(io, Float64(eigenvalues[ik][ib]))
+            write(io, Float64(eigenvalues[ib, ik]))
         end
     end
     return
 end
 
 function write_eig(
-        filename::AbstractString, eigenvalues::AbstractVector, format::AbstractFileFormat
+        filename::AbstractString, eigenvalues::AbstractMatrix, format::AbstractFileFormat
     )
     return open(filename, "w") do io
         write_eig(io, eigenvalues, format)
@@ -158,7 +153,7 @@ function write_eig(
 end
 
 function write_eig(
-        file::Union{IO, AbstractString}, eigenvalues::AbstractVector; binary = false
+        file::Union{IO, AbstractString}, eigenvalues::AbstractMatrix; binary = false
     )
     format = fortran_format(; binary, stream = true)
     return write_eig(file, eigenvalues, format)
