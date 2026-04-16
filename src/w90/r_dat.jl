@@ -16,39 +16,39 @@ struct RDat{T <: Real, IT <: Integer}
     "``\\mathbf{R}``-vectors on which operators are defined"
     Rvectors::Vector{Vec3{IT}}
 
-    "x-component of position operator"
-    r_x::Array{Complex{T}, 3}
+    "x-component of position operator, size `n_wann × n_wann × n_Rvecs`"
+    rx::Array{Complex{T}, 3}
 
-    "y-component of position operator"
-    r_y::Array{Complex{T}, 3}
+    "y-component of position operator, size `n_wann × n_wann × n_Rvecs`"
+    ry::Array{Complex{T}, 3}
 
-    "z-component of position operator"
-    r_z::Array{Complex{T}, 3}
+    "z-component of position operator, size `n_wann × n_wann × n_Rvecs`"
+    rz::Array{Complex{T}, 3}
 end
 
 function RDat(
         header::AbstractString,
         Rvectors::Vector{<:Vec3},
-        r_x::AbstractVector{<:AbstractMatrix{Complex{T}}},
-        r_y::AbstractVector{<:AbstractMatrix{Complex{T}}},
-        r_z::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        rx::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        ry::AbstractVector{<:AbstractMatrix{Complex{T}}},
+        rz::AbstractVector{<:AbstractMatrix{Complex{T}}},
     ) where {T <: Real}
     return RDat(
         String(header),
         collect(Vec3{eltype(first(Rvectors))}.(Rvectors)),
-        cat(r_x...; dims = 3),
-        cat(r_y...; dims = 3),
-        cat(r_z...; dims = 3),
+        cat(rx...; dims = 3),
+        cat(ry...; dims = 3),
+        cat(rz...; dims = 3),
     )
 end
 
 function Base.show(io::IO, rdat::RDat)
-    n_wann, _, n_Rvecs = size(rdat.r_x)
+    n_wann, _, n_Rvecs = size(rdat.rx)
     return print(io, "RDat(n_Rvecs=$(n_Rvecs), n_wann=$(n_wann))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", rdat::RDat)
-    n_wann, _, n_Rvecs = size(rdat.r_x)
+    n_wann, _, n_Rvecs = size(rdat.rx)
 
     return print(
         io,
@@ -56,7 +56,7 @@ function Base.show(io::IO, ::MIME"text/plain", rdat::RDat)
           header: $(rdat.header)
           n_Rvecs: $(n_Rvecs)
           n_wann: $(n_wann)
-                    r_x, r_y, r_z: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
+                    rx, ry, rz: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
         )""",
     )
 end
@@ -75,9 +75,9 @@ function read_w90_r_dat(io::IO)
     n_Rvecs = parse(Int, strip(readline(io)))
 
     Rvectors = zeros(Vec3{Int}, n_Rvecs)
-    r_x = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
-    r_y = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
-    r_z = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
+    rx = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
+    ry = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
+    rz = zeros(ComplexF64, n_wann, n_wann, n_Rvecs)
     for iR in 1:n_Rvecs
         for n in 1:n_wann
             for m in 1:n_wann
@@ -85,14 +85,14 @@ function read_w90_r_dat(io::IO)
                 Rvectors[iR] = parse.(Int, line[1:3])
                 m == parse(Int, line[4]) || error(line)
                 n == parse(Int, line[5]) || error(line)
-                r_x[m, n, iR] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
-                r_y[m, n, iR] = complex(parse(Float64, line[8]), parse(Float64, line[9]))
-                r_z[m, n, iR] = complex(parse(Float64, line[10]), parse(Float64, line[11]))
+                rx[m, n, iR] = complex(parse(Float64, line[6]), parse(Float64, line[7]))
+                ry[m, n, iR] = complex(parse(Float64, line[8]), parse(Float64, line[9]))
+                rz[m, n, iR] = complex(parse(Float64, line[10]), parse(Float64, line[11]))
             end
         end
     end
 
-    return RDat(String(header), Rvectors, r_x, r_y, r_z)
+    return RDat(String(header), Rvectors, rx, ry, rz)
 end
 
 function read_w90_r_dat(filename::AbstractString)
@@ -112,9 +112,9 @@ See the fields of [`RDat`](@ref).
 function write_w90_r_dat(io::IO, rdat::RDat)
     n_Rvecs = length(rdat.Rvectors)
     n_Rvecs > 0 || throw(ArgumentError("empty Rvectors"))
-    n_Rvecs == size(rdat.r_x, 3) == size(rdat.r_y, 3) == size(rdat.r_z, 3) ||
+    n_Rvecs == size(rdat.rx, 3) == size(rdat.ry, 3) == size(rdat.rz, 3) ||
         throw(DimensionMismatch("inconsistent length"))
-    n_wann, _, _ = size(rdat.r_x)
+    n_wann, _, _ = size(rdat.rx)
 
     println(io, strip(rdat.header))
     @printf(io, "%d\n", n_wann)
@@ -129,12 +129,12 @@ function write_w90_r_dat(io::IO, rdat::RDat)
                     rdat.Rvectors[iR]...,
                     m,
                     n,
-                    real(rdat.r_x[m, n, iR]),
-                    imag(rdat.r_x[m, n, iR]),
-                    real(rdat.r_y[m, n, iR]),
-                    imag(rdat.r_y[m, n, iR]),
-                    real(rdat.r_z[m, n, iR]),
-                    imag(rdat.r_z[m, n, iR]),
+                    real(rdat.rx[m, n, iR]),
+                    imag(rdat.rx[m, n, iR]),
+                    real(rdat.ry[m, n, iR]),
+                    imag(rdat.ry[m, n, iR]),
+                    real(rdat.rz[m, n, iR]),
+                    imag(rdat.rz[m, n, iR]),
                 )
             end
         end
