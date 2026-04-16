@@ -5,7 +5,7 @@
     @assert wsvec.mdrs == false
     @test length(wsvec.Rvectors) == 279
     @test wsvec.Rvectors[1] == [-4, 0, 2]
-    @test wsvec.n_wann == 4
+    @test n_wannier(wsvec) == 4
 end
 
 @testitem "read wsvec MDRS" begin
@@ -20,7 +20,7 @@ end
     @test wsvec.Tvectors[1, 1, 1] == Vector{Vec3}([[0, 0, 0], [6, 0, -6], [6, 0, 0]])
     @test size(wsvec.Tdegens) == (4, 4, 279)
     @test wsvec.Tdegens[:, :, 1] == [3 1 1 1; 1 3 1 1; 2 2 3 2; 1 1 1 3]
-    @test wsvec.n_wann == 4
+    @test n_wannier(wsvec) == 4
 end
 
 @testitem "WsvecDat constructors" begin
@@ -32,7 +32,7 @@ end
     @test wsvec.header == "constructor test"
     @test wsvec.mdrs == false
     @test wsvec.Rvectors == Rvectors
-    @test wsvec.n_wann == 1
+    @test n_wannier(wsvec) == 1
 
     Tvectors = Array{Vector{Vec3{Int}}, 3}(undef, 1, 1, 1)
     Tvectors[1, 1, 1] = [Vec3(0, 0, 0)]
@@ -45,7 +45,7 @@ end
     @test wsvec_mdrs.Rvectors == Rvectors
     @test wsvec_mdrs.Tvectors == Tvectors
     @test wsvec_mdrs.Tdegens == Tdegens
-    @test wsvec_mdrs.n_wann == 1
+    @test n_wannier(wsvec_mdrs) == 1
 end
 
 @testitem "write wsvec WS" begin

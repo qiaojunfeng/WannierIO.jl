@@ -8,8 +8,9 @@ Pack a series of CSC matrices into a compact representation.
 
 $(TYPEDEF)
 
-This packs a length-`L` vector of `N × N` sparse matrices into
-one struct with concatenated nonzero values and indices.
+This packs a `N × N × L` sparse array into one struct with concatenated
+nonzero values and indices. Each `N × N` matrix is stored in compressed sparse
+column (CSC) format, and the `L` matrices are concatenated along the nonzero dimension.
 
 # Fields
 
@@ -92,44 +93,55 @@ function CscPack{Tv, Ti}(
     return CscPack(nzptr, colptr, rowval, nzval)
 end
 
+function CscPack{Tv, Ti}(arr::AbstractArray{T, 3}) where {Tv <: Number, Ti <: Integer, T <: Number}
+    mats = [sparse(arr[:, :, i]) for i in axes(arr, 3)]
+    return CscPack{Tv, Ti}(mats)
+end
+
 "Number of packed matrices."
 Base.length(p::CscPack) = size(p.colptr, 2)
 
-"Size `N` of each `N × N` inner matrix."
-matrix_order(p::CscPack) = size(p.colptr, 1) - 1
+"Size `N × N × L`."
+function Base.size(p::CscPack)
+    N = size(p.colptr, 1) - 1
+    L = size(p.colptr, 2)
+    return (N, N, L)
+end
 
-"Return the `l`-th matrix as a `SparseMatrixCSC`."
-function Base.getindex(p::CscPack{Tv, Ti}, l::Integer) where {Tv <: Number, Ti <: Integer}
-    1 <= l <= length(p) || throw(BoundsError(p, l))
+function Base.size(p::CscPack, d)
+    size(p)[d]
+end
+
+"Return the `l`-th matrix as a `SparseMatrixCSC` with `p[:, :, l]`."
+function Base.getindex(
+        p::CscPack{Tv, Ti}, ::Colon, ::Colon, l::Integer
+    ) where {Tv <: Number, Ti <: Integer}
+    1 <= l <= size(p, 3) || throw(BoundsError(p, l))
     r = p.nzptr[l]:(p.nzptr[l + 1] - 1)
-    N = matrix_order(p)
+    N = size(p, 1)
     return SparseMatrixCSC{Tv, Ti}(N, N, p.colptr[:, l], p.rowval[r], p.nzval[r])
 end
 
-Base.eltype(::Type{CscPack{Tv, Ti}}) where {Tv <: Number, Ti <: Integer} = SparseMatrixCSC{Tv, Ti}
-Base.iterate(p::CscPack, i::Int = 1) = i > length(p) ? nothing : (p[i], i + 1)
-Base.isempty(p::CscPack) = length(p) == 0
-Base.first(p::CscPack) = p[1]
-Base.last(p::CscPack) = p[length(p)]
+Base.eltype(::Type{CscPack{Tv, Ti}}) where {Tv <: Number, Ti <: Integer} = Tv
+Base.isempty(p::CscPack) = prod(size(p)) == 0
 
 function Base.show(io::IO, csc::CscPack)
     L = length(csc)
-    N = matrix_order(csc)
+    N = size(csc, 1)
     nnz_total = length(csc.nzval)
     return print(io, "CscPack(L=$(L), N=$(N), nnz=$(nnz_total))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", csc::CscPack)
     L = length(csc)
-    N = matrix_order(csc)
+    N = size(csc, 1)
     nnz_total = length(csc.nzval)
     nnz_avg = L == 0 ? 0 : div(nnz_total, L)
 
     return print(
         io,
         """CscPack(
-          n_matrices: $(L)
-          matrix_size: $(N)×$(N)
+          size: $(N)×$(N)×$(L)
           total_nonzeros: $(nnz_total)
           avg_nonzeros_per_matrix: $(nnz_avg)
           value_type: $(eltype(csc.nzval))
@@ -167,10 +179,8 @@ end
 """
 Check if the imaginary part is negligible compared to `atol`.
 """
-function is_almost_real(
-        mats::AbstractVector{<:AbstractMatrix{T}}, atol::Real
-    ) where {T <: Complex}
-    @inbounds for M in mats
+function is_almost_real(arr::AbstractArray{T, 3}, atol::Real) where {T <: Complex}
+    @inbounds for M in arr
         for v in M
             abs(imag(v)) < atol || return false
         end
@@ -178,7 +188,7 @@ function is_almost_real(
     return true
 end
 
-is_almost_real(::AbstractVector{<:AbstractMatrix{<:Real}}, ::Real) = true
+is_almost_real(::AbstractArray{<:Real, 3}, ::Real) = true
 
 """
     _force_value_type(operator_eltype, value_type)
@@ -201,21 +211,21 @@ Only entries with `abs(real(v)) >= atol || abs(imag(v)) >= atol` are stored.
 See [`densify`](@ref) for the inverse.
 
 # Arguments
-- `op`: a vector of `n_wann × n_wann` matrices representing the operator at different R-vectors.
+- `op`: a `n_wann × n_wann × n_Rvecs` array representing the operator at different R-vectors.
 
 # Keyword Arguments
 """
-function sparsify(op::AbstractVector{<:AbstractMatrix}, opt::SparseOption = SparseOption())
+function sparsify(op::AbstractArray{T, 3}, opt::SparseOption = SparseOption()) where {T <: Number}
     isempty(op) && error("operator list must not be empty")
 
     Ti = opt.index_type
-    N = size(first(op), 1)
-    Tvin = eltype(first(op))
-    to_real = (Tvin <: Complex) && (opt.value_type <: Real) && is_almost_real(op, opt.atol)
-    Tvout = to_real ? opt.value_type : _force_value_type(Tvin, opt.value_type)
+    N = size(op, 1)
+    to_real = (T <: Complex) && (opt.value_type <: Real) && is_almost_real(op, opt.atol)
+    Tvout = to_real ? opt.value_type : _force_value_type(T, opt.value_type)
     Trout = real(Tvout)
 
-    mats = map(op) do O
+    mats = map(1:size(op, 3)) do i
+        O = op[:, :, i]
         size(O) == (N, N) || error("operator matrices must have size ($N, $N)")
         row = Ti[]
         col = Ti[]
@@ -248,10 +258,13 @@ Reconstruct dense matrices from sparse CSC matrices produced by [`sparsify`](@re
 Set `value_type` to force conversion. Use `nothing` to preserve stored type.
 """
 function densify(pack::CscPack{Tv, Ti}; value_type::Type{<:Number} = Tv) where {Tv, Ti}
-    L = length(pack)
-    L > 0 || error("invalid sparse pack: operator list is empty")
+    L = size(pack, 3)
     T = _force_value_type(Tv, value_type)
-    return [Matrix{T}(pack[l]) for l in 1:L]
+    arr = Array{T, 3}(undef, size(pack))
+    for l in 1:L
+        arr[:, :, l] = pack[:, :, l]
+    end
+    return arr
 end
 
 """
@@ -273,22 +286,14 @@ struct SparseOperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
     "Mapping operator names to sparse packs."
     operators::OrderedDict{String, Union{CscPack{Tv, Ti}, CscPack{Complex{Tv}, Ti}}}
 
-    "Number of R-vectors."
-    n_Rvecs::Ti
-
-    "Number of Wannier functions."
-    n_wann::Ti
-
     function SparseOperatorPack(
             header::AbstractString,
             lattice::AbstractMatrix{Tv},
             Rvectors::AbstractMatrix{Ti},
             operators::AbstractDict{<:AbstractString, <:CscPack},
         ) where {Tv <: Real, Ti <: Integer}
-        n_Rvecs = Ti(size(Rvectors, 2))
-        n_wann = Ti(_infer_n_wann(operators))
         Rvs = Vec3{Ti}.(eachcol(Rvectors))
-        _validate_operator_pack(Tv, n_wann, n_Rvecs, Rvs, operators)
+        _validate_operator_pack(Tv, Rvs, operators)
 
         Tops = Union{CscPack{Tv, Ti}, CscPack{Complex{Tv}, Ti}}
         ops = OrderedDict{String, Tops}()
@@ -296,17 +301,18 @@ struct SparseOperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
             ops[String(name)] = op
         end
 
-        return new{Tv, Ti}(
-            String(header), Mat3{Tv}(lattice), Matrix{Ti}(Rvectors), ops, n_Rvecs, n_wann
-        )
+        return new{Tv, Ti}(String(header), Mat3{Tv}(lattice), Matrix{Ti}(Rvectors), ops)
     end
 end
+
+n_Rvectors(pack::SparseOperatorPack) = size(pack.Rvectors, 2)
+n_wannier(pack::SparseOperatorPack) = n_wannier(pack.operators)
 
 function Base.show(io::IO, sop::SparseOperatorPack)
     n_ops = length(sop.operators)
     return print(
         io,
-        "SparseOperatorPack(n_Rvecs=$(sop.n_Rvecs), n_wann=$(sop.n_wann), n_operators=$(n_ops))",
+        "SparseOperatorPack(n_Rvecs=$(n_Rvectors(sop)), n_wann=$(n_wannier(sop)), n_operators=$(n_ops))",
     )
 end
 
@@ -318,8 +324,8 @@ function Base.show(io::IO, ::MIME"text/plain", sop::SparseOperatorPack)
         io,
         """SparseOperatorPack(
           header: $(sop.header)
-          n_Rvecs: $(sop.n_Rvecs)
-          n_wann: $(sop.n_wann)
+          n_Rvecs: $(n_Rvectors(sop))
+          n_wann: $(n_wannier(sop))
           operators ($(n_ops)): $(join(op_names, ", "))
         )""",
     )
@@ -335,7 +341,7 @@ See [`densify`](@ref) for the inverse.
 """
 function sparsify(pack::OperatorPack, opt::SparseOption = SparseOption())
     isempty(pack.operators) && error("operators must not be empty")
-    pack.n_Rvecs > 0 || error("operators contain no R-vectors")
+    n_Rvectors(pack) > 0 || error("operators contain no R-vectors")
 
     ops = OrderedDict(name => sparsify(op, opt) for (name, op) in pairs(pack.operators))
 

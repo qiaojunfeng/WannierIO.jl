@@ -13,15 +13,18 @@ struct HrDat{T <: Real, IT <: Integer}
     "Header line"
     header::String
 
-    "`R` vectors on which operators are defined"
+    "`R` vectors on which operators are defined, length `n_Rvecs`"
     Rvectors::Vector{Vec3{IT}}
 
-    "Degeneracies of each `R` vector"
+    "Degeneracies of each `R` vector, length `n_Rvecs`"
     Rdegens::Vector{IT}
 
-    "Hamiltonian matrices in real space"
+    "Hamiltonian matrices in real space, with size `n_wann × n_wann × n_Rvecs`"
     H::Array{Complex{T}, 3}
 end
+
+n_wannier(hrdat::HrDat) = size(hrdat.H, 1)
+n_Rvectors(hrdat::HrDat) = size(hrdat.H, 3)
 
 function HrDat(
         header::AbstractString,
@@ -33,8 +36,7 @@ function HrDat(
 end
 
 function Base.show(io::IO, hrdat::HrDat)
-        n_wann, _, n_Rvecs = size(hrdat.H)
-    return print(io, "HrDat(n_Rvecs=$(n_Rvecs), n_wann=$(n_wann))")
+    return print(io, "HrDat(n_Rvecs=$(n_Rvectors(hrdat)), n_wann=$(n_wannier(hrdat)))")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", hrdat::HrDat)
@@ -49,7 +51,7 @@ function Base.show(io::IO, ::MIME"text/plain", hrdat::HrDat)
           n_Rvecs: $(n_Rvecs)
           n_wann: $(n_wann)
           Rdegens range: [$(degen_min), ..., $(degen_max)]
-                    H: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
+          H: Array{Complex}($(n_wann)×$(n_wann)×$(n_Rvecs))
         )""",
     )
 end

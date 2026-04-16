@@ -43,6 +43,12 @@ struct WsRvectorReducer <: AbstractRvectorReducer
     end
 end
 
+function _validate_Rvectors_Rdegens(Rvectors::AbstractVector, Rdegens::AbstractVector)
+    length(Rvectors) == length(Rdegens) ||
+        throw(ArgumentError("Length of Rdegens must match length of Rvectors"))
+    return all(length.(Rvectors) .== 3) || throw(ArgumentError("All R-vectors must be length 3"))
+end
+
 function Base.show(io::IO, reducer::WsRvectorReducer)
     return print(io, "WsRvectorReducer(n_Rvecs=", length(reducer.Rvectors), ")")
 end
@@ -65,29 +71,18 @@ function Base.show(io::IO, ::MIME"text/plain", reducer::WsRvectorReducer)
     )
 end
 
-function _validate_Rvectors_Rdegens(Rvectors, Rdegens)
-    length(Rvectors) == length(Rdegens) ||
-        throw(ArgumentError("Length of Rdegens must match length of Rvectors"))
-    return all(length.(Rvectors) .== 3) || throw(ArgumentError("All R-vectors must be length 3"))
-end
-
-function (reducer::WsRvectorReducer)(operator::AbstractVector{<:AbstractMatrix})
-    length(operator) == length(reducer.degens) ||
-        throw(ArgumentError("Length of operator must match length of degens"))
-
-    # Absorb R degeneracies into operator.
-    operator_new = map(zip(operator, reducer.degens)) do (O, degen)
-        O ./ degen
-    end
-    return operator_new
-end
-
-function (reducer::WsRvectorReducer)(operator::AbstractArray{<:Any, 3})
+function (reducer::WsRvectorReducer)(operator::AbstractArray{T, 3}) where {T <: Number}
     size(operator, 3) == length(reducer.degens) ||
         throw(ArgumentError("Length of operator must match length of degens"))
 
-    operator_vec = [Matrix(operator[:, :, i]) for i in 1:size(operator, 3)]
-    return reducer(operator_vec)
+    # Absorb R degeneracies into operator.
+    operator_new = zeros(T, size(operator))
+    for iR in axes(operator, 3)
+        O = operator[:, :, iR]
+        degen = reducer.degens[iR]
+        operator_new[:, :, iR] = O ./ degen
+    end
+    return operator_new
 end
 
 function RvectorReducer(
@@ -117,23 +112,24 @@ struct MdrsRvectorReducer <: AbstractRvectorReducer
     """The contribution mapping from new R vectors to original operator entries.
     `mapping[iR]` is a vector of `(iR0, m, n)` tuples, where each tuple means
     one MDRS contribution from `operator[iR0][m, n]` to the new `iR`-th R vector.
+    The number of tuples can be different for different `iR`.
     """
-    mapping::Vector{Vector{Tuple{Int, Int, Int}}}
+    mapping::Vector{Vector{Vec3{Int}}}
 
     """The combined R and T degeneracies of the original R vectors.
-    `degens[iR0]` (`iR0 ∈ iR0s`) gives the degeneracy matrices of the original
+    `degens[:, :, iR0]` (`iR0 ∈ iR0s`) gives the degeneracy matrices of the original
     `iR0`-th R vector by combining the original `Rdegens` and the `Tdegens` of
     the T vectors.
-    The `operator[iR0]` will be divided by `degens[iR0]` to absorb the degeneracies.
+    The `operator[:, :, iR0]` will be divided by `degens[:, :, iR0]` to absorb the degeneracies.
     """
-    degens::Vector{Matrix{Int}}
+    degens::Array{Int, 3}
 
     function MdrsRvectorReducer(
-            Rvectors::AbstractVector, mapping::AbstractVector, degens::AbstractVector
+            Rvectors::AbstractVector, mapping::AbstractVector, degens::AbstractArray{<:Integer, 3}
         )
         length(Rvectors) == length(mapping) ||
             throw(ArgumentError("Length of Rvectors and mapping must match"))
-        nR0 = length(degens)
+        nR0 = size(degens, 3)
         nR0 <= length(Rvectors) ||
             throw(ArgumentError("Length of degens must be <= length of Rvectors"))
 
@@ -179,46 +175,40 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", reducer::MdrsRvectorReducer)
     nR = length(reducer.Rvectors)
-    nR0 = length(reducer.degens)
-    nw = nR0 == 0 ? 0 : size(reducer.degens[1], 1)
+    nR0 = size(reducer.degens, 3)
+    nw = (nR0 == 0) ? 0 : size(reducer.degens, 1)
     return print(
         io,
         """MdrsRvectorReducer(n_Rvecs = $(nR), n_Rvecs_original = $(nR0), n_wann = $(nw))""",
     )
 end
 
-function _validate_Tvectors_Tdegens(Tvectors, Tdegens, nR::Integer)
-    nR == length(Tvectors) == length(Tdegens) ||
-        throw(ArgumentError("Length of Tvectors and Tdegens must match length of Rvectors"))
+function _validate_Tvectors_Tdegens(Tvectors::AbstractArray{<:Any, 3}, Tdegens::AbstractArray{<:Any, 3}, nR::Integer)
+    nR == size(Tvectors, 3) == size(Tdegens, 3) ||
+        throw(ArgumentError("number of R vectors mismatch between Tvectors and Tdegens"))
     nR > 0 || throw(ArgumentError("Length of Rvectors must be > 0"))
     # Number of Wannier functions
-    nw = size(Tvectors[1], 1)
-    map(Tvectors) do Tmat
-        size(Tmat) == (nw, nw) ||
-            throw(ArgumentError("All T-vectors must be of size (nw, nw)"))
-        for Tvecs in Tmat
+    nw = size(Tvectors, 1)
+    nw == size(Tvectors, 2) == size(Tdegens, 1) == size(Tdegens, 2) ||
+        throw(ArgumentError("n_wann mismatch between Tvectors and Tdegens"))
+    for iR in 1:nR
+        for Tvecs in Tvectors[:, :, iR]
             all(length.(Tvecs) .== 3) ||
                 throw(ArgumentError("All T-vectors must be length 3"))
         end
     end
-    return map(Tdegens) do D
-        size(D) == (nw, nw) ||
-            throw(ArgumentError("All T-degeneracies must be of size (nw, nw)"))
-    end
 end
 
 function MdrsRvectorReducer(
-        Rvectors::AbstractVector{<:AbstractVector{<:Integer}},
+        Rvectors::AbstractVector{Vec3{IT}},
         Rdegens::AbstractVector{<:Integer},
-        Tvectors::AbstractVector{
-            <:AbstractMatrix{<:AbstractVector{<:AbstractVector{<:Integer}}},
-        },
-        Tdegens::AbstractVector{<:AbstractMatrix{<:Integer}},
-    )
+        Tvectors::AbstractArray{<:AbstractVector{Vec3{IT}}, 3},
+        Tdegens::AbstractArray{<:Integer, 3},
+    ) where {IT <: Integer}
     # The length of original R-vectors
     nR0 = length(Rvectors)
     # The number of Wannier functions
-    nw = size(Tvectors[1], 1)
+    nw = size(Tvectors, 1)
     _validate_Rvectors_Rdegens(Rvectors, Rdegens)
     _validate_Tvectors_Tdegens(Tvectors, Tdegens, nR0)
 
@@ -227,34 +217,34 @@ function MdrsRvectorReducer(
     # Rvectors_new = Vector{Vec3{Int}}()
     # 2. Otherwise, we can first keep the same order as the orignal R-vectors in
     # the initial part, then the new R+T are added later.
-    Rvectors_new = [vec3(R) for R in Rvectors]
+    Rvectors_new = [Vec3{Int}(R) for R in Rvectors]
 
     # Mapping from new R vectors to old R-vector matrix entries.
-    mapping = [Tuple{Int, Int, Int}[] for _ in eachindex(Rvectors_new)]
+    mapping = [Vec3{Int}[] for _ in eachindex(Rvectors_new)]
     # R and T degeneracies to absorb into operator.
     # Note the length is the same as the original R vectors, as the degeneracies
     # are applied to the original operator.
-    degens = [ones(Int, nw, nw) for _ in 1:nR0]
+    degens = ones(Int, nw, nw, nR0)
 
     # generate expanded R vectors, which contains all the R+T
     for (iR0, R0) in enumerate(Rvectors)
-        Tvecs = Tvectors[iR0]
+        Tvecs = Tvectors[:, :, iR0]
         Nᴿ = Rdegens[iR0]
         # T degeneracy is a matrix
-        Mᵀ = Tdegens[iR0]
-        degens[iR0] .*= Nᴿ .* Mᵀ
+        Mᵀ = Tdegens[:, :, iR0]
+        degens[:, :, iR0] .*= Nᴿ .* Mᵀ
         for n in axes(Mᵀ, 2)
             for m in axes(Mᵀ, 1)
                 Nᵀ = Mᵀ[m, n]
                 for iT in 1:Nᵀ
                     # The new R vector R = R0 + T
-                    R = vec3(R0 .+ Tvecs[m, n][iT])
+                    R = Vec3{Int}(R0 .+ Tvecs[m, n][iT])
                     iR = findfirst(==(R), Rvectors_new)
                     if isnothing(iR)
                         push!(Rvectors_new, R)
-                        push!(mapping, [(iR0, m, n)])
+                        push!(mapping, [Vec3{Int}(iR0, m, n)])
                     else
-                        push!(mapping[iR], (iR0, m, n))
+                        push!(mapping[iR], Vec3{Int}(iR0, m, n))
                     end
                 end
             end
@@ -264,41 +254,30 @@ function MdrsRvectorReducer(
     return MdrsRvectorReducer(Rvectors_new, mapping, degens)
 end
 
-function (reducer::MdrsRvectorReducer)(operator::AbstractVector{<:AbstractMatrix})
-    length(operator) == length(reducer.degens) ||
-        throw(ArgumentError("Length of operator must match length of degens"))
+function (reducer::MdrsRvectorReducer)(operator::AbstractArray{T, 3}) where {T <: Number}
+    size(operator, 3) == size(reducer.degens, 3) ||
+        throw(ArgumentError("Number of R-vectors mismatch between operator and degens"))
 
-    op_type = eltype(operator[1])
-    op_size = size(operator[1])
     # Simplified operator by absorbing R and T degeneracies
     # With length the same as the new R vectors
     nR = length(reducer.Rvectors)
-    return map(1:nR) do iR
-        O_new = zeros(op_type, op_size)
+    nw = size(operator, 1)
+    operator_new = zeros(T, nw, nw, nR)
+    for iR in 1:nR
         for (iR0, m, n) in reducer.mapping[iR]
-            O = operator[iR0]
-            degen = reducer.degens[iR0]
-            O_new[m, n] += O[m, n] / degen[m, n]
+            O = operator[:, :, iR0]
+            degen = reducer.degens[:, :, iR0]
+            operator_new[m, n, iR] += O[m, n] / degen[m, n]
         end
-        O_new
     end
-end
-
-function (reducer::MdrsRvectorReducer)(operator::AbstractArray{<:Any, 3})
-    size(operator, 3) == length(reducer.degens) ||
-        throw(ArgumentError("Length of operator must match length of degens"))
-
-    operator_vec = [Matrix(operator[:, :, i]) for i in 1:size(operator, 3)]
-    return reducer(operator_vec)
+    return operator_new
 end
 
 function RvectorReducer(
         Rvectors::AbstractVector{<:AbstractVector{<:Integer}},
         Rdegens::AbstractVector{<:Integer},
-        Tvectors::AbstractVector{
-            <:AbstractMatrix{<:AbstractVector{<:AbstractVector{<:Integer}}},
-        },
-        Tdegens::AbstractVector{<:AbstractMatrix{<:Integer}},
+        Tvectors::AbstractArray{<:AbstractVector{<:AbstractVector{<:Integer}}, 3},
+        Tdegens::AbstractArray{<:Integer, 3},
     )
     return MdrsRvectorReducer(Rvectors, Rdegens, Tvectors, Tdegens)
 end

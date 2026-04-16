@@ -119,7 +119,7 @@ function TbDat(pack::OperatorPack)
     Tr = eltype(pack.lattice)
     Tc = Complex{Tr}
     Rvectors = Vec3{Int}.(pack.Rvectors)
-    Rdegens = ones(Int, pack.n_Rvecs)
+    Rdegens = ones(Int, n_Rvectors(pack))
 
     H, rx, ry, rz = map(["H", "rx", "ry", "rz"]) do name
         haskey(pack.operators, name) || error("missing operator `$name`")
@@ -136,5 +136,5 @@ end
 
 function WsvecDat(pack::OperatorPack)
     # Reduced OperatorPack does not preserve MDRS mapping, so export as non-MDRS.
-    return WsvecDat(pack.header, Vec3{Int}.(pack.Rvectors), pack.n_wann)
+    return WsvecDat(pack.header, Vec3{Int}.(pack.Rvectors), n_wannier(pack))
 end
