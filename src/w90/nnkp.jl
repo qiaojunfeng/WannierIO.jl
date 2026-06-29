@@ -38,6 +38,48 @@ end
 Base.NamedTuple(o::HydrogenOrbital) = (; o.center, o.n, o.l, o.m, o.α, o.zaxis, o.xaxis)
 
 """
+Spinor analytic orbitals, used for spinor (noncollinear) Wannierization.
+
+Same as [`HydrogenOrbital`](@ref) but with an additional spin component and spin
+quantization axis. Wannier90 writes these in the `spinor_projections` block of the
+`nnkp` file (one block entry per spinor Wannier function), see
+<https://wannier90.readthedocs.io/en/latest/user_guide/wannier90/projections/>
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+@kwdef struct SpinorHydrogenOrbital <: Orbital
+    """3 real numbers of the projection center, in fractional coordinates"""
+    center::Vec3{Float64}
+    """positive integer, principle quantum number ``n > 0`` for the radial function"""
+    n::Int
+    """non-negative integer, angular momentum ``l \\ge 0`` of real spherical
+    harmonics ``Y_{lm}(\\theta, \\phi)``"""
+    l::Int
+    """integer, magnetic quantum number ``m``, ``-l \\leq m \\leq l``"""
+    m::Int
+    """positive real number, controlling the spread of the radial function"""
+    α::Float64
+    """3 real numbers, the z-axis from which the polar angle ``\\theta``
+    is measured, default is `[0, 0, 1]`"""
+    zaxis::Vec3{Float64}
+    """3 real numbers, the x-axis from which the azimuthal angle ``\\phi``
+    is measured, must be orthogonal to `zaxis`, default is `[1, 0, 0]`"""
+    xaxis::Vec3{Float64}
+    """spin component, `+1` (up) or `-1` (down) along `spin_qaxis`"""
+    spin::Int
+    """3 real numbers, the spin quantization axis"""
+    spin_qaxis::Vec3{Float64}
+end
+
+function Base.NamedTuple(o::SpinorHydrogenOrbital)
+    return (; o.center, o.n, o.l, o.m, o.α, o.zaxis, o.xaxis, o.spin, o.spin_qaxis)
+end
+
+"""
     read_nnkp(file)
     read_nnkp(file, ::W90InputText)
     read_nnkp(file, ::W90InputToml)
@@ -51,7 +93,9 @@ Read wannier90 `nnkp` file.
 - `lattice`: each column is a lattice vector
 - `recip_lattice`: each column is a reciprocal lattice vector
 - `kpoints`: length-`n_kpts` vector, each element is `Vec3`, in fractional coordinates
-- `projections`: length-`n_projs` vector of `HydrogenOrbital`
+- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`
+- `spinor_projections`: optional, length-`n_projs` vector of `SpinorHydrogenOrbital`,
+    present instead of `projections` for spinor (noncollinear) Wannierization
 - `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
     initial projections
 - `kpb_k`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
@@ -168,6 +212,32 @@ function _nnkp_parse_block_projections(io::IO)
     return projections
 end
 
+"""Parse `spinor_projections` block and return a vector of `SpinorHydrogenOrbital`."""
+function _nnkp_parse_block_spinor_projections(io::IO)
+    block_name = "spinor_projections"
+    n_projs = parse(Int, _nnkp_block_nextline(io, block_name))
+    projections = Vector{SpinorHydrogenOrbital}(undef, n_projs)
+    for i in eachindex(projections)
+        sline = split(_nnkp_block_nextline(io, block_name))
+        center = Vec3(parse.(Float64, sline[1:3]))
+        l, m, n = parse.(Int, sline[4:6])
+
+        sline = split(_nnkp_block_nextline(io, block_name))
+        zaxis = Vec3(parse.(Float64, sline[1:3]))
+        xaxis = Vec3(parse.(Float64, sline[4:6]))
+        α = parse(Float64, sline[7])
+
+        sline = split(_nnkp_block_nextline(io, block_name))
+        spin = parse(Int, sline[1])
+        spin_qaxis = Vec3(parse.(Float64, sline[2:4]))
+        projections[i] = SpinorHydrogenOrbital(
+            center, n, l, m, α, zaxis, xaxis, spin, spin_qaxis
+        )
+    end
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return projections
+end
+
 """Parse `auto_projections` block and return the number of Wannier functions."""
 function _nnkp_parse_block_auto_projections(io::IO)
     block_name = "auto_projections"
@@ -219,6 +289,8 @@ function _nnkp_parse_block!(params::AbstractDict, io::IO, block_name::AbstractSt
         params["kpoints"] = _nnkp_parse_block_kpoints(io)
     elseif block_name == "projections"
         params["projections"] = _nnkp_parse_block_projections(io)
+    elseif block_name == "spinor_projections"
+        params["spinor_projections"] = _nnkp_parse_block_spinor_projections(io)
     elseif block_name == "auto_projections"
         params["auto_projections"] = _nnkp_parse_block_auto_projections(io)
     elseif block_name == "nnkpts"
@@ -254,6 +326,14 @@ function read_nnkp(io::IO, ::W90InputToml)
         nnkp["projections"] = map(nnkp["projections"]) do proj
             args = NamedTuple((Symbol(k), v) for (k, v) in proj)
             HydrogenOrbital(; args...)
+        end
+    end
+
+    # Convert to SpinorHydrogenOrbital
+    if haskey(nnkp, "spinor_projections")
+        nnkp["spinor_projections"] = map(nnkp["spinor_projections"]) do proj
+            args = NamedTuple((Symbol(k), v) for (k, v) in proj)
+            SpinorHydrogenOrbital(; args...)
         end
     end
 
@@ -305,6 +385,8 @@ The `params` should have at least the following keys:
 
 The following keys are optional:
 - `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`
+- `spinor_projections`: optional, length-`n_projs` vector of `SpinorHydrogenOrbital`,
+    for spinor (noncollinear) Wannierization
 - `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
     initial projections. If given, write an `auto_projections` block
 - `exclude_bands`: if given, write the specified band indices in the `exclude_bands` block
@@ -325,6 +407,10 @@ function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header = defau
     projections = get(params, "projections", nothing)
     isnothing(projections) || _nnkp_write_block_projections(io, projections)
 
+    spinor_projections = get(params, "spinor_projections", nothing)
+    isnothing(spinor_projections) ||
+        _nnkp_write_block_spinor_projections(io, spinor_projections)
+
     auto_projections = get(params, "auto_projections", nothing)
     isnothing(auto_projections) || _nnkp_write_block_auto_projections(io, auto_projections)
 
@@ -342,6 +428,11 @@ function _nnkp_validate_write_params(params::AbstractDict)
     isnothing(projections) ||
         projections isa AbstractVector{<:HydrogenOrbital} ||
         throw(ArgumentError("projections should be a vector of HydrogenOrbital"))
+
+    spinor_projections = get(params, "spinor_projections", nothing)
+    isnothing(spinor_projections) ||
+        spinor_projections isa AbstractVector{<:SpinorHydrogenOrbital} ||
+        throw(ArgumentError("spinor_projections should be a vector of SpinorHydrogenOrbital"))
 
     lattice = params["lattice"]
     recip_lattice = params["recip_lattice"]
@@ -413,6 +504,22 @@ function _nnkp_write_block_projections(io::IO, projections)
         @printf(io, "%8.4f\n", p.α)
     end
     @printf(io, "end projections\n")
+    @printf(io, "\n")
+    return nothing
+end
+
+"""Write `spinor_projections` block."""
+function _nnkp_write_block_spinor_projections(io::IO, projections)
+    @printf(io, "begin spinor_projections\n")
+    @printf(io, "%d\n", length(projections))
+    for p in projections
+        @printf(io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n)
+        @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
+        @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
+        @printf(io, "%8.4f\n", p.α)
+        @printf(io, "%3d %12.7f %12.7f %12.7f\n", p.spin, p.spin_qaxis...)
+    end
+    @printf(io, "end spinor_projections\n")
     @printf(io, "\n")
     return nothing
 end

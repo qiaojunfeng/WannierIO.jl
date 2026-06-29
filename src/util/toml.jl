@@ -46,6 +46,7 @@ function to_toml(x)
     # use pairs other than Dict to preserve the order as much as possible
     x isa NamedTuple && return pairs(x)
     x isa HydrogenOrbital && return pairs(NamedTuple(x))
+    x isa SpinorHydrogenOrbital && return pairs(NamedTuple(x))
     # I explicitly throw an error here, to make sure that I don't forget to
     # handle a type. Sometimes, TOML.print just print a `false` for some type.
     return error("unhandled type $(typeof(x))")
