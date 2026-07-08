@@ -38,9 +38,9 @@ end
     using LazyArtifacts
     nnkp = read_nnkp(artifact"Fe_soc/outputs/Fe.nnkp")
 
-    @test haskey(nnkp, "projections")
-    @test nnkp["spinor"] == true
-    sp = nnkp["projections"]
+    @test haskey(nnkp, "spinor_projections")
+    @test !haskey(nnkp, "projections")
+    sp = nnkp["spinor_projections"]
     @test sp isa AbstractVector{<:WannierIO.SpinorHydrogenOrbital}
     @test length(sp) == 16
     # spin alternates +1 / -1 for consecutive up/down partners
@@ -84,8 +84,7 @@ end
         "kpoints" => [[0.0, 0.0, 0.0]],
         "kpb_k" => [[1]],
         "kpb_G" => [[[0, 0, 0]]],
-        "projections" => WannierIO.SpinorHydrogenOrbital[],
-        "spinor" => true,
+        "spinor_projections" => WannierIO.SpinorHydrogenOrbital[],
         "auto_projections" => 4,
     )
 
@@ -93,9 +92,8 @@ end
     tmp = tempname(; cleanup = true)
     write_nnkp(tmp, params)
     p = read_nnkp(tmp)
-    @test p["spinor"] == true
-    @test p["projections"] isa AbstractVector{<:WannierIO.SpinorHydrogenOrbital}
-    @test isempty(p["projections"])
+    @test p["spinor_projections"] isa AbstractVector{<:WannierIO.SpinorHydrogenOrbital}
+    @test isempty(p["spinor_projections"])
     @test p["auto_projections"] == 4
 
     # TOML round-trip (the empty list must stay typed as SpinorHydrogenOrbital)
@@ -103,35 +101,22 @@ end
         tmp2 = tempname(; cleanup = true)
         write_nnkp(tmp2, params, WannierIO.W90InputToml())
         p2 = read_nnkp(tmp2)
-        @test p2["spinor"] == true
-        @test p2["projections"] isa AbstractVector{<:WannierIO.SpinorHydrogenOrbital}
-        @test isempty(p2["projections"])
+        @test p2["spinor_projections"] isa AbstractVector{<:WannierIO.SpinorHydrogenOrbital}
+        @test isempty(p2["spinor_projections"])
         @test p2["auto_projections"] == 4
     end
 end
 
-@testitem "write nnkp infers/validates spinor flag" begin
+@testitem "write nnkp validates projection element type" begin
     using LazyArtifacts
     # Read a real spinor nnkp to get genuine SpinorHydrogenOrbital data
     nnkp = read_nnkp(artifact"Fe_soc/outputs/Fe.nnkp")
 
-    # The TOML writer should infer a missing `spinor` flag from the element type
-    # and produce a file that round-trips.
-    params = Dict{String, Any}(k => v for (k, v) in pairs(nnkp))
-    delete!(params, "spinor")
-    if VERSION > v"1.11.4"
-        tmp = tempname(; cleanup = true)
-        write_nnkp(tmp, params, WannierIO.W90InputToml())
-        p = read_nnkp(tmp)
-        @test p["spinor"] == true
-        @test p["projections"] isa AbstractVector{<:WannierIO.SpinorHydrogenOrbital}
-        @test p["projections"] == nnkp["projections"]
-    end
-
-    # An inconsistent flag (spinor=false with SpinorHydrogenOrbital data) must be
-    # rejected by both writers rather than silently dropping spin info.
+    # Spinor orbitals under the plain `projections` key (or plain orbitals under
+    # `spinor_projections`) must be rejected rather than written to the wrong block.
     bad = Dict{String, Any}(k => v for (k, v) in pairs(nnkp))
-    bad["spinor"] = false
+    bad["projections"] = bad["spinor_projections"]
+    delete!(bad, "spinor_projections")
     @test_throws ArgumentError write_nnkp(tempname(), bad)
     if VERSION > v"1.11.4"
         @test_throws ArgumentError write_nnkp(tempname(), bad, WannierIO.W90InputToml())

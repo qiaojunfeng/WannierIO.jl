@@ -98,10 +98,9 @@ Read wannier90 `nnkp` file.
 - `lattice`: each column is a lattice vector
 - `recip_lattice`: each column is a reciprocal lattice vector
 - `kpoints`: length-`n_kpts` vector, each element is `Vec3`, in fractional coordinates
-- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`, or of
-    `SpinorHydrogenOrbital` for spinor (noncollinear) Wannierization
-- `spinor`: optional `Bool`, present together with `projections`; `true` if the
-    projections are spinor (noncollinear) projections
+- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`
+- `spinor_projections`: optional, length-`n_projs` vector of `SpinorHydrogenOrbital`,
+    for spinor (noncollinear) Wannierization
 - `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
     initial projections
 - `kpb_k`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
@@ -295,10 +294,8 @@ function _nnkp_parse_block!(params::AbstractDict, io::IO, block_name::AbstractSt
         params["kpoints"] = _nnkp_parse_block_kpoints(io)
     elseif block_name == "projections"
         params["projections"] = _nnkp_parse_block_projections(io)
-        params["spinor"] = false
     elseif block_name == "spinor_projections"
-        params["projections"] = _nnkp_parse_block_spinor_projections(io)
-        params["spinor"] = true
+        params["spinor_projections"] = _nnkp_parse_block_spinor_projections(io)
     elseif block_name == "auto_projections"
         params["auto_projections"] = _nnkp_parse_block_auto_projections(io)
     elseif block_name == "nnkpts"
@@ -333,21 +330,19 @@ end
 function read_nnkp(io::IO, ::W90InputToml)
     nnkp = read_toml(io)
 
-    # Use the `spinor` flag to decide the orbital type. Default to `false` and
-    # normalize the key so that nnkp TOML files written before the flag existed
-    # still parse, and both text and TOML reads expose a `spinor` key.
-    # Branch on the flag so each comprehension is type stable and produces a
-    # concretely-typed vector even when `projections` is empty (e.g. an empty
+    # Reconstruct the orbital structs from the TOML dicts. Each block maps to its
+    # own key, so the element type is unambiguous. The explicit element type keeps
+    # each vector concretely typed even when empty (e.g. an empty
     # `spinor_projections` block accompanying `auto_projections`).
     if haskey(nnkp, "projections")
-        is_spinor = get(nnkp, "spinor", false)
-        nnkp["spinor"] = is_spinor
-        projs = nnkp["projections"]
-        nnkp["projections"] = if is_spinor
-            SpinorHydrogenOrbital[_nnkp_toml_orbital(SpinorHydrogenOrbital, p) for p in projs]
-        else
-            HydrogenOrbital[_nnkp_toml_orbital(HydrogenOrbital, p) for p in projs]
-        end
+        nnkp["projections"] = HydrogenOrbital[
+            _nnkp_toml_orbital(HydrogenOrbital, p) for p in nnkp["projections"]
+        ]
+    end
+    if haskey(nnkp, "spinor_projections")
+        nnkp["spinor_projections"] = SpinorHydrogenOrbital[
+            _nnkp_toml_orbital(SpinorHydrogenOrbital, p) for p in nnkp["spinor_projections"]
+        ]
     end
 
     return nnkp
@@ -397,13 +392,10 @@ The `params` should have at least the following keys:
     then each element is a `Vec3` for translation vector, fractional w.r.t. `recip_lattice`
 
 The following keys are optional:
-- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`, or of
-    `SpinorHydrogenOrbital` for spinor (noncollinear) Wannierization. A vector of
-    `SpinorHydrogenOrbital` is written as a `spinor_projections` block
-- `spinor`: optional `Bool`. Selects whether `projections` are written as a
-    `projections` or `spinor_projections` block (and is recorded in the TOML
-    format). If omitted, it is inferred from the element type of `projections`.
-    If given, it must be consistent with that element type
+- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`, written as a
+    `projections` block
+- `spinor_projections`: optional, length-`n_projs` vector of `SpinorHydrogenOrbital` for
+    spinor (noncollinear) Wannierization, written as a `spinor_projections` block
 - `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
     initial projections. If given, write an `auto_projections` block
 - `exclude_bands`: if given, write the specified band indices in the `exclude_bands` block
@@ -422,16 +414,11 @@ function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header = defau
     _nnkp_write_block_kpoints(io, params["kpoints"])
 
     projections = get(params, "projections", nothing)
-    if !isnothing(projections)
-        # Dispatch on the `spinor` flag; fall back to the element type when the
-        # flag is absent. `_nnkp_validate_write_params` guarantees the two agree.
-        spinor = get(params, "spinor", projections isa AbstractVector{<:SpinorHydrogenOrbital})
-        if spinor
-            _nnkp_write_block_spinor_projections(io, projections)
-        else
-            _nnkp_write_block_projections(io, projections)
-        end
-    end
+    isnothing(projections) || _nnkp_write_block_projections(io, projections)
+
+    spinor_projections = get(params, "spinor_projections", nothing)
+    isnothing(spinor_projections) ||
+        _nnkp_write_block_spinor_projections(io, spinor_projections)
 
     auto_projections = get(params, "auto_projections", nothing)
     isnothing(auto_projections) || _nnkp_write_block_auto_projections(io, auto_projections)
@@ -448,19 +435,15 @@ function _nnkp_validate_write_params(params::AbstractDict)
 
     projections = get(params, "projections", nothing)
     isnothing(projections) ||
-        projections isa AbstractVector{<:Orbital} ||
-        throw(ArgumentError(
-            "projections should be a vector of HydrogenOrbital or SpinorHydrogenOrbital"
-        ))
+        projections isa AbstractVector{<:HydrogenOrbital} ||
+        throw(ArgumentError("projections should be a vector of HydrogenOrbital"))
 
-    spinor = get(params, "spinor", nothing)
-    isnothing(spinor) ||
-        spinor isa Bool ||
-        throw(ArgumentError("spinor should be a Bool"))
-    if !isnothing(spinor) && !isnothing(projections)
-        spinor == (projections isa AbstractVector{<:SpinorHydrogenOrbital}) ||
-            throw(ArgumentError("spinor flag is inconsistent with the element type of projections"))
-    end
+    spinor_projections = get(params, "spinor_projections", nothing)
+    isnothing(spinor_projections) ||
+        spinor_projections isa AbstractVector{<:SpinorHydrogenOrbital} ||
+        throw(ArgumentError(
+            "spinor_projections should be a vector of SpinorHydrogenOrbital"
+        ))
 
     lattice = params["lattice"]
     recip_lattice = params["recip_lattice"]
@@ -597,15 +580,6 @@ end
 
 function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header = default_header())
     _nnkp_validate_write_params(params)
-
-    # Ensure the `spinor` flag is written so the file round-trips; infer it from
-    # the projections' element type when missing, mirroring the text writer. Copy
-    # `params` so the caller's dict is not mutated.
-    projections = get(params, "projections", nothing)
-    if !isnothing(projections) && !haskey(params, "spinor")
-        params = copy(params)
-        params["spinor"] = projections isa AbstractVector{<:SpinorHydrogenOrbital}
-    end
 
     println(io, header, "\n")
     # Note that this requires https://github.com/JuliaLang/julia/pull/57584
