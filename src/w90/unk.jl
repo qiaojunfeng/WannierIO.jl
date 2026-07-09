@@ -41,7 +41,8 @@ function read_unk(io::IO, ::FortranText; n_spin::Integer = 1)
 end
 
 function read_unk(filename::AbstractString, ::FortranText)
-    n_spin = occursin("NC", filename) ? 2 : 1
+    # noncollinear UNK files use the `.NC` extension, e.g. `UNK00001.NC`
+    n_spin = endswith(basename(filename), ".NC") ? 2 : 1
     return open(filename) do io
         read_unk(io, FortranText(); n_spin)
     end
@@ -68,7 +69,8 @@ function read_unk(io::FortranFile, ::FortranBinary; n_spin::Integer = 1)
 end
 
 function read_unk(filename::AbstractString, ::FortranBinary)
-    n_spin = occursin("NC", filename) ? 2 : 1
+    # noncollinear UNK files use the `.NC` extension, e.g. `UNK00001.NC`
+    n_spin = endswith(basename(filename), ".NC") ? 2 : 1
     # unk files are not in Fortran stream io, so I need to open with FortranFile
     io = FortranFile(filename)
     return read_unk(io, FortranBinary(); n_spin)
