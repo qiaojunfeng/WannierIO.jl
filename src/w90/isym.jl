@@ -271,8 +271,8 @@ function read_isym_raw(io::IO)
         ft .= parse.(Float64, line)
         t_rev = parse_bool(readline(io))
         if spinors
-            for j in 1:2, i in 1:2
-                a, b = parse.(Float64, readline(io))
+            for i in 1:2, j in 1:2
+                a, b = parse.(Float64, split(readline(io)))
                 u[i, j] = complex(a, b)
             end
         else

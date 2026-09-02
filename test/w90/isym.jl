@@ -28,6 +28,47 @@
     @test sym.repmat_wann[end].D[1, 5] ≈ 0.999999999999999
 end
 
+@testitem "read spinor isym matrix" begin
+    io = IOBuffer("""
+    spinor parser regression
+    1 1
+    identity
+    1 0 0
+    0 1 0
+    0 0 1
+    0.0 0.0 0.0
+    0
+    1.0 2.0
+    3.0 4.0
+    5.0 6.0
+    7.0 8.0
+    1
+
+    K points
+    1
+    0.0 0.0 0.0
+
+    Representation matrix of G_k
+    1 1
+    1 1 1
+    1 1 1.0 0.0
+
+    Rotation matrix of Wannier functions
+    1
+    1 1
+    1 1 1.0 0.0
+    """)
+
+    sym = read_isym_raw(io)
+    @test sym.spinors
+    # pw2wannier90 writes the four SU(2) entries in row-major order.
+    @test sym.symops[1].u == ComplexF64[
+        1 + 2im 3 + 4im
+        5 + 6im 7 + 8im
+    ]
+    @test sym.symops[1].invs == 1
+end
+
 @testitem "standardize isym" begin
     using LazyArtifacts, LinearAlgebra
     using WannierIO: Mat3
