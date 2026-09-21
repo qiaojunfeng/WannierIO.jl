@@ -82,8 +82,8 @@ end
         "lattice" => WannierIO.Mat3(Matrix(1.0I, 3, 3)),
         "recip_lattice" => WannierIO.Mat3(Matrix(1.0I, 3, 3)),
         "kpoints" => [[0.0, 0.0, 0.0]],
-        "kpb_k" => [[1]],
-        "kpb_G" => [[[0, 0, 0]]],
+        "kpb_k" => reshape([1], 1, 1),
+        "kpb_G" => reshape([WannierIO.Vec3(0, 0, 0)], 1, 1),
         "spinor_projections" => WannierIO.SpinorHydrogenOrbital[],
         "auto_projections" => 4,
     )

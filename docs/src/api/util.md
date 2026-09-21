@@ -16,6 +16,15 @@ Modules = [WannierIO]
 Pages   = ["common/const.jl"]
 ```
 
+## Sizes
+
+Accessors for the dimensions of file-format structs.
+
+```@autodocs
+Modules = [WannierIO]
+Pages   = ["common/size.jl"]
+```
+
 ## Helper functions
 
 General helpers for parsing, headers, TOML conversion, and comparisons.

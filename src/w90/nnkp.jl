@@ -103,10 +103,9 @@ Read wannier90 `nnkp` file.
     for spinor (noncollinear) Wannierization
 - `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
     initial projections
-- `kpb_k`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
-    integers, index of kpoints
-- `kpb_G`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector,
-    then each element is `Vec3` for translations, fractional w.r.t `recip_lattice`
+- `kpb_k`: `n_bvecs × n_kpts` matrix of integers, index of the neighboring kpoint
+- `kpb_G`: `n_bvecs × n_kpts` matrix of `Vec3` translations, fractional w.r.t
+    `recip_lattice`
 
 Wannier90 `nnkp` file is a plain text format, the 2nd version reads `nnkp` file
 in Wannier90 format. The thrid version read a TOML-format `nnkp` file, which is
@@ -457,9 +456,11 @@ function _nnkp_validate_write_params(params::AbstractDict)
     spinor_projections = get(params, "spinor_projections", nothing)
     isnothing(spinor_projections) ||
         spinor_projections isa AbstractVector{<:SpinorHydrogenOrbital} ||
-        throw(ArgumentError(
+        throw(
+        ArgumentError(
             "spinor_projections should be a vector of SpinorHydrogenOrbital"
-        ))
+        )
+    )
 
     lattice = params["lattice"]
     recip_lattice = params["recip_lattice"]
@@ -618,6 +619,6 @@ end
 function write_nnkp(
         file::Union{IO, AbstractString}, params::AbstractDict; header = default_header()
     )
-    format = w90input_format(; toml=splitext(file)[end] == ".toml")
+    format = w90input_format(; toml = splitext(file)[end] == ".toml")
     return write_nnkp(file, params, format; header)
 end
