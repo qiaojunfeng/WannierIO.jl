@@ -134,3 +134,13 @@ end
     # labels and numbers should be aligned, i.e., having the same width
     @test win_lines == win2_lines
 end
+
+@testitem "Crystal from win" begin
+    using LazyArtifacts
+    win = read_win(artifact"Si2_valence/Si2_valence.win")
+    crystal = WannierIO.Crystal(win)
+    @test crystal.lattice == win["unit_cell_cart"]
+    @test crystal.atom_positions == [a.second for a in win["atoms_frac"]]
+    @test crystal.atom_labels == [string(a.first) for a in win["atoms_frac"]]
+    @test crystal.atom_numbers == fill(14, WannierIO.n_atoms(crystal))
+end
