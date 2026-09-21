@@ -381,9 +381,12 @@ the `WannierIO.write_w90_band(prefix; kwargs...)` is the low-level version.
 function write_w90_band(
         prefix::AbstractString, kpath::CrystalBase.KPath, eigenvalues::AbstractVector
     )
-    x, symm_point_indices, symm_point_labels = linear_path(kpath)
-    kpoints = kpath.points
-    return WannierIO.write_w90_band(prefix; x, eigenvalues, kpoints, symm_point_indices, symm_point_labels)
+    x = axis(kpath)
+    symm_point_indices = tick_indices(kpath; merge = false)
+    symm_point_labels = tick_labels(kpath; merge = false)
+    return WannierIO.write_w90_band(
+        prefix; x, eigenvalues, kpoints = kpoints(kpath), symm_point_indices, symm_point_labels
+    )
 end
 
 """
@@ -398,7 +401,7 @@ Write kpoints into wannier90 formats: `prefix_band.kpt`, `prefix_band.labelinfo.
 !!! tip
 
     This allows writing auto generated high-symmetry kpoints and labels from crystal
-    structure (by `CrystalBase.KSegment()`) into files. Then other codes
+    structure (by `CrystalBase.KPath(::Crystal)`) into files. Then other codes
     can use the kpoints for band structure calculations, e.g., QE `pw.x` `bands`
     calculation, or in the `win` input file for `Wannier90`.
 
@@ -406,22 +409,23 @@ Write kpoints into wannier90 formats: `prefix_band.kpt`, `prefix_band.labelinfo.
 ```julia
 using Spglib, Brillouin, CrystalBase, WannierIO
 win = read_win("si2.win")
-kseg = KSegment(win.unit_cell_cart, win.atoms_frac, win.atom_labels)
 # Set the number of kpoints along the 1st segment to 100 points
-kp = KPath(kseg, 100)
-write_w90_kpt_label("si2", kp)
+kp = KPath(Crystal(win); n_points_first_segment = 100)
+write_w90_band_kpt_labelinfo("si2", kp)
 ```
 """
 function write_w90_band_kpt_labelinfo(prefix::AbstractString, kpath::KPath)
-    kpoints = kpath.points
-    x, symm_point_indices, symm_point_labels = linear_path(kpath)
+    kpts = kpoints(kpath)
+    x = axis(kpath)
+    symm_point_indices = tick_indices(kpath; merge = false)
+    symm_point_labels = tick_labels(kpath; merge = false)
 
     filename = prefix * "_band.kpt"
-    write_w90_band_kpt(filename; kpoints)
+    write_w90_band_kpt(filename; kpoints = kpts)
 
     filename = prefix * "_band.labelinfo.dat"
     return write_w90_band_labelinfo_dat(
-        filename; x, kpoints, symm_point_indices, symm_point_labels
+        filename; x, kpoints = kpts, symm_point_indices, symm_point_labels
     )
 end
 

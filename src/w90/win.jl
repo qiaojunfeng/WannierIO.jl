@@ -63,6 +63,20 @@ function read_win(file::Union{IO, AbstractString}; standardize::Bool = true)
     return win
 end
 
+"""
+    Crystal(win::AbstractDict)
+
+Build a `CrystalBase.Crystal` from the `unit_cell_cart` and `atoms_frac`
+blocks of a parsed `win` file, see [`read_win`](@ref).
+
+# Example
+```julia
+win = read_win("si2.win")
+crystal = Crystal(win)
+```
+"""
+CrystalBase.Crystal(win::AbstractDict) = Crystal(win["unit_cell_cart"], win["atoms_frac"])
+
 """Read the next non-empty line from a win file block, with optional case control.
 
 Win files are case-insensitive, but some blocks (e.g., atoms_frac) preserve
