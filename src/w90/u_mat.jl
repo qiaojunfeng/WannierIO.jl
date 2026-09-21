@@ -50,7 +50,7 @@ function read_u_mat(filename::AbstractString)
 end
 
 """
-    write_u_mat(file, U, kpoints; header=default_header())
+    write_u_mat(file, U, kpoints; header=default_header(), digits=10)
 
 Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 
@@ -61,6 +61,9 @@ Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 
 # Keyword arguments
 - `header`: 1st line of the file, optional
+- `digits`: decimal digits of every real number; wannier90 writes 10, and
+    its free-format reader accepts more. Use 16 to store a `Float64` gauge
+    losslessly.
 
 !!! warning
 
@@ -75,9 +78,16 @@ function write_u_mat(
         U::AbstractArray{<:Number,3},
         kpoints::AbstractVector;
         header::AbstractString = default_header(),
+        digits::Integer = 10,
     )
     nbands, nwann, nkpts = size(U)
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
+    digits >= 1 || throw(ArgumentError("digits must be positive"))
+    # wannier90 writes `%15.10f`; the field width grows with the precision so
+    # the columns stay aligned
+    field = "%$(digits + 5).$(digits)f"
+    fmt2 = Printf.Format("  $field  $field\n")
+    fmt3 = Printf.Format("  $field  $field  $field\n")
 
     write(io, header, "\n")
     @printf(io, "%d %d %d\n", nkpts, nwann, nbands)
@@ -85,12 +95,12 @@ function write_u_mat(
     for ik in 1:nkpts
         # empty line
         write(io, "\n")
-        @printf(io, "  %15.10f  %15.10f  %15.10f\n", kpoints[ik]...)
+        Printf.format(io, fmt3, kpoints[ik]...)
 
         for iw in 1:nwann
             for ib in 1:nbands
                 u = U[ib, iw, ik]
-                @printf(io, "  %15.10f  %15.10f\n", real(u), imag(u))
+                Printf.format(io, fmt2, real(u), imag(u))
             end
         end
     end
@@ -103,12 +113,13 @@ function write_u_mat(
         U::AbstractArray{<:Number,3},
         kpoints::AbstractVector;
         header::AbstractString = default_header(),
+        digits::Integer = 10,
     )
     nkpts = size(U, 3)
     nkpts > 0 || throw(ArgumentError("U is empty"))
     nkpts == length(kpoints) || throw(DimensionMismatch("inconsistent number of kpoints"))
 
     return open(filename, "w") do io
-        write_u_mat(io, U, kpoints; header)
+        write_u_mat(io, U, kpoints; header, digits)
     end
 end

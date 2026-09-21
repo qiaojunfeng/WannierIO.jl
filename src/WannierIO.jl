@@ -14,7 +14,7 @@ $(EXPORTS)
 """
 module WannierIO
 
-using Printf: @printf, @sprintf
+using Printf: Printf, @printf, @sprintf
 using DocStringExtensions
 
 using LinearAlgebra
