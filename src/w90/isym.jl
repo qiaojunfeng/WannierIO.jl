@@ -57,7 +57,9 @@ symmetry-adapted Wannier functions):
     In the raw layer ([`RawIsym`](@ref)), entry `isym` stores ``D(ĝ_{isym}^{-1})``,
     the representation of the *inverse* operation, exactly as written by
     pw2wannier90. After [`standardize`](@ref), entry `isym` stores
-    ``D(ĝ_{isym})``.
+    ``D(ĝ_{isym})``, its inverse, with the SU(2) sign choice of the `u` field
+    of the operation (that of the little-group matrices). An antiunitary
+    operation acts as ``D K`` (``K`` complex conjugation).
 """
 struct OrbitalRep{N}
     """Index of the symmetry operation."""
@@ -392,21 +394,30 @@ end
 Convert a [`RawIsym`](@ref) (file/QE conventions) to an [`Isym`](@ref) in the
 standard Seitz convention:
 - symmetry operations are converted by [`standardize(::RawSymOp)`](@ref)
-- `orbital_reps[isym]` stores `D(g_isym)`, obtained from the raw
-  `repmat_wann[invs(isym)]` which stores `D(g_isym^{-1})` at index `isym`
+- `orbital_reps[isym]` stores `D(g_isym)`, the inverse of the raw entry
+  `repmat_wann[isym]`, which is the matrix of the exact inverse operation
+  `g_isym^{-1}` (`D^†` for a unitary operation; for an antiunitary one, which
+  acts as `D K` with `K` complex conjugation, the inverse acts as `D^T K`,
+  so `D` is the transpose of the raw entry)
 - `littlegroup_reps` are copied unchanged (the file's `d` matrices are
   already the standard `d(ĥ, k) = ⟨ψ_m|ĥ ψ_n⟩`)
+
+For spinors all three objects then share one SU(2) sign choice (`u(g)` or
+`-u(g)` for each operation), that of the `u` field of the operations:
+pw2wannier90 rotates the wave functions with `u(g)` and builds the raw
+orbital entry of `g^{-1}` with `u(g)^†`. Re-indexing the raw entry of the
+stored inverse element `invs(isym)` instead would flip the sign for some
+operations (the twofold rotations and mirrors), because the SU(2) matrix of
+the stored inverse is `±u(g)^{-1}`.
 """
 function standardize(raw::RawIsym)
     symops = standardize.(raw.symops)
 
-    # Re-index the orbital representations: raw entry `isym` is D(g_isym⁻¹),
-    # i.e. D(g_j) with j = invs(isym); so D(g_isym) is the raw entry at
-    # index invs(isym).
     isym2entry = Dict(rep.isym => rep for rep in raw.repmat_wann)
     orbital_reps = map(1:raw.n_symops) do isym
-        rep = isym2entry[raw.symops[isym].invs]
-        typeof(rep)(isym, rep.D)
+        rep = isym2entry[isym]
+        D = raw.symops[isym].t_rev ? transpose(rep.D) : adjoint(rep.D)
+        typeof(rep)(isym, D)
     end
 
     return Isym(

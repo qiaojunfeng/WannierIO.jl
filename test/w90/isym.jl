@@ -29,35 +29,37 @@
 end
 
 @testitem "read spinor isym matrix" begin
-    io = IOBuffer("""
-    spinor parser regression
-    1 1
-    identity
-    1 0 0
-    0 1 0
-    0 0 1
-    0.0 0.0 0.0
-    0
-    1.0 2.0
-    3.0 4.0
-    5.0 6.0
-    7.0 8.0
-    1
+    io = IOBuffer(
+        """
+        spinor parser regression
+        1 1
+        identity
+        1 0 0
+        0 1 0
+        0 0 1
+        0.0 0.0 0.0
+        0
+        1.0 2.0
+        3.0 4.0
+        5.0 6.0
+        7.0 8.0
+        1
 
-    K points
-    1
-    0.0 0.0 0.0
+        K points
+        1
+        0.0 0.0 0.0
 
-    Representation matrix of G_k
-    1 1
-    1 1 1
-    1 1 1.0 0.0
+        Representation matrix of G_k
+        1 1
+        1 1 1
+        1 1 1.0 0.0
 
-    Rotation matrix of Wannier functions
-    1
-    1 1
-    1 1 1.0 0.0
-    """)
+        Rotation matrix of Wannier functions
+        1
+        1 1
+        1 1 1.0 0.0
+        """
+    )
 
     sym = read_isym_raw(io)
     @test sym.spinors
@@ -97,10 +99,13 @@ end
     end
 
     # orbital_reps[isym] stores D(g_isym): the raw file stores D(g_isym^{-1})
-    # at index isym, so the standardized entry is the raw entry at invs(isym)
+    # at index isym, so the standardized entry is its inverse (the adjoint
+    # for a unitary operation, the transpose for an antiunitary one)
+    @test any(op -> op.time_reversal, sym.symops)
     for isym in 1:sym.n_symops
         @test sym.orbital_reps[isym].isym == isym
-        @test sym.orbital_reps[isym].D == raw.repmat_wann[raw.symops[isym].invs].D
+        Draw = raw.repmat_wann[isym].D
+        @test sym.orbital_reps[isym].D == (raw.symops[isym].t_rev ? transpose(Draw) : Draw')
     end
 
     # read_isym is the standardized read
