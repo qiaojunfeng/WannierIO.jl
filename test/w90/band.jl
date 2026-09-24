@@ -9,6 +9,7 @@
     @test band.symm_point_labels == ["G", "X", "U", "K", "G", "L", "W", "X"]
     @test length(band.x) == 511
     @test band.x[511] == 5.9004323
+    @test size(band.eigenvalues) == (4, 511)
 
     outdir = mktempdir(; cleanup = true)
     outprefix = joinpath(outdir, "Si2_valence")
@@ -32,6 +33,7 @@ end
     write_w90_band(outprefix, kpath, eigenvalues)
     kpath2, eigenvalues2 = read_w90_band(outprefix, recip_lattice)
 
+    @test size(eigenvalues) == (4, 511)
     @test kpath ≈ kpath2
     @test eigenvalues ≈ eigenvalues2
 end

@@ -30,23 +30,23 @@ Dimension variables are prefixed with `n_`.
 
 ### Indices
 
-Usually, the returned quantities are `Vector`s of some types (`Matrix{Float64}`,
-`Vector{Float64}`, etc), and the indices follow the order of
+Band-resolved quantities are dense arrays with the kpoint as the last axis,
+and the other axes in the order of
 
-1. kpoints
-2. b-vectors (if needed)
-3. bands
-4. Wannier functions
+1. bands
+2. Wannier functions
+3. b-vectors (if needed)
+4. kpoints
 
-For instance, the energy eigenvalues `eigenvalues` is a length-`n_kpts` vector,
-with each element a length-`n_bands` vector of floats, i.e., `eigenvalues[ik][ib]`
-is the `ib`-th eigenvalue at `ik`-th kpoint.
+For instance, the energy eigenvalues `eigenvalues` is an `n_bands × n_kpts`
+matrix, i.e., `eigenvalues[m, ik]` is the `m`-th eigenvalue at the `ik`-th
+kpoint.
 
-Here are some examples of indexing the vectors:
+Here are some examples of indexing the arrays:
 
-- `eigenvalues[ik][m]` for energy eigenvalues ``\varepsilon_{m \mathbf{k}}``
-- `U[ik][m, n]` for the gauge matrix ``U_{mn \mathbf{k}}``
-- `M[ik][ib][m, n]` for the overlap matrix ``M_{mn \mathbf{k}, \mathbf{k} + \mathbf{b}}``
+- `eigenvalues[m, ik]` for energy eigenvalues ``\varepsilon_{m \mathbf{k}}``
+- `U[m, n, ik]` for the gauge matrix ``U_{mn \mathbf{k}}``
+- `M[m, n, ib, ik]` for the overlap matrix ``M_{mn \mathbf{k}, \mathbf{k} + \mathbf{b}}``
 
 where
 
