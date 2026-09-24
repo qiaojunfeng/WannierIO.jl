@@ -25,11 +25,10 @@ of an IBZ kpoint, acting on the Bloch states:
 ```math
 ĥ |ψ_{n k}⟩ = \\sum_{n'} |ψ_{n' k}⟩ d_{n' n}(ĥ, k)
 ```
-(the column index is the original state).
-
-`N` is the number of bands. Identical in the raw and standard layers.
+(the column index is the original state), an `n_bands × n_bands` matrix.
+Identical in the raw and standard layers.
 """
-struct LittleGroupRep{N}
+struct LittleGroupRep
     """Index of the IBZ kpoint."""
     ik_ibz::Int64
 
@@ -37,10 +36,12 @@ struct LittleGroupRep{N}
     isym::Int64
 
     """Representation matrix acting on the Bloch states."""
-    d::SMatrix{N, N, ComplexF64}
+    d::Matrix{ComplexF64}
 end
 
-n_bands(::Type{<:LittleGroupRep{N}}) where {N} = N
+n_bands(rep::LittleGroupRep) = size(rep.d, 1)
+Base.:(==)(a::LittleGroupRep, b::LittleGroupRep) = a.ik_ibz == b.ik_ibz && a.isym == b.isym && a.d == b.d
+Base.hash(rep::LittleGroupRep, h::UInt) = hash(rep.d, hash(rep.isym, hash(rep.ik_ibz, hash(:LittleGroupRep, h))))
 
 """
 A representation matrix ``D(ĝ)`` acting on the trial orbitals (and on
@@ -48,9 +49,7 @@ symmetry-adapted Wannier functions):
 ```math
 ĝ w^{(0)}_n = \\sum_{n'} D_{n' n}(ĝ) \\, w^{(0)}_{n'}(r - R_{n'}(ĝ))
 ```
-(the column index is the original orbital).
-
-`N` is the number of Wannier functions.
+(the column index is the original orbital), an `n_wann × n_wann` matrix.
 
 !!! warning
 
@@ -61,15 +60,17 @@ symmetry-adapted Wannier functions):
     of the operation (that of the little-group matrices). An antiunitary
     operation acts as ``D K`` (``K`` complex conjugation).
 """
-struct OrbitalRep{N}
+struct OrbitalRep
     """Index of the symmetry operation."""
     isym::Int64
 
     """Representation matrix acting on the Wannier functions."""
-    D::SMatrix{N, N, ComplexF64}
+    D::Matrix{ComplexF64}
 end
 
-n_wannier(::Type{<:OrbitalRep{N}}) where {N} = N
+n_wannier(rep::OrbitalRep) = size(rep.D, 1)
+Base.:(==)(a::OrbitalRep, b::OrbitalRep) = a.isym == b.isym && a.D == b.D
+Base.hash(rep::OrbitalRep, h::UInt) = hash(rep.D, hash(rep.isym, hash(:OrbitalRep, h)))
 
 """
 A symmetry operation as stored in the `isym` file, in QE's convention.
@@ -158,7 +159,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct RawIsym{RB <: LittleGroupRep, RW <: OrbitalRep}
+struct RawIsym
     "Header line"
     header::String
 
@@ -182,14 +183,14 @@ struct RawIsym{RB <: LittleGroupRep, RW <: OrbitalRep}
 
     """Representation matrices `d(ĥ, k)` for the little groups of all IBZ
     kpoints (file section `Representation matrix of G_k`)"""
-    repmat_band::Vector{RB}
+    repmat_band::Vector{LittleGroupRep}
 
     "Number of Wannier functions"
     n_wann::Int64
 
     """Representation matrices for the Wannier functions, storing `D(inv(g))`
     at index `isym` (file section `Rotation matrix of Wannier functions`)"""
-    repmat_wann::Vector{RW}
+    repmat_wann::Vector{OrbitalRep}
 end
 
 """
@@ -202,7 +203,7 @@ $(TYPEDEF)
 
 $(FIELDS)
 """
-struct Isym{RB <: LittleGroupRep, RW <: OrbitalRep}
+struct Isym
     "Header line"
     header::String
 
@@ -227,18 +228,18 @@ struct Isym{RB <: LittleGroupRep, RW <: OrbitalRep}
     """Little-group representation matrices `d(ĥ, k)`, sparse in
     `(ik_ibz, isym)`: only elements of the little group of each IBZ kpoint
     are present"""
-    littlegroup_reps::Vector{RB}
+    littlegroup_reps::Vector{LittleGroupRep}
 
     "Number of Wannier functions"
     n_wann::Int64
 
     """Orbital representation matrices, `orbital_reps[isym]` stores
     `D(g_isym)`, dense in `isym`"""
-    orbital_reps::Vector{RW}
+    orbital_reps::Vector{OrbitalRep}
 end
 
-n_bands(::Union{RawIsym{RB, RW}, Isym{RB, RW}}) where {RB, RW} = n_bands(RB)
-n_wannier(::Union{RawIsym{RB, RW}, Isym{RB, RW}}) where {RB, RW} = n_wannier(RW)
+n_bands(x::Union{RawIsym, Isym}) = x.n_bands
+n_wannier(x::Union{RawIsym, Isym}) = x.n_wann
 
 """
     $(SIGNATURES)
@@ -307,20 +308,19 @@ function read_isym_raw(io::IO)
     # little groups of all the IBZ kpoints, ĥ k = k, where k ∈ IBZ
     n_bands, n_repmat_band = parse.(Int64, split(readline(io)))
 
-    repmat_band = Vector{LittleGroupRep{n_bands}}(undef, n_repmat_band)
-    d = zeros(ComplexF64, n_bands, n_bands)
+    repmat_band = Vector{LittleGroupRep}(undef, n_repmat_band)
 
     for irep in 1:n_repmat_band
         ik_ibz, isym, n_elems = parse.(Int64, split(readline(io)))
         # Fill all non-zero elements of the representation matrix
-        d .= 0
+        d = zeros(ComplexF64, n_bands, n_bands)
         for _ in 1:n_elems
             line = split(readline(io))
             m, n = parse.(Int64, line[1:2])
             a, b = parse.(Float64, line[3:4])
             d[m, n] = a + im * b
         end
-        repmat_band[irep] = LittleGroupRep{n_bands}(ik_ibz, isym, d)
+        repmat_band[irep] = LittleGroupRep(ik_ibz, isym, d)
     end
 
     # Read rotation matrix Dₘₙ(ĝ⁻¹) for Wannier functions
@@ -330,20 +330,19 @@ function read_isym_raw(io::IO)
 
     n_wann = parse(Int64, readline(io))
 
-    repmat_wann = Vector{OrbitalRep{n_wann}}(undef, n_symops)
-    D = zeros(ComplexF64, n_wann, n_wann)
+    repmat_wann = Vector{OrbitalRep}(undef, n_symops)
 
     for i in 1:n_symops
         isym, n_elems = parse.(Int64, split(readline(io)))
         # Fill all the non-zero elements of the rotation matrix
-        D .= 0
+        D = zeros(ComplexF64, n_wann, n_wann)
         for _ in 1:n_elems
             line = split(readline(io))
             m, n = parse.(Int64, line[1:2])
             a, b = parse.(Float64, line[3:4])
             D[m, n] = a + im * b
         end
-        repmat_wann[i] = OrbitalRep{n_wann}(isym, D)
+        repmat_wann[i] = OrbitalRep(isym, D)
     end
 
     return RawIsym(
@@ -417,7 +416,7 @@ function standardize(raw::RawIsym)
     orbital_reps = map(1:raw.n_symops) do isym
         rep = isym2entry[isym]
         D = raw.symops[isym].t_rev ? transpose(rep.D) : adjoint(rep.D)
-        typeof(rep)(isym, D)
+        OrbitalRep(isym, Matrix(D))
     end
 
     return Isym(
