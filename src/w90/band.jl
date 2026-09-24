@@ -381,11 +381,11 @@ the `WannierIO.write_w90_band(prefix; kwargs...)` is the low-level version.
 function write_w90_band(
         prefix::AbstractString, kpath::CrystalBase.KPath, eigenvalues::AbstractVector
     )
-    x = axis(kpath)
-    symm_point_indices = tick_indices(kpath; merge = false)
-    symm_point_labels = tick_labels(kpath; merge = false)
+    x = cumulative_distances(kpath)
+    symm_points = ticks(kpath; merge = false)
     return WannierIO.write_w90_band(
-        prefix; x, eigenvalues, kpoints = kpoints(kpath), symm_point_indices, symm_point_labels
+        prefix; x, eigenvalues, kpoints = kpoints(kpath),
+        symm_point_indices = symm_points.indices, symm_point_labels = symm_points.labels,
     )
 end
 
@@ -416,9 +416,9 @@ write_w90_band_kpt_labelinfo("si2", kp)
 """
 function write_w90_band_kpt_labelinfo(prefix::AbstractString, kpath::KPath)
     kpts = kpoints(kpath)
-    x = axis(kpath)
-    symm_point_indices = tick_indices(kpath; merge = false)
-    symm_point_labels = tick_labels(kpath; merge = false)
+    x = cumulative_distances(kpath)
+    symm_points = ticks(kpath; merge = false)
+    symm_point_indices, symm_point_labels = symm_points.indices, symm_points.labels
 
     filename = prefix * "_band.kpt"
     write_w90_band_kpt(filename; kpoints = kpts)
