@@ -1,3 +1,6 @@
+# Test fixtures reproduce wannier90 files byte for byte (trailing blanks,
+# missing final newlines, ...); the whitespace fixers must not touch them.
+exclude: ^test/.*_testfiles/
 repos:
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.5.6
