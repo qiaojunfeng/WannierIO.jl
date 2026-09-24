@@ -330,6 +330,7 @@ function _win_keyval_types()
             "ws_search_size",
             "num_guide_cycles",
             "num_no_guide_iter",
+            "dis_proj_auto_num_classes",
         ]
         key_types[key] = :int
     end
@@ -345,6 +346,8 @@ function _win_keyval_types()
             "dis_froz_max",
             "dis_win_min",
             "dis_win_max",
+            "dis_proj_min",
+            "dis_proj_max",
             "dis_mix_ratio",
             "dis_conv_tol",
             "fermi_energy",
@@ -372,6 +375,8 @@ function _win_keyval_types()
             "postproc_setup",
             "auto_projections",
             "restart",
+            "dis_froz_proj",
+            "dis_proj_auto",
         ]
         key_types[key] = :bool
     end

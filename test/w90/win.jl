@@ -69,6 +69,16 @@ end
     @test win["exclude_bands"] == [1, 3, 4, 5, 6]
 end
 
+@testitem "read win: projectability disentanglement" begin
+    windir = joinpath(@__DIR__, "win_testfiles")
+    win = read_win(joinpath(windir, "dis_proj.win"))
+    @test win["dis_froz_proj"] === true
+    @test win["dis_proj_min"] === 0.01
+    @test win["dis_proj_max"] === 0.95
+    @test win["dis_proj_auto"] === false
+    @test win["dis_proj_auto_num_classes"] === 4
+end
+
 @testitem "read win: explicit_kpath" begin
     using LazyArtifacts
     toml_path = artifact"GaAs/GaAs.win"
