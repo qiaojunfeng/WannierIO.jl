@@ -197,6 +197,7 @@ function _validate_Tvectors_Tdegens(Tvectors::AbstractArray{<:Any, 3}, Tdegens::
                 throw(ArgumentError("All T-vectors must be length 3"))
         end
     end
+    return
 end
 
 function MdrsRvectorReducer(

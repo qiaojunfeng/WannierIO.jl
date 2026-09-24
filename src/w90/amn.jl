@@ -107,7 +107,7 @@ the `binary` kwargs.
 """
 function write_amn end
 
-function write_amn(io::IO, A::AbstractArray{<:Number,3}, ::FortranText; header = default_header())
+function write_amn(io::IO, A::AbstractArray{<:Number, 3}, ::FortranText; header = default_header())
     n_bands, n_wann, n_kpts = size(A)
 
     write(io, header, "\n")
@@ -127,7 +127,7 @@ function write_amn(io::IO, A::AbstractArray{<:Number,3}, ::FortranText; header =
 end
 
 function write_amn(
-        io::IO, A::AbstractArray{<:Number,3}, ::FortranBinaryStream; header = default_header()
+        io::IO, A::AbstractArray{<:Number, 3}, ::FortranBinaryStream; header = default_header()
     )
     n_bands, n_wann, n_kpts = size(A)
 
@@ -163,7 +163,7 @@ end
 
 function write_amn(
         filename::AbstractString,
-    A::AbstractArray{<:Number,3},
+        A::AbstractArray{<:Number, 3},
         format::AbstractFileFormat;
         header = default_header(),
     )
@@ -174,7 +174,7 @@ function write_amn(
 end
 
 function write_amn(
-    file::Union{IO, AbstractString}, A::AbstractArray{<:Number,3}; header = default_header(), binary = false
+        file::Union{IO, AbstractString}, A::AbstractArray{<:Number, 3}; header = default_header(), binary = false
     )
     format = fortran_format(; binary, stream = true)
     return write_amn(file, A, format; header)

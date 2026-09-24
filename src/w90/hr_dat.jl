@@ -32,7 +32,7 @@ function HrDat(
         Rdegens::AbstractVector{IT},
         H::AbstractArray{T, 3},
     ) where {T <: Number, IT <: Integer}
-        return HrDat(String(header), collect(Vec3{IT}.(Rvectors)), collect(IT, Rdegens), Array{Complex{T}, 3}(H))
+    return HrDat(String(header), collect(Vec3{IT}.(Rvectors)), collect(IT, Rdegens), Array{Complex{T}, 3}(H))
 end
 
 function Base.show(io::IO, hrdat::HrDat)

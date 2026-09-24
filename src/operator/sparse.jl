@@ -109,7 +109,7 @@ function Base.size(p::CscPack)
 end
 
 function Base.size(p::CscPack, d)
-    size(p)[d]
+    return size(p)[d]
 end
 
 "Return the `l`-th matrix as a `SparseMatrixCSC` with `p[:, :, l]`."

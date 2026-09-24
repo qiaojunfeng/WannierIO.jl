@@ -44,8 +44,8 @@ function _validate_operator_pack(
             error("operator `$name` has invalid element type $To, expected $Tv or $(Complex{Tv})")
         size(op)[1:2] == (n_wann, n_wann) ||
             error(
-                "operator `$name` has invalid matrix size $(size(op)[1:2]), expected ($(n_wann), $(n_wann))",
-            )
+            "operator `$name` has invalid matrix size $(size(op)[1:2]), expected ($(n_wann), $(n_wann))",
+        )
     end
     return nothing
 end

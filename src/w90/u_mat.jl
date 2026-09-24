@@ -75,7 +75,7 @@ Write wannier90 `prefix_u.mat` or `prefix_u_dis.mat` file.
 """
 function write_u_mat(
         io::IO,
-        U::AbstractArray{<:Number,3},
+        U::AbstractArray{<:Number, 3},
         kpoints::AbstractVector;
         header::AbstractString = default_header(),
         digits::Integer = 10,
@@ -110,7 +110,7 @@ end
 
 function write_u_mat(
         filename::AbstractString,
-        U::AbstractArray{<:Number,3},
+        U::AbstractArray{<:Number, 3},
         kpoints::AbstractVector;
         header::AbstractString = default_header(),
         digits::Integer = 10,
