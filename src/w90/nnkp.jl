@@ -1,4 +1,4 @@
-export read_nnkp, write_nnkp
+export Nnkp, read_nnkp, write_nnkp
 
 abstract type Orbital end
 
@@ -85,6 +85,118 @@ function Base.NamedTuple(o::SpinorHydrogenOrbital)
 end
 
 """
+Container for wannier90 `nnkp` data.
+
+Each field mirrors one block of the file. A projection block the file does not
+have is `nothing`: wannier90 writes exactly one of `projections` (spinless) and
+`spinor_projections` (spinor), which may be empty when `auto_projections` is
+used.
+
+$(TYPEDEF)
+
+# Fields
+
+$(FIELDS)
+"""
+struct Nnkp{T <: Real}
+    """`real_lattice` block, each column is a lattice vector, in Å"""
+    lattice::Mat3{T}
+
+    """`recip_lattice` block, each column is a reciprocal lattice vector, in Å⁻¹"""
+    recip_lattice::Mat3{T}
+
+    """`kpoints` block, length-`n_kpts` vector, fractional coordinates"""
+    kpoints::Vector{Vec3{T}}
+
+    """`projections` block, or `nothing` if the file has none"""
+    projections::Union{Nothing, Vector{HydrogenOrbital}}
+
+    """`spinor_projections` block, or `nothing` if the file has none"""
+    spinor_projections::Union{Nothing, Vector{SpinorHydrogenOrbital}}
+
+    """`auto_projections` block: the number of Wannier functions for automatic
+    initial projections, or `nothing` if the file has none"""
+    auto_projections::Union{Nothing, Int}
+
+    """`nnkpts` block: index of the neighboring kpoint, `n_bvecs × n_kpts`"""
+    kpb_k::Matrix{Int}
+
+    """`nnkpts` block: translation of the neighboring kpoint, fractional w.r.t.
+    `recip_lattice`, `n_bvecs × n_kpts`. `b = kpoints[kpb_k[ib, ik]] +
+    kpb_G[ib, ik] - kpoints[ik]` is the `ib`-th bvector of the `ik`-th kpoint."""
+    kpb_G::Matrix{Vec3{Int}}
+
+    """`exclude_bands` block, band indices excluded from the calculation"""
+    exclude_bands::Vector{Int}
+
+    function Nnkp{T}(
+            lattice, recip_lattice, kpoints, projections, spinor_projections,
+            auto_projections, kpb_k, kpb_G, exclude_bands,
+        ) where {T <: Real}
+        isnothing(projections) || projections isa AbstractVector{<:HydrogenOrbital} ||
+            throw(ArgumentError("projections should be a vector of HydrogenOrbital"))
+        isnothing(spinor_projections) ||
+            spinor_projections isa AbstractVector{<:SpinorHydrogenOrbital} ||
+            throw(ArgumentError("spinor_projections should be a vector of SpinorHydrogenOrbital"))
+        size(lattice) == (3, 3) || throw(DimensionMismatch("size(lattice) != (3, 3)"))
+        size(recip_lattice) == (3, 3) ||
+            throw(DimensionMismatch("size(recip_lattice) != (3, 3)"))
+        _check_dimensions_kpb(kpb_k, kpb_G)
+        length(kpoints) == size(kpb_k, 2) ||
+            throw(DimensionMismatch("kpoints and kpb_k have different length"))
+        return new{T}(
+            lattice, recip_lattice, kpoints, projections, spinor_projections,
+            auto_projections, kpb_k, kpb_G, exclude_bands,
+        )
+    end
+end
+
+"""
+    Nnkp(; lattice, recip_lattice, kpoints, kpb_k, kpb_G,
+         projections = nothing, spinor_projections = nothing,
+         auto_projections = nothing, exclude_bands = Int[])
+
+Construct a [`Nnkp`](@ref) from its blocks; the optional blocks default to
+absent.
+"""
+function Nnkp(;
+        lattice, recip_lattice, kpoints, kpb_k, kpb_G,
+        projections = nothing, spinor_projections = nothing,
+        auto_projections = nothing, exclude_bands = Int[],
+    )
+    T = float(eltype(mat3(recip_lattice)))
+    return Nnkp{T}(
+        lattice, recip_lattice, kpoints, projections, spinor_projections,
+        auto_projections, kpb_k, kpb_G, exclude_bands,
+    )
+end
+
+function Base.:(==)(a::Nnkp, b::Nnkp)
+    return all(getfield(a, f) == getfield(b, f) for f in fieldnames(Nnkp))
+end
+
+function Base.show(io::IO, nnkp::Nnkp)
+    n_bvecs, n_kpts = size(nnkp.kpb_k)
+    return print(io, "Nnkp(n_kpts=$(n_kpts), n_bvecs=$(n_bvecs))")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", nnkp::Nnkp)
+    n_bvecs, n_kpts = size(nnkp.kpb_k)
+    nproj(p) = isnothing(p) ? "none" : string(length(p))
+    return print(
+        io,
+        """Nnkp(
+          n_kpts: $(n_kpts)
+          n_bvecs: $(n_bvecs)
+          projections: $(nproj(nnkp.projections))
+          spinor_projections: $(nproj(nnkp.spinor_projections))
+          auto_projections: $(something(nnkp.auto_projections, "none"))
+          exclude_bands: $(nnkp.exclude_bands)
+        )""",
+    )
+end
+
+"""
     read_nnkp(file)
     read_nnkp(file, ::W90InputText)
     read_nnkp(file, ::W90InputToml)
@@ -95,17 +207,7 @@ Read wannier90 `nnkp` file.
 - `file`: The name of the input file, or an `IO`.
 
 # Return
-- `lattice`: each column is a lattice vector
-- `recip_lattice`: each column is a reciprocal lattice vector
-- `kpoints`: length-`n_kpts` vector, each element is `Vec3`, in fractional coordinates
-- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`
-- `spinor_projections`: optional, length-`n_projs` vector of `SpinorHydrogenOrbital`,
-    for spinor (noncollinear) Wannierization
-- `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
-    initial projections
-- `kpb_k`: `n_bvecs × n_kpts` matrix of integers, index of the neighboring kpoint
-- `kpb_G`: `n_bvecs × n_kpts` matrix of `Vec3` translations, fractional w.r.t
-    `recip_lattice`
+- a [`Nnkp`](@ref) struct, one field per block of the file
 
 Wannier90 `nnkp` file is a plain text format, the 2nd version reads `nnkp` file
 in Wannier90 format. The thrid version read a TOML-format `nnkp` file, which is
@@ -127,7 +229,7 @@ function read_nnkp(io::IO, ::W90InputText)
     end
 
     _nnkp_check_required_blocks(params)
-    return params
+    return _nnkp_from_params(params)
 end
 
 """Read one line from an nnkp block and strip surrounding whitespace."""
@@ -274,6 +376,15 @@ function _nnkp_parse_block_nnkpts(io::IO, n_kpts::Int)
     return kpb_k, kpb_G
 end
 
+"""Parse `exclude_bands` block and return the excluded band indices."""
+function _nnkp_parse_block_exclude_bands(io::IO)
+    block_name = "exclude_bands"
+    n_exclude = parse(Int, _nnkp_block_nextline(io, block_name))
+    exclude_bands = [parse(Int, _nnkp_block_nextline(io, block_name)) for _ in 1:n_exclude]
+    _nnkp_block_mustend(_nnkp_block_nextline(io, block_name), block_name)
+    return exclude_bands
+end
+
 """Skip unknown nnkp blocks by consuming lines up to the matching `end <block>`."""
 function _nnkp_skip_block(io::IO, block_name::AbstractString)
     line = _nnkp_block_nextline(io, block_name)
@@ -297,6 +408,8 @@ function _nnkp_parse_block!(params::AbstractDict, io::IO, block_name::AbstractSt
         params["spinor_projections"] = _nnkp_parse_block_spinor_projections(io)
     elseif block_name == "auto_projections"
         params["auto_projections"] = _nnkp_parse_block_auto_projections(io)
+    elseif block_name == "exclude_bands"
+        params["exclude_bands"] = _nnkp_parse_block_exclude_bands(io)
     elseif block_name == "nnkpts"
         haskey(params, "kpoints") || error("no `kpoints` block before `nnkpts` block?")
         kpb_k, kpb_G = _nnkp_parse_block_nnkpts(io, length(params["kpoints"]))
@@ -319,6 +432,21 @@ function _nnkp_check_required_blocks(params::AbstractDict)
     !iszero(params["lattice"]) || error("`real_lattice` not found")
     !iszero(params["recip_lattice"]) || error("`recip_lattice` not found")
     return nothing
+end
+
+"""Build a [`Nnkp`](@ref) from the parsed blocks, keyed by field name."""
+function _nnkp_from_params(params::AbstractDict)
+    return Nnkp(;
+        lattice = params["lattice"],
+        recip_lattice = params["recip_lattice"],
+        kpoints = params["kpoints"],
+        kpb_k = params["kpb_k"],
+        kpb_G = params["kpb_G"],
+        projections = get(params, "projections", nothing),
+        spinor_projections = get(params, "spinor_projections", nothing),
+        auto_projections = get(params, "auto_projections", nothing),
+        exclude_bands = get(params, "exclude_bands", Int[]),
+    )
 end
 
 """Construct an `Orbital` of type `T` from a TOML-parsed dict of its fields."""
@@ -360,7 +488,7 @@ function read_nnkp(io::IO, ::W90InputToml)
         nnkp["kpb_G"] = kpb_G
     end
 
-    return nnkp
+    return _nnkp_from_params(nnkp)
 end
 
 function read_nnkp(filename::AbstractString, format::AbstractFileFormat)
@@ -376,104 +504,33 @@ function read_nnkp(file::Union{IO, AbstractString})
 end
 
 """
-    $(SIGNATURES)
-"""
-@inline function _nnkp_check_required_params(kwargs)
-    required_keys = ["lattice", "recip_lattice", "kpoints", "kpb_k", "kpb_G"]
-    for k in required_keys
-        haskey(kwargs, k) || throw(ArgumentError("Required parameter $k not found"))
-    end
-    return
-end
-
-"""
-    write_nnkp(file, params; header)
-    write_nnkp(file, params, ::W90InputText; header)
-    write_nnkp(file, params, ::W90InputToml; header)
+    write_nnkp(file, nnkp; header)
+    write_nnkp(file, nnkp, ::W90InputText; header)
+    write_nnkp(file, nnkp, ::W90InputToml; header)
 
 Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
 
 # Arguments
 - `file`: The name of the output file, or an `IO`.
-- `params`: a `Dict` (or `OrderedDict`) of parameters to be written into the `nnkp` file
-
-The `params` should have at least the following keys:
-- `lattice`: each column is a lattice vector
-- `recip_lattice`: each column is a reciprocal lattice vector
-- `kpoints`: length-`n_kpts` vector of `Vec3`, in fractional coordinates
-- `kpb_k`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector of
-    integers, index of kpoints
-- `kpb_G`: length-`n_kpts` vector, each element is a length-`n_bvecs` vector,
-    then each element is a `Vec3` for translation vector, fractional w.r.t. `recip_lattice`
-
-The following keys are optional:
-- `projections`: optional, length-`n_projs` vector of `HydrogenOrbital`, written as a
-    `projections` block
-- `spinor_projections`: optional, length-`n_projs` vector of `SpinorHydrogenOrbital` for
-    spinor (noncollinear) Wannierization, written as a `spinor_projections` block
-- `auto_projections`: optional, the number of Wannier functions `n_wann` for automatic
-    initial projections. If given, write an `auto_projections` block
-- `exclude_bands`: if given, write the specified band indices in the `exclude_bands` block
+- `nnkp`: a [`Nnkp`](@ref); each block that is not `nothing` is written
 
 # Keyword arguments
 - `header`: first line of the file
 """
 function write_nnkp end
 
-function write_nnkp(io::IO, params::AbstractDict, ::W90InputText; header = default_header())
-    _nnkp_validate_write_params(params)
-
+function write_nnkp(io::IO, nnkp::Nnkp, ::W90InputText; header = default_header())
     _nnkp_write_header(io, header)
-    _nnkp_write_block_real_lattice(io, params["lattice"])
-    _nnkp_write_block_recip_lattice(io, params["recip_lattice"])
-    _nnkp_write_block_kpoints(io, params["kpoints"])
-
-    projections = get(params, "projections", nothing)
-    isnothing(projections) || _nnkp_write_block_projections(io, projections)
-
-    spinor_projections = get(params, "spinor_projections", nothing)
-    isnothing(spinor_projections) ||
-        _nnkp_write_block_spinor_projections(io, spinor_projections)
-
-    auto_projections = get(params, "auto_projections", nothing)
-    isnothing(auto_projections) || _nnkp_write_block_auto_projections(io, auto_projections)
-
-    _nnkp_write_block_nnkpts(io, params["kpb_k"], params["kpb_G"])
-    _nnkp_write_block_exclude_bands(io, get(params, "exclude_bands", nothing))
-
-    return nothing
-end
-
-"""Validate nnkp parameters required by the text writer."""
-function _nnkp_validate_write_params(params::AbstractDict)
-    _nnkp_check_required_params(params)
-
-    projections = get(params, "projections", nothing)
-    isnothing(projections) ||
-        projections isa AbstractVector{<:HydrogenOrbital} ||
-        throw(ArgumentError("projections should be a vector of HydrogenOrbital"))
-
-    spinor_projections = get(params, "spinor_projections", nothing)
-    isnothing(spinor_projections) ||
-        spinor_projections isa AbstractVector{<:SpinorHydrogenOrbital} ||
-        throw(
-        ArgumentError(
-            "spinor_projections should be a vector of SpinorHydrogenOrbital"
-        )
-    )
-
-    lattice = params["lattice"]
-    recip_lattice = params["recip_lattice"]
-    kpoints = params["kpoints"]
-    kpb_k = params["kpb_k"]
-    kpb_G = params["kpb_G"]
-
-    _check_dimensions_kpb(kpb_k, kpb_G)
-    length(kpoints) == size(kpb_k, 2) ||
-        throw(DimensionMismatch("kpoints and kpb_k have different length"))
-    size(lattice) == (3, 3) || throw(DimensionMismatch("size(lattice) != (3, 3)"))
-    size(recip_lattice) == (3, 3) ||
-        throw(DimensionMismatch("size(recip_lattice) != (3, 3)"))
+    _nnkp_write_block_real_lattice(io, nnkp.lattice)
+    _nnkp_write_block_recip_lattice(io, nnkp.recip_lattice)
+    _nnkp_write_block_kpoints(io, nnkp.kpoints)
+    isnothing(nnkp.projections) || _nnkp_write_block_projections(io, nnkp.projections)
+    isnothing(nnkp.spinor_projections) ||
+        _nnkp_write_block_spinor_projections(io, nnkp.spinor_projections)
+    isnothing(nnkp.auto_projections) ||
+        _nnkp_write_block_auto_projections(io, nnkp.auto_projections)
+    _nnkp_write_block_nnkpts(io, nnkp.kpb_k, nnkp.kpb_G)
+    _nnkp_write_block_exclude_bands(io, nnkp.exclude_bands)
     return nothing
 end
 
@@ -581,21 +638,21 @@ end
 """Write `exclude_bands` block."""
 function _nnkp_write_block_exclude_bands(io::IO, exclude_bands)
     @printf(io, "begin exclude_bands\n")
-    if isnothing(exclude_bands)
-        @printf(io, "%d\n", 0)
-    else
-        @printf(io, "%d\n", length(exclude_bands))
-        for b in exclude_bands
-            @printf(io, "%d\n", b)
-        end
+    @printf(io, "%d\n", length(exclude_bands))
+    for b in exclude_bands
+        @printf(io, "%d\n", b)
     end
     @printf(io, "end exclude_bands\n")
     @printf(io, "\n")
     return nothing
 end
 
-function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header = default_header())
-    _nnkp_validate_write_params(params)
+function write_nnkp(io::IO, nnkp::Nnkp, ::W90InputToml; header = default_header())
+    params = OrderedDict{String, Any}()
+    for f in fieldnames(Nnkp)
+        v = getfield(nnkp, f)
+        isnothing(v) || (params[String(f)] = v)
+    end
 
     println(io, header, "\n")
     # Note that this requires https://github.com/JuliaLang/julia/pull/57584
@@ -606,19 +663,15 @@ function write_nnkp(io::IO, params::AbstractDict, ::W90InputToml; header = defau
 end
 
 function write_nnkp(
-        filename::AbstractString,
-        params::AbstractDict,
-        format::AbstractFileFormat;
+        filename::AbstractString, nnkp::Nnkp, format::AbstractFileFormat;
         header = default_header(),
     )
     return open(filename, "w") do io
-        write_nnkp(io, params, format; header)
+        write_nnkp(io, nnkp, format; header)
     end
 end
 
-function write_nnkp(
-        file::Union{IO, AbstractString}, params::AbstractDict; header = default_header()
-    )
+function write_nnkp(file::Union{IO, AbstractString}, nnkp::Nnkp; header = default_header())
     format = w90input_format(; toml = splitext(file)[end] == ".toml")
-    return write_nnkp(file, params, format; header)
+    return write_nnkp(file, nnkp, format; header)
 end
