@@ -61,6 +61,16 @@ write_win("silicon_new.win", win)
 
 `read_win` can parse both text and TOML-style inputs via format detection.
 
+The `projections` block is kept as its raw lines, so that `write_win`
+reproduces it. [`parse_projections`](@ref) expands it into the orbitals that
+`wannier90.x -pp` writes to the `nnkp` file, and
+[`format_projections`](@ref) writes orbitals back as a projection block:
+
+```julia
+projections = parse_projections(win)  # Vector{HydrogenOrbital}
+print(format_projections(projections))
+```
+
 ### 4. Read and write tight-binding files
 
 ```julia

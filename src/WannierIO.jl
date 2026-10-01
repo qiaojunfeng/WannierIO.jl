@@ -37,6 +37,7 @@ using FortranFiles: FortranFile, FString, trimstring, Record
 include("w90/win.jl")
 include("w90/wout.jl")
 include("w90/nnkp.jl")
+include("w90/projections.jl")
 include("w90/amn.jl")
 include("w90/mmn.jl")
 include("w90/eig.jl")
