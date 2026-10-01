@@ -112,6 +112,22 @@ end
     @test read_isym(artifact"Si2_hse/Si2.isym").symops[end].W == sym.symops[end].W
 end
 
+@testitem "SymOp one-line display" begin
+    using LazyArtifacts
+    symops = read_isym(artifact"Si2_hse/Si2.isym").symops
+
+    @test repr(symops[1]) == "SymOp(1: identity)"
+    @test repr(symops[5]) == "SymOp(5: 180 deg rotation - cart. axis [1,1,0], v = [0.25, 0.25, -0.75])"
+    # the -0.0 components of a pure rotation do not print as a translation
+    @test repr(symops[2]) == "SymOp(2: 180 deg rotation - cart. axis [0,0,1])"
+    @test repr(symops[49]) == "SymOp(49: identity, +T)"
+    # one line per operation inside a container
+    @test countlines(IOBuffer(sprint(show, MIME"text/plain"(), symops))) == 1 + length(symops)
+
+    bare = WannierIO.SymOp("", symops[1].W, symops[1].v, symops[1].Wk, false, symops[1].u, 1, 1)
+    @test repr(bare) == "SymOp(1)"
+end
+
 @testitem "build_mapping_ik_isym" begin
     using LazyArtifacts
     sym = read_isym(artifact"Si2_hse/Si2.isym")

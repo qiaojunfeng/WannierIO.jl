@@ -136,6 +136,23 @@ struct SymOp
     isym_inv::Int64
 end
 
+# The description in `comment` without the `isym:` prefix and the `+T` time-reversal
+# suffix that pw2wannier90 writes around it, which `show` prints from the fields.
+function _symop_description(s::SymOp)
+    text = replace(s.comment, r"^\s*\d+\s*:" => "")
+    return strip(replace(text, r"\+T\s*$" => ""))
+end
+
+function Base.show(io::IO, s::SymOp)
+    print(io, "SymOp(", s.isym)
+    description = _symop_description(s)
+    isempty(description) || print(io, ": ", description)
+    # `+ 0.0` turns the -0.0 components of the file into 0.0
+    iszero(s.v) || print(io, ", v = ", collect(s.v .+ 0.0))
+    s.time_reversal && print(io, ", +T")
+    return print(io, ")")
+end
+
 function Base.show(io::IO, ::MIME"text/plain", s::SymOp)
     return print(
         io,
