@@ -27,21 +27,26 @@ of an IBZ kpoint, acting on the Bloch states:
 ```
 (the column index is the original state), an `n_bands × n_bands` matrix.
 Identical in the raw and standard layers.
+
+A vector of them is sparse: only the elements of the little group of each IBZ
+kpoint are present, so each entry carries its kpoint `ik_ibz` and operation
+`ig`; [`tabulate_littlegroup_reps`](@ref) looks them up by `(ik_ibz, ig)`.
 """
 struct LittleGroupRep
     """Index of the IBZ kpoint."""
     ik_ibz::Int64
 
-    """Index of the symmetry operation."""
-    isym::Int64
+    """Index of the operation ``ĥ`` in the list of all symmetry operations
+    (`symops[ig]`), not its position within the little group."""
+    ig::Int64
 
     """Representation matrix acting on the Bloch states."""
     d::Matrix{ComplexF64}
 end
 
 n_bands(rep::LittleGroupRep) = size(rep.d, 1)
-Base.:(==)(a::LittleGroupRep, b::LittleGroupRep) = a.ik_ibz == b.ik_ibz && a.isym == b.isym && a.d == b.d
-Base.hash(rep::LittleGroupRep, h::UInt) = hash(rep.d, hash(rep.isym, hash(rep.ik_ibz, hash(:LittleGroupRep, h))))
+Base.:(==)(a::LittleGroupRep, b::LittleGroupRep) = a.ik_ibz == b.ik_ibz && a.ig == b.ig && a.d == b.d
+Base.hash(rep::LittleGroupRep, h::UInt) = hash(rep.d, hash(rep.ig, hash(rep.ik_ibz, hash(:LittleGroupRep, h))))
 
 """
 A representation matrix ``D(ĝ)`` acting on the trial orbitals (and on
@@ -51,26 +56,28 @@ symmetry-adapted Wannier functions):
 ```
 (the column index is the original orbital), an `n_wann × n_wann` matrix.
 
+An `OrbitalRep` carries no operation index: a vector of them is dense and in
+the order of the symmetry operations, so `orbital_reps[ig]` belongs to
+`symops[ig]`. Pass the pair (`zip(symops, orbital_reps)`) where a single
+representation must know its operation.
+
 !!! warning
 
-    In the raw layer ([`RawIsym`](@ref)), entry `isym` stores ``D(ĝ_{isym}^{-1})``,
+    In the raw layer ([`RawIsym`](@ref)), entry `ig` stores ``D(ĝ_{ig}^{-1})``,
     the representation of the *inverse* operation, exactly as written by
-    pw2wannier90. After [`standardize`](@ref), entry `isym` stores
-    ``D(ĝ_{isym})``, its inverse, with the SU(2) sign choice of the `u` field
+    pw2wannier90. After [`standardize`](@ref), entry `ig` stores
+    ``D(ĝ_{ig})``, its inverse, with the SU(2) sign choice of the `u` field
     of the operation (that of the little-group matrices). An antiunitary
     operation acts as ``D K`` (``K`` complex conjugation).
 """
 struct OrbitalRep
-    """Index of the symmetry operation."""
-    isym::Int64
-
     """Representation matrix acting on the Wannier functions."""
     D::Matrix{ComplexF64}
 end
 
 n_wannier(rep::OrbitalRep) = size(rep.D, 1)
-Base.:(==)(a::OrbitalRep, b::OrbitalRep) = a.isym == b.isym && a.D == b.D
-Base.hash(rep::OrbitalRep, h::UInt) = hash(rep.D, hash(rep.isym, hash(:OrbitalRep, h)))
+Base.:(==)(a::OrbitalRep, b::OrbitalRep) = a.D == b.D
+Base.hash(rep::OrbitalRep, h::UInt) = hash(rep.D, hash(:OrbitalRep, h))
 
 """
 A symmetry operation as stored in the `isym` file, in QE's convention.
@@ -129,11 +136,12 @@ struct SymOp
     """SU(2) rotation matrix for spinors."""
     u::SMatrix{2, 2, ComplexF64}
 
-    """Index of this symmetry operation in all the symmetry operations."""
-    isym::Int64
+    """Index ``g`` of this operation in the list of all symmetry operations,
+    `symops[ig] === op`."""
+    ig::Int64
 
-    """Index of the inverse symmetry operation `g^{-1}`."""
-    isym_inv::Int64
+    """Index of the inverse operation ``g^{-1}``."""
+    ig_inv::Int64
 end
 
 # The description in `comment` without the `isym:` prefix and the `+T` time-reversal
@@ -144,7 +152,7 @@ function _symop_description(s::SymOp)
 end
 
 function Base.show(io::IO, s::SymOp)
-    print(io, "SymOp(", s.isym)
+    print(io, "SymOp(", s.ig)
     description = _symop_description(s)
     isempty(description) || print(io, ": ", description)
     # `+ 0.0` turns the -0.0 components of the file into 0.0
@@ -157,7 +165,7 @@ function Base.show(io::IO, ::MIME"text/plain", s::SymOp)
     return print(
         io,
         """SymOp ($(s.comment))
-          isym = $(s.isym), isym_inv = $(s.isym_inv)
+          ig = $(s.ig), ig_inv = $(s.ig_inv)
           W = $(s.W)
           v = $(s.v)
           Wk = $(s.Wk)
@@ -206,7 +214,8 @@ struct RawIsym
     n_wann::Int64
 
     """Representation matrices for the Wannier functions, storing `D(inv(g))`
-    at index `isym` (file section `Rotation matrix of Wannier functions`)"""
+    at index `ig`, the operation index the file gives for each entry (file
+    section `Rotation matrix of Wannier functions`)"""
     repmat_wann::Vector{OrbitalRep}
 end
 
@@ -243,15 +252,15 @@ struct Isym
     n_bands::Int64
 
     """Little-group representation matrices `d(ĥ, k)`, sparse in
-    `(ik_ibz, isym)`: only elements of the little group of each IBZ kpoint
+    `(ik_ibz, ig)`: only elements of the little group of each IBZ kpoint
     are present"""
     littlegroup_reps::Vector{LittleGroupRep}
 
     "Number of Wannier functions"
     n_wann::Int64
 
-    """Orbital representation matrices, `orbital_reps[isym]` stores
-    `D(g_isym)`, dense in `isym`"""
+    """Orbital representation matrices, dense in the operations:
+    `orbital_reps[ig]` stores `D(g_ig)`"""
     orbital_reps::Vector{OrbitalRep}
 end
 
@@ -281,7 +290,7 @@ function read_isym_raw(io::IO)
     u = zeros(ComplexF64, 2, 2)
     symops = Vector{RawSymOp}(undef, n_symops)
 
-    for isym in 1:n_symops
+    for ig in 1:n_symops
         comment = strip(readline(io))
         for j in 1:3
             line = split(readline(io))
@@ -300,7 +309,7 @@ function read_isym_raw(io::IO)
         end
         invs = parse(Int64, readline(io))
 
-        symops[isym] = RawSymOp(comment, s, ft, t_rev, u, isym, invs)
+        symops[ig] = RawSymOp(comment, s, ft, t_rev, u, ig, invs)
     end
 
     # Read IBZ kpoints
@@ -328,7 +337,7 @@ function read_isym_raw(io::IO)
     repmat_band = Vector{LittleGroupRep}(undef, n_repmat_band)
 
     for irep in 1:n_repmat_band
-        ik_ibz, isym, n_elems = parse.(Int64, split(readline(io)))
+        ik_ibz, ig, n_elems = parse.(Int64, split(readline(io)))
         # Fill all non-zero elements of the representation matrix
         d = zeros(ComplexF64, n_bands, n_bands)
         for _ in 1:n_elems
@@ -337,7 +346,7 @@ function read_isym_raw(io::IO)
             a, b = parse.(Float64, line[3:4])
             d[m, n] = a + im * b
         end
-        repmat_band[irep] = LittleGroupRep(ik_ibz, isym, d)
+        repmat_band[irep] = LittleGroupRep(ik_ibz, ig, d)
     end
 
     # Read rotation matrix Dₘₙ(ĝ⁻¹) for Wannier functions
@@ -347,10 +356,15 @@ function read_isym_raw(io::IO)
 
     n_wann = parse(Int64, readline(io))
 
+    # each entry names its operation; store it at that index
     repmat_wann = Vector{OrbitalRep}(undef, n_symops)
+    filled = falses(n_symops)
 
-    for i in 1:n_symops
-        isym, n_elems = parse.(Int64, split(readline(io)))
+    for _ in 1:n_symops
+        ig, n_elems = parse.(Int64, split(readline(io)))
+        (0 < ig <= n_symops) || error("orbital representation for operation $ig out of range 1:$n_symops")
+        filled[ig] && error("duplicate orbital representation for operation $ig")
+        filled[ig] = true
         # Fill all the non-zero elements of the rotation matrix
         D = zeros(ComplexF64, n_wann, n_wann)
         for _ in 1:n_elems
@@ -359,7 +373,7 @@ function read_isym_raw(io::IO)
             a, b = parse.(Float64, line[3:4])
             D[m, n] = a + im * b
         end
-        repmat_wann[i] = OrbitalRep(isym, D)
+        repmat_wann[ig] = OrbitalRep(D)
     end
 
     return RawIsym(
@@ -410,9 +424,9 @@ end
 Convert a [`RawIsym`](@ref) (file/QE conventions) to an [`Isym`](@ref) in the
 standard Seitz convention:
 - symmetry operations are converted by [`standardize(::RawSymOp)`](@ref)
-- `orbital_reps[isym]` stores `D(g_isym)`, the inverse of the raw entry
-  `repmat_wann[isym]`, which is the matrix of the exact inverse operation
-  `g_isym^{-1}` (`D^†` for a unitary operation; for an antiunitary one, which
+- `orbital_reps[ig]` stores `D(g_ig)`, the inverse of the raw entry
+  `repmat_wann[ig]`, which is the matrix of the exact inverse operation
+  `g_ig^{-1}` (`D^†` for a unitary operation; for an antiunitary one, which
   acts as `D K` with `K` complex conjugation, the inverse acts as `D^T K`,
   so `D` is the transpose of the raw entry)
 - `littlegroup_reps` are copied unchanged (the file's `d` matrices are
@@ -422,18 +436,15 @@ For spinors all three objects then share one SU(2) sign choice (`u(g)` or
 `-u(g)` for each operation), that of the `u` field of the operations:
 pw2wannier90 rotates the wave functions with `u(g)` and builds the raw
 orbital entry of `g^{-1}` with `u(g)^†`. Re-indexing the raw entry of the
-stored inverse element `invs(isym)` instead would flip the sign for some
+stored inverse element `invs(ig)` instead would flip the sign for some
 operations (the twofold rotations and mirrors), because the SU(2) matrix of
 the stored inverse is `±u(g)^{-1}`.
 """
 function standardize(raw::RawIsym)
     symops = standardize.(raw.symops)
 
-    isym2entry = Dict(rep.isym => rep for rep in raw.repmat_wann)
-    orbital_reps = map(1:raw.n_symops) do isym
-        rep = isym2entry[isym]
-        D = raw.symops[isym].t_rev ? transpose(rep.D) : adjoint(rep.D)
-        OrbitalRep(isym, Matrix(D))
+    orbital_reps = map(raw.symops, raw.repmat_wann) do op, rep
+        OrbitalRep(Matrix(op.t_rev ? transpose(rep.D) : adjoint(rep.D)))
     end
 
     return Isym(
@@ -464,30 +475,29 @@ read_isym(io_or_filename) = standardize(read_isym_raw(io_or_filename))
 """
     $(SIGNATURES)
 
-Build the index mapping from `ik_ibz` and `isym` to the index in
-`littlegroup_reps`.
+Tabulate the sparse `littlegroup_reps` by IBZ kpoint and operation: entry
+`[ik_ibz][ig]` is the [`LittleGroupRep`](@ref) of operation `symops[ig]` at IBZ
+kpoint `ik_ibz`, or `nothing` when the operation is not in the little group of
+that kpoint.
 """
-function build_mapping_ik_isym(
+function tabulate_littlegroup_reps(
         littlegroup_reps::AbstractVector{<:LittleGroupRep};
         nkpts_ibz::Union{Integer, Nothing} = nothing,
         n_symops::Union{Integer, Nothing} = nothing,
     )
-    n_reps = length(littlegroup_reps)
     if isnothing(nkpts_ibz)
         nkpts_ibz = maximum(r.ik_ibz for r in littlegroup_reps)
     end
     if isnothing(n_symops)
-        n_symops = maximum(r.isym for r in littlegroup_reps)
+        n_symops = maximum(r.ig for r in littlegroup_reps)
     end
-    mapping = [Vector{Union{Int64, Nothing}}(nothing, n_symops) for _ in 1:nkpts_ibz]
+    ikig2rep = [Vector{Union{LittleGroupRep, Nothing}}(nothing, n_symops) for _ in 1:nkpts_ibz]
 
-    for ir in 1:n_reps
-        ik_ibz = littlegroup_reps[ir].ik_ibz
-        (0 < ik_ibz <= nkpts_ibz) || throw(ArgumentError("ik_ibz out of range"))
-        isym = littlegroup_reps[ir].isym
-        (0 < isym <= n_symops) || throw(ArgumentError("isym out of range"))
-        mapping[ik_ibz][isym] = ir
+    for rep in littlegroup_reps
+        (0 < rep.ik_ibz <= nkpts_ibz) || throw(ArgumentError("ik_ibz out of range"))
+        (0 < rep.ig <= n_symops) || throw(ArgumentError("ig out of range"))
+        ikig2rep[rep.ik_ibz][rep.ig] = rep
     end
 
-    return mapping
+    return ikig2rep
 end

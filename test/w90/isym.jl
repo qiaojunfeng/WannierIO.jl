@@ -19,12 +19,12 @@
     @test length(sym.repmat_band) == 340
 
     @test sym.repmat_band[end].ik_ibz == 29
-    @test sym.repmat_band[end].isym == 82
+    @test sym.repmat_band[end].ig == 82
     @test sym.repmat_band[end].d[1, 2] ≈ -0.024533833915732 - 0.093336077514977im
 
     @test sym.n_wann == 8
 
-    @test sym.repmat_wann[end].isym == 96
+    @test length(sym.repmat_wann) == 96
     @test sym.repmat_wann[end].D[1, 5] ≈ 0.999999999999999
 end
 
@@ -95,17 +95,17 @@ end
         # v = W * ft
         @test op.v ≈ op.W * rawop.ft
         @test op.time_reversal == rawop.t_rev
-        @test op.isym_inv == rawop.invs
+        @test op.ig_inv == rawop.invs
     end
 
-    # orbital_reps[isym] stores D(g_isym): the raw file stores D(g_isym^{-1})
-    # at index isym, so the standardized entry is its inverse (the adjoint
+    # orbital_reps[ig] stores D(g_ig): the raw file stores D(g_ig^{-1})
+    # at index ig, so the standardized entry is its inverse (the adjoint
     # for a unitary operation, the transpose for an antiunitary one)
     @test any(op -> op.time_reversal, sym.symops)
-    for isym in 1:sym.n_symops
-        @test sym.orbital_reps[isym].isym == isym
-        Draw = raw.repmat_wann[isym].D
-        @test sym.orbital_reps[isym].D == (raw.symops[isym].t_rev ? transpose(Draw) : Draw')
+    @test all(op.ig == ig for (ig, op) in enumerate(sym.symops))
+    for ig in 1:sym.n_symops
+        Draw = raw.repmat_wann[ig].D
+        @test sym.orbital_reps[ig].D == (raw.symops[ig].t_rev ? transpose(Draw) : Draw')
     end
 
     # read_isym is the standardized read
@@ -128,13 +128,61 @@ end
     @test repr(bare) == "SymOp(1)"
 end
 
-@testitem "build_mapping_ik_isym" begin
+@testitem "orbital representations are stored at the index the file gives" begin
+    # two operations whose orbital entries the file lists in reverse order
+    isym_text(entries) = """
+    order regression
+    2 0
+    identity
+    1 0 0
+    0 1 0
+    0 0 1
+    0.0 0.0 0.0
+    0
+    1
+    inversion
+    -1 0 0
+    0 -1 0
+    0 0 -1
+    0.0 0.0 0.0
+    0
+    2
+
+    K points
+    1
+    0.0 0.0 0.0
+
+    Representation matrix of G_k
+    1 2
+    1 1 1
+    1 1 1.0 0.0
+    1 2 1
+    1 1 -1.0 0.0
+
+    Rotation matrix of Wannier functions
+    1
+    $entries
+    """
+    raw = read_isym_raw(IOBuffer(isym_text("2 1\n1 1 -1.0 0.0\n1 1\n1 1 1.0 0.0")))
+    @test raw.repmat_wann[1].D == fill(1.0 + 0im, 1, 1)
+    @test raw.repmat_wann[2].D == fill(-1.0 + 0im, 1, 1)
+    @test raw.repmat_band[2].ig == 2
+
+    @test_throws ErrorException read_isym_raw(IOBuffer(isym_text("1 1\n1 1 1.0 0.0\n1 1\n1 1 1.0 0.0")))
+    @test_throws ErrorException read_isym_raw(IOBuffer(isym_text("3 1\n1 1 1.0 0.0\n1 1\n1 1 1.0 0.0")))
+end
+
+@testitem "tabulate_littlegroup_reps" begin
     using LazyArtifacts
     sym = read_isym(artifact"Si2_hse/Si2.isym")
-    mapping = WannierIO.build_mapping_ik_isym(
+    ikig2rep = WannierIO.tabulate_littlegroup_reps(
         sym.littlegroup_reps; sym.nkpts_ibz, sym.n_symops
     )
 
-    @test mapping[1][1] == 1
-    @test mapping[29][82] == length(sym.littlegroup_reps)
+    @test size(ikig2rep) == (sym.nkpts_ibz,)
+    @test all(length(row) == sym.n_symops for row in ikig2rep)
+    @test ikig2rep[1][1] === sym.littlegroup_reps[1]
+    @test ikig2rep[29][82] === sym.littlegroup_reps[end]
+    @test count(!isnothing, Iterators.flatten(ikig2rep)) == length(sym.littlegroup_reps)
+    @test all(rep -> ikig2rep[rep.ik_ibz][rep.ig] === rep, sym.littlegroup_reps)
 end
