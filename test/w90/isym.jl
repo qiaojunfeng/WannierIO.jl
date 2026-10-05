@@ -171,18 +171,3 @@ end
     @test_throws ErrorException read_isym_raw(IOBuffer(isym_text("1 1\n1 1 1.0 0.0\n1 1\n1 1 1.0 0.0")))
     @test_throws ErrorException read_isym_raw(IOBuffer(isym_text("3 1\n1 1 1.0 0.0\n1 1\n1 1 1.0 0.0")))
 end
-
-@testitem "tabulate_littlegroup_reps" begin
-    using LazyArtifacts
-    sym = read_isym(artifact"Si2_hse/Si2.isym")
-    ikig2rep = WannierIO.tabulate_littlegroup_reps(
-        sym.littlegroup_reps; sym.nkpts_ibz, sym.n_symops
-    )
-
-    @test size(ikig2rep) == (sym.nkpts_ibz,)
-    @test all(length(row) == sym.n_symops for row in ikig2rep)
-    @test ikig2rep[1][1] === sym.littlegroup_reps[1]
-    @test ikig2rep[29][82] === sym.littlegroup_reps[end]
-    @test count(!isnothing, Iterators.flatten(ikig2rep)) == length(sym.littlegroup_reps)
-    @test all(rep -> ikig2rep[rep.ik_ibz][rep.ig] === rep, sym.littlegroup_reps)
-end

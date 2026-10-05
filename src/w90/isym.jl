@@ -30,7 +30,7 @@ Identical in the raw and standard layers.
 
 A vector of them is sparse: only the elements of the little group of each IBZ
 kpoint are present, so each entry carries its kpoint `ik_ibz` and operation
-`ig`; [`tabulate_littlegroup_reps`](@ref) looks them up by `(ik_ibz, ig)`.
+`ig`.
 """
 struct LittleGroupRep
     """Index of the IBZ kpoint."""
@@ -471,33 +471,3 @@ Equivalent to `standardize(read_isym_raw(filename))`; see
 conventions of the returned struct.
 """
 read_isym(io_or_filename) = standardize(read_isym_raw(io_or_filename))
-
-"""
-    $(SIGNATURES)
-
-Tabulate the sparse `littlegroup_reps` by IBZ kpoint and operation: entry
-`[ik_ibz][ig]` is the [`LittleGroupRep`](@ref) of operation `symops[ig]` at IBZ
-kpoint `ik_ibz`, or `nothing` when the operation is not in the little group of
-that kpoint.
-"""
-function tabulate_littlegroup_reps(
-        littlegroup_reps::AbstractVector{<:LittleGroupRep};
-        nkpts_ibz::Union{Integer, Nothing} = nothing,
-        n_symops::Union{Integer, Nothing} = nothing,
-    )
-    if isnothing(nkpts_ibz)
-        nkpts_ibz = maximum(r.ik_ibz for r in littlegroup_reps)
-    end
-    if isnothing(n_symops)
-        n_symops = maximum(r.ig for r in littlegroup_reps)
-    end
-    ikig2rep = [Vector{Union{LittleGroupRep, Nothing}}(nothing, n_symops) for _ in 1:nkpts_ibz]
-
-    for rep in littlegroup_reps
-        (0 < rep.ik_ibz <= nkpts_ibz) || throw(ArgumentError("ik_ibz out of range"))
-        (0 < rep.ig <= n_symops) || throw(ArgumentError("ig out of range"))
-        ikig2rep[rep.ik_ibz][rep.ig] = rep
-    end
-
-    return ikig2rep
-end
