@@ -127,6 +127,7 @@ end
 """
     parse_projections(win)
     parse_projections(lines, lattice, atoms; spinors = false)
+    parse_projections(lines, crystal::Crystal; spinors = false)
 
 Expand the `projections` block of a `win` file into the orbitals that
 `wannier90.x -pp` writes to the `nnkp` file: a `Vector{HydrogenOrbital}`, or
@@ -135,7 +136,9 @@ with `spinors` a `Vector{SpinorHydrogenOrbital}`.
 The first form takes a parsed `win` ([`read_win`](@ref)) and checks that the
 block defines at least `num_wann` orbitals. The second takes the raw lines of
 the block, the lattice vectors as columns (Å), and the `atoms_frac` pairs
-`label => fractional position`.
+`label => fractional position`. The third takes them from a `Crystal`, whose
+`atom_labels` must then be valid element labels; the second also accepts
+dummy labels such as `X1`.
 
 The syntax is that of wannier90, case insensitive and ignoring spaces: an
 optional first line `Ang` or `Bohr` (the unit of `c=`), then one
@@ -199,6 +202,13 @@ function parse_projections(
         _parse_projection_line!(projections, line, lattice, atoms, to_angstrom)
     end
     return projections
+end
+
+function parse_projections(
+        lines::AbstractVector{<:AbstractString}, crystal::Crystal; spinors::Bool = false,
+    )
+    atoms = crystal.atom_labels .=> crystal.atom_positions
+    return parse_projections(lines, crystal.lattice, atoms; spinors)
 end
 
 """Append the orbitals of one projection line to `projections`."""

@@ -109,6 +109,21 @@ end
     end
 end
 
+@testitem "parse_projections crystal" begin
+    using WannierIO: Crystal
+    lattice = [0 1 1; 1 0 1; 1 1 0] * 2.715
+    atoms = ["Si" => [0.0, 0.0, 0.0], "Ga" => [0.5, 0.5, 0.5], "Si" => [0.25, 0.25, 0.25]]
+    crystal = Crystal(lattice, atoms)
+    lines = ["SI:p;s", "Ga:sp3:z=1,1,0:x=1,-1,0"]
+    @test parse_projections(lines, crystal) == parse_projections(lines, lattice, atoms)
+    @test parse_projections(lines, crystal; spinors = true) ==
+        parse_projections(lines, lattice, atoms; spinors = true)
+    # `c=` goes through the lattice, a static matrix in the crystal
+    lines = ["Bohr", "c=1.0,2.5,3.0:s"]
+    @test only(parse_projections(lines, crystal)).center ≈
+        only(parse_projections(lines, lattice, atoms)).center
+end
+
 @testitem "format_projections round trip" begin
     lattice = [4.0 0 0; 0 4.0 0; 0 0 4.0]
     inner(block) = split(block, "\n"; keepempty = false)[2:(end - 1)]
