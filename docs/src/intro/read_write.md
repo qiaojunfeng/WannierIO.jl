@@ -71,6 +71,16 @@ projections = parse_projections(win)  # Vector{HydrogenOrbital}
 print(format_projections(projections))
 ```
 
+Lines of a block can also be parsed against a `Crystal` without a `win`,
+e.g. to try other projections on the same structure:
+
+```julia
+using CrystalBase
+
+crystal = Crystal(win)
+parse_projections(["Si: sp3"], crystal)
+```
+
 ### 4. Read and write tight-binding files
 
 ```julia
