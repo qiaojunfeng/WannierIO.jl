@@ -1,4 +1,4 @@
-export OperatorPack, pack, read_operator, write_operator
+export OperatorPack, read_operator, write_operator
 
 using OrderedCollections: OrderedDict
 
@@ -15,13 +15,13 @@ function n_wannier(operators::AbstractDict{String, <:Any})
 end
 
 function _normalize_operators(::Type{Tv}, operators::AbstractDict) where {Tv <: Real}
-    out = OrderedDict{String, Union{Array{Tv, 3}, Array{Complex{Tv}, 3}}}()
+    out = OrderedDict{String, Union{Array{Tv}, Array{Complex{Tv}}}}()
     for (name, op) in pairs(operators)
         key = String(name)
         if eltype(op) <: Real
-            out[key] = Array{Tv, 3}(op)
+            out[key] = Array{Tv}(op)
         else
-            out[key] = Array{Complex{Tv}, 3}(op)
+            out[key] = Array{Complex{Tv}}(op)
         end
     end
     return out
@@ -37,24 +37,40 @@ function _validate_operator_pack(
     length(Rvectors) == n_Rvecs || error("length(Rvectors) != n_Rvecs")
     isnothing(n_wann) && (n_wann = n_wannier(operators))
     for (name, op) in pairs(operators)
-        size(op, 3) == n_Rvecs ||
-            error("length of operator `$name` ($(size(op, 3))) != n_Rvecs ($n_Rvecs)")
+        dims = size(op)
+        length(dims) >= 3 || error(
+            "operator `$name` must be n_wann × n_wann × … × n_Rvecs, got size $dims",
+        )
+        dims[end] == n_Rvecs ||
+            error("length of operator `$name` ($(dims[end])) != n_Rvecs ($n_Rvecs)")
         To = eltype(op)
         To in (Tv, Complex{Tv}) ||
             error("operator `$name` has invalid element type $To, expected $Tv or $(Complex{Tv})")
-        size(op)[1:2] == (n_wann, n_wann) ||
+        dims[1:2] == (n_wann, n_wann) ||
             error(
-            "operator `$name` has invalid matrix size $(size(op)[1:2]), expected ($(n_wann), $(n_wann))",
+            "operator `$name` has invalid matrix size $(dims[1:2]), expected ($(n_wann), $(n_wann))",
         )
     end
     return nothing
 end
 
 """
-Series of operators with dense matrix storage.
+Named Wannier operators on a common set of R-vectors, with dense storage.
 
-The operators should have been simplified by [`WsRvectorReducer`](@ref)
-or [`MdrsRvectorReducer`](@ref), i.e., no `Rdegens` or `Tvectors`.
+An `OperatorPack` is a storage container: it checks shapes, but holds no
+physics. Each operator is an array `O[m, n, components..., iR]` of
+`n_wann × n_wann × component dimensions × n_Rvecs`, e.g. a Hamiltonian
+`n_wann × n_wann × n_Rvecs` or a vector operator
+`n_wann × n_wann × 3 × n_Rvecs`. The R-vectors are unique and carry no
+degeneracy weights, so an operator at a kpoint is the plain sum
+``O(\\mathbf{k}) = \\sum_{\\mathbf{R}} e^{i 2\\pi \\mathbf{k} \\cdot \\mathbf{R}} O(\\mathbf{R})``
+(`k` and `R` fractional). Wigner--Seitz degeneracies and minimum-distance
+replicas of Wannier90 `tb.dat`/`wsvec.dat` files must have been absorbed
+before packing, e.g. by Wannier.jl's `OperatorPack(::TightBindingModel)`.
+
+The operator names are free-form strings; the dense layout is preserved by
+[`sparsify`](@ref)/[`densify`](@ref) and by [`write_operator`](@ref)/
+[`read_operator`](@ref).
 
 # Fields
 $(FIELDS)
@@ -69,10 +85,10 @@ struct OperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
     "R-vectors as a vector of 3-component integer vectors."
     Rvectors::Vector{Vec3{Ti}}
 
-    """Mapping operator names to vectors of dense matrices.
+    """Mapping operator names to dense `n_wann × n_wann × … × n_Rvecs` arrays.
     The operators can be either real or complex.
     """
-    operators::OrderedDict{String, Union{Array{Tv, 3}, Array{Complex{Tv}, 3}}}
+    operators::OrderedDict{String, Union{Array{Tv}, Array{Complex{Tv}}}}
 
     function OperatorPack(
             header::AbstractString,
@@ -111,13 +127,6 @@ function Base.show(io::IO, ::MIME"text/plain", op::OperatorPack)
         )""",
     )
 end
-
-"""
-Pack tight-binding operators into an [`OperatorPack`](@ref) struct.
-
-e.g., from [`TbDat`](@ref) and [`WsvecDat`](@ref) structs to [`OperatorPack`](@ref).
-"""
-function pack end
 
 """
     read_operator(file, format)

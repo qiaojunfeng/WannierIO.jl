@@ -15,8 +15,8 @@ WannierIO follows a consistent IO pattern across Wannier90 formats:
 - Function pairs are usually named `read_xxx` and `write_xxx`.
 - Most readers/writers accept a filename or an `IO` stream.
 - For several Wannier90 files, writing supports `binary=true` to emit Fortran unformatted files.
-- Tight-binding files additionally support backend formats (HDF5/JLD2/Zarr) via
-    [`read_w90_tb`](@ref) and [`write_w90_tb`](@ref).
+- Tight-binding operators additionally support backend formats (HDF5/JLD2/Zarr)
+    via [`read_operator`](@ref) and [`write_operator`](@ref).
 
 ## Common workflows
 
@@ -86,12 +86,12 @@ parse_projections(["Si: sp3"], crystal)
 ```julia
 using WannierIO
 
-# High-level API with automatic wsvec handling when available.
-pack = read_w90_tb("silicon_tb.dat")
-write_w90_tb("silicon_out_tb.dat", pack)
+tbdat = read_w90_tb_dat("silicon_tb.dat")
+wsvec = read_w90_wsvec_dat("silicon_wsvec.dat")
+write_w90_tb_dat("silicon_out_tb.dat", tbdat)
 ```
 
-For details on reduction and sparse backends, see
+For the operator container and sparse backends, see
 [Tight-binding operators](./tb.md) and [Sparse storage](./sparse.md).
 
 ### 5. Volumetric data formats
@@ -114,8 +114,9 @@ Supported volumetric formats include XSF, CUBE, and BXSF.
     modified data.
 - If you rely on binary files, test round-trip compatibility on your target
     compiler/platform because unformatted Fortran records are not universally portable.
-- Prefer high-level helpers like [`read_w90_tb`](@ref) unless you explicitly need
-    low-level file-to-file control.
+- For Wannier interpolation from `tb.dat`/`wsvec.dat` files, use
+    [Wannier.jl](https://github.com/qiaojunfeng/Wannier.jl), which applies the
+    R degeneracies and MDRS replicas that WannierIO keeps as stored.
 
 For a deeper API-level reference, see [Wannier90](../api/w90.md) and
 [Tight binding](../api/tb.md).

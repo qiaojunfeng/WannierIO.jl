@@ -147,6 +147,7 @@ function _zwrite_cscpack(
     _zwrite(g, "nzptr", csc.nzptr; compressor)
     _zwrite(g, "colptr", csc.colptr; compressor)
     _zwrite(g, "rowval", csc.rowval; compressor)
+    _zwrite(g, "dims", csc.dims; compressor)
     # Requires Zarr.jl >= 0.9.5 for complex type, see
     # https://github.com/JuliaIO/Zarr.jl/pull/181
     _zwrite(g, "nzval", csc.nzval; compressor)
@@ -158,7 +159,8 @@ function _zread_cscpack(g::Zarr.ZGroup)
     colptr = Array(g["colptr"][:, :])
     rowval = Array(g["rowval"][:])
     nzval = Array(g["nzval"][:])
-    return WannierIO.CscPack(nzptr, colptr, rowval, nzval)
+    dims = Array(g["dims"][:])
+    return WannierIO.CscPack(nzptr, colptr, rowval, nzval, dims)
 end
 
 end

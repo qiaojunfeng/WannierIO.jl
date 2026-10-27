@@ -90,6 +90,7 @@ function _h5write_cscpack(
     _h5write(g, "nzptr", csc.nzptr; deflate, shuffle)
     _h5write(g, "colptr", csc.colptr; deflate, shuffle)
     _h5write(g, "rowval", csc.rowval; deflate, shuffle)
+    _h5write(g, "dims", csc.dims; deflate, shuffle)
     if V <: Complex
         _h5write(g, "nzval_re", real.(csc.nzval); deflate, shuffle)
         _h5write(g, "nzval_im", imag.(csc.nzval); deflate, shuffle)
@@ -103,13 +104,14 @@ function _h5read_cscpack(g)
     nzptr = read(g["nzptr"])
     colptr = read(g["colptr"])
     rowval = read(g["rowval"])
+    dims = read(g["dims"])
     nzval_re = read(g["nzval_re"])
     nzval = if haskey(g, "nzval_im")
         complex.(nzval_re, read(g["nzval_im"]))
     else
         nzval_re
     end
-    return WannierIO.CscPack(nzptr, colptr, rowval, nzval)
+    return WannierIO.CscPack(nzptr, colptr, rowval, nzval, dims)
 end
 
 end

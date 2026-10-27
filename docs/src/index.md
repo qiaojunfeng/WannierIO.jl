@@ -24,11 +24,11 @@ using WannierIO
 amn = read_amn("silicon.amn")
 write_amn("silicon_copy.amn", amn.A; header=amn.header)
 
-tb = read_w90_tb("silicon_tb.dat")
-write_w90_tb("silicon_out_tb.dat", tb)
+tbdat = read_w90_tb_dat("silicon_tb.dat")
+write_w90_tb_dat("silicon_out_tb.dat", tbdat)
 ```
 
 ## Documentation map
 
-- Introduction: read/write workflows, tight-binding reduction, sparse storage.
+- Introduction: read/write workflows, tight-binding operators, sparse storage.
 - API reference: conventions, utility types, Wannier90/TB APIs, volumetric and EPW helpers.

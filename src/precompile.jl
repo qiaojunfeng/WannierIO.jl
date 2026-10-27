@@ -112,19 +112,8 @@ using PrecompileTools: @setup_workload, @compile_workload
         end
         read_w90_tb_dat(IOBuffer(tbdat_txt))
 
-        pack_hr = pack(hrdat)
-        HrDat(pack_hr)
-        wsvec = WsvecDat("precompile", Rvectors, 2)
-
-        mktempdir() do tmpdir
-            hrfile = joinpath(tmpdir, "precompile_hr.dat")
-            write_w90_hr(hrfile, hrdat, wsvec)
-            read_w90_hr(hrfile)
-
-            tbfile = joinpath(tmpdir, "precompile_tb.dat")
-            write_w90_tb(tbfile, tbdat, wsvec)
-            read_w90_tb(tbfile)
-        end
+        operators = OrderedDict("hamiltonian" => H, "berry_connection" => stack((rx, ry, rz); dims = 3))
+        densify(sparsify(OperatorPack("precompile", lattice, Rvectors, operators)))
 
         sp = sparsify(dense)
         densify(sp)

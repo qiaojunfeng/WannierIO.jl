@@ -8,12 +8,14 @@ Pack a series of CSC matrices into a compact representation.
 
 $(TYPEDEF)
 
-This packs a `N × N × L` sparse array into one struct with concatenated
-nonzero values and indices. Each `N × N` matrix is stored in compressed sparse
-column (CSC) format, and the `L` matrices are concatenated along the nonzero dimension.
+This packs a dense `N × N × …` array, whose leading two axes are the matrix
+axes, into one struct with concatenated nonzero values and indices. The axes
+after the two matrix axes (components, R-vectors) are flattened in column-major
+order into `L` matrices; each `N × N` matrix is stored in compressed sparse
+column (CSC) format, and the `L` matrices are concatenated along the nonzero
+dimension.
 
 # Fields
-
 $(FIELDS)
 """
 struct CscPack{Tv <: Number, Ti <: Integer}
@@ -43,80 +45,109 @@ struct CscPack{Tv <: Number, Ti <: Integer}
     """
     nzval::Vector{Tv}
 
+    """
+    Dimensions of the dense array, `[N, N, trailing...]`, in column-major
+    (Julia) order, e.g. `[n_wann, n_wann, n_Rvecs]` or
+    `[n_wann, n_wann, 3, n_Rvecs]`. The product of the trailing dimensions
+    is `L`.
+    """
+    dims::Vector{Int}
+
     function CscPack(
             nzptr::AbstractVector,
             colptr::AbstractMatrix,
             rowval::AbstractVector,
             nzval::AbstractVector,
+            dims::AbstractVector{<:Integer},
         )
         L = length(nzptr) - 1
         L >= 0 || error("invalid CSC pack: nzptr must have length >= 1")
         size(colptr, 2) == L || error("invalid CSC pack: colptr length mismatch")
         length(rowval) == length(nzval) || error("invalid CSC pack: rowval/nzval mismatch")
-
         nzptr[1] == 1 || error("invalid CSC pack: nzptr must start at 1")
         nzptr[end] == length(rowval) + 1 || error("invalid CSC pack: nzptr end mismatch")
         @inbounds for l in 1:L
             nzptr[l] <= nzptr[l + 1] ||
                 error("invalid CSC pack: nzptr must be nondecreasing")
         end
-
+        N = size(colptr, 1) - 1
+        length(dims) >= 3 || error("invalid CSC pack: dims must have at least 3 entries")
+        dims[1] == dims[2] == N || error("invalid CSC pack: dims $(dims) do not match N = $N")
+        prod(dims[3:end]) == L ||
+            error("invalid CSC pack: trailing dims $(dims[3:end]) do not multiply to L = $L")
         Ti = eltype(nzptr)
         Tv = eltype(nzval)
-        return new{Tv, Ti}(nzptr, Matrix{Ti}(colptr), Vector{Ti}(rowval), nzval)
+        return new{Tv, Ti}(
+            nzptr, Matrix{Ti}(colptr), Vector{Ti}(rowval), nzval, Vector{Int}(dims)
+        )
     end
 end
 
+"""
+    CscPack{Tv, Ti}(mats, dims = [N, N, length(mats)])
+
+Pack the sparse `N × N` matrices `mats`, the column-major flattening of a dense
+array of dimensions `dims`.
+"""
 function CscPack{Tv, Ti}(
-        mats::AbstractVector{<:SparseMatrixCSC}
+        mats::AbstractVector{<:SparseMatrixCSC},
+        dims::AbstractVector{<:Integer} = _stacked_dims(mats),
     ) where {Tv <: Number, Ti <: Integer}
     L = length(mats)
-    N = isempty(mats) ? 0 : size(mats[1], 1)
-
+    N = dims[1]
     nzptr = Vector{Ti}(undef, L + 1)
     nzptr[1] = 1
     colptr = Matrix{Ti}(undef, N + 1, L)
     rowval = Vector{Ti}()
     nzval = Vector{Tv}()
-
     @inbounds for l in 1:L
         M = mats[l]
         size(M, 1) == N || error("inconsistent matrix shape")
         size(M, 2) == N || error("inconsistent matrix shape")
-
         colptr[:, l] = Ti.(M.colptr)
         append!(rowval, Ti.(M.rowval))
         append!(nzval, Tv.(M.nzval))
         nzptr[l + 1] = Ti(length(rowval) + 1)
     end
-
-    return CscPack(nzptr, colptr, rowval, nzval)
+    return CscPack(nzptr, colptr, rowval, nzval, dims)
 end
 
-function CscPack{Tv, Ti}(arr::AbstractArray{T, 3}) where {Tv <: Number, Ti <: Integer, T <: Number}
-    mats = [sparse(arr[:, :, i]) for i in axes(arr, 3)]
-    return CscPack{Tv, Ti}(mats)
+_stacked_dims(mats) = (N = isempty(mats) ? 0 : size(mats[1], 1); [N, N, length(mats)])
+
+function CscPack{Tv, Ti}(arr::AbstractArray{T}) where {Tv <: Number, Ti <: Integer, T <: Number}
+    mats = [sparse(M) for M in eachslice(_matrix_slices(arr); dims = 3)]
+    return CscPack{Tv, Ti}(mats, collect(size(arr)))
 end
 
-"Number of packed matrices."
+# View an `N × N × trailing...` array as `N × N × L` with the trailing axes
+# flattened in column-major order.
+function _matrix_slices(arr::AbstractArray)
+    ndims(arr) >= 3 || error("operator must have at least 3 dimensions, got $(ndims(arr))")
+    size(arr, 1) == size(arr, 2) ||
+        error("operator matrices must be square, got $(size(arr, 1)) × $(size(arr, 2))")
+    return reshape(arr, size(arr, 1), size(arr, 2), :)
+end
+
+"Number of packed matrices `L`."
 Base.length(p::CscPack) = size(p.colptr, 2)
 
-"Size `N × N × L`."
-function Base.size(p::CscPack)
-    N = size(p.colptr, 1) - 1
-    L = size(p.colptr, 2)
-    return (N, N, L)
-end
+"Size of the dense array, `(N, N, trailing...)`."
+Base.size(p::CscPack) = Tuple(p.dims)
 
 function Base.size(p::CscPack, d)
     return size(p)[d]
 end
 
-"Return the `l`-th matrix as a `SparseMatrixCSC` with `p[:, :, l]`."
+Base.ndims(p::CscPack) = length(p.dims)
+
+"""
+Return the `l`-th packed matrix as a `SparseMatrixCSC` with `p[:, :, l]`;
+`l` is the column-major linear index over the trailing dimensions.
+"""
 function Base.getindex(
         p::CscPack{Tv, Ti}, ::Colon, ::Colon, l::Integer
     ) where {Tv <: Number, Ti <: Integer}
-    1 <= l <= size(p, 3) || throw(BoundsError(p, l))
+    1 <= l <= length(p) || throw(BoundsError(p, l))
     r = p.nzptr[l]:(p.nzptr[l + 1] - 1)
     N = size(p, 1)
     return SparseMatrixCSC{Tv, Ti}(N, N, p.colptr[:, l], p.rowval[r], p.nzval[r])
@@ -141,7 +172,7 @@ function Base.show(io::IO, ::MIME"text/plain", csc::CscPack)
     return print(
         io,
         """CscPack(
-          size: $(N)×$(N)×$(L)
+          size: $(join(size(csc), "×"))
           total_nonzeros: $(nnz_total)
           avg_nonzeros_per_matrix: $(nnz_avg)
           value_type: $(eltype(csc.nzval))
@@ -179,16 +210,11 @@ end
 """
 Check if the imaginary part is negligible compared to `atol`.
 """
-function is_almost_real(arr::AbstractArray{T, 3}, atol::Real) where {T <: Complex}
-    @inbounds for M in arr
-        for v in M
-            abs(imag(v)) < atol || return false
-        end
-    end
-    return true
+function is_almost_real(arr::AbstractArray{<:Complex}, atol::Real)
+    return all(v -> abs(imag(v)) < atol, arr)
 end
 
-is_almost_real(::AbstractArray{<:Real, 3}, ::Real) = true
+is_almost_real(::AbstractArray{<:Real}, ::Real) = true
 
 """
     _force_value_type(operator_eltype, value_type)
@@ -211,11 +237,11 @@ Only entries with `abs(real(v)) >= atol || abs(imag(v)) >= atol` are stored.
 See [`densify`](@ref) for the inverse.
 
 # Arguments
-- `op`: a `n_wann × n_wann × n_Rvecs` array representing the operator at different R-vectors.
-
-# Keyword Arguments
+- `op`: an `n_wann × n_wann × … × n_Rvecs` array, the operator at the
+  R-vectors, with any component axes between the matrix axes and the R axis
+- `opt`: a [`SparseOption`](@ref)
 """
-function sparsify(op::AbstractArray{T, 3}, opt::SparseOption = SparseOption()) where {T <: Number}
+function sparsify(op::AbstractArray{T}, opt::SparseOption = SparseOption()) where {T <: Number}
     isempty(op) && error("operator list must not be empty")
 
     Ti = opt.index_type
@@ -224,9 +250,7 @@ function sparsify(op::AbstractArray{T, 3}, opt::SparseOption = SparseOption()) w
     Tvout = to_real ? opt.value_type : _force_value_type(T, opt.value_type)
     Trout = real(Tvout)
 
-    mats = map(1:size(op, 3)) do i
-        O = op[:, :, i]
-        size(O) == (N, N) || error("operator matrices must have size ($N, $N)")
+    mats = map(eachslice(_matrix_slices(op); dims = 3)) do O
         row = Ti[]
         col = Ti[]
         val = Tvout[]
@@ -247,7 +271,7 @@ function sparsify(op::AbstractArray{T, 3}, opt::SparseOption = SparseOption()) w
         return sparse(row, col, val, N, N)
     end
 
-    return CscPack{Tvout, Ti}(mats)
+    return CscPack{Tvout, Ti}(mats, collect(size(op)))
 end
 
 """
@@ -258,11 +282,11 @@ Reconstruct dense matrices from sparse CSC matrices produced by [`sparsify`](@re
 Set `value_type` to force conversion. Use `nothing` to preserve stored type.
 """
 function densify(pack::CscPack{Tv, Ti}; value_type::Type{<:Number} = Tv) where {Tv, Ti}
-    L = size(pack, 3)
     T = _force_value_type(Tv, value_type)
-    arr = Array{T, 3}(undef, size(pack))
-    for l in 1:L
-        arr[:, :, l] = pack[:, :, l]
+    arr = Array{T}(undef, size(pack))
+    slices = _matrix_slices(arr)
+    for l in 1:length(pack)
+        slices[:, :, l] = pack[:, :, l]
     end
     return arr
 end
@@ -334,8 +358,8 @@ end
 """
     $(SIGNATURES)
 
-Pack a set of Wannier90 operators into sparse CSC matrices suitable for
-storage in HDF5, JLD2, or Zarr.
+Convert the operators of an [`OperatorPack`](@ref) to sparse CSC matrices
+suitable for storage in HDF5, JLD2, or Zarr.
 
 See [`densify`](@ref) for the inverse.
 """

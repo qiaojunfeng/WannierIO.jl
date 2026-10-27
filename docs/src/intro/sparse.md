@@ -4,10 +4,12 @@
 CurrentModule = WannierIO
 ```
 
-Wannier90 tight-binding datasets can become large because each R-vector stores
-full dense operator matrices (`H`, `rx`, `ry`, `rz`).
+Tight-binding operators can become large because each R-vector stores full
+dense operator matrices, for the Hamiltonian and for every component of the
+Berry connection or the spin.
 
-WannierIO supports a sparse-packed representation that:
+For an [`OperatorPack`](@ref), WannierIO supports a sparse-packed
+representation that:
 
 - drops near-zero matrix elements using a tolerance,
 - stores nonzeros in compact CSC-based packs,
@@ -40,9 +42,7 @@ using HDF5   # or JLD2 / Zarr
 using WannierIO
 using HDF5
 
-# Read Wannier90 tb.dat (+ wsvec when available).
-pack = read_w90_tb("Si2_valence_tb.dat")
-
+# `pack` is an OperatorPack, e.g. `OperatorPack(tb)` of a Wannier.jl model.
 # Write sparse/compressed HDF5.
 write_operator("Si2_valence.h5", pack, WannierIO.HDF5Format(); atol=1e-10)
 
@@ -66,7 +66,6 @@ as keyword arguments to `write_operator`:
 using WannierIO
 using JLD2
 
-pack = read_w90_tb("Si2_valence_tb.dat")
 write_operator(
     "Si2_valence.jld2",
     pack,
@@ -89,7 +88,6 @@ In addition to `atol/value_type/index_type`, each backend accepts extra controls
 using WannierIO
 using Zarr
 
-pack = read_w90_tb("Si2_valence_tb.dat")
 write_operator("Si2_valence.zarr", pack, ZarrFormat(); clevel=7, shuffle=true)
 ```
 
@@ -100,17 +98,18 @@ For workflows that do not immediately write files, you can convert explicitly:
 ```julia
 using WannierIO
 
-pack = read_w90_tb("Si2_valence_tb.dat")
-spack = sparsify(pack; atol=1e-10, value_type=Float32)
+spack = sparsify(pack, WannierIO.SparseOption(; atol=1e-10, value_type=Float32))
 pack2 = densify(spack)
 ```
 
 The sparse data container is [`SparseOperatorPack`](@ref), which stores each
-operator as a [`CscPack`](@ref).
+operator as a [`CscPack`](@ref): its `n_wann × n_wann` matrices, one per
+entry of the trailing (component and R-vector) axes in column-major order, in
+compressed sparse column format, together with the `dims` of the dense array.
 
 ## Notes
 
-- Reading sparse backends returns dense [`OperatorPack`](@ref) for easy use in
-    interpolation and downstream code.
+- Reading sparse backends returns a dense [`OperatorPack`](@ref) with the
+    original operator dimensions.
 - Choose `atol` carefully: larger values reduce file size more aggressively,
     but can remove physically relevant small matrix elements.

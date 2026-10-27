@@ -112,11 +112,6 @@ function detect_w90input_format(file::Union{IO, AbstractString})
 end
 
 """
-Native Wannier90 tight-binding text format (`.dat` files written by Wannier90).
-"""
-struct W90Dat <: AbstractFileFormat end
-
-"""
 HDF5 storage format for tight-binding data.
 
 Requires loading the `HDF5` package.
@@ -125,9 +120,10 @@ Requires loading the `HDF5` package.
     The matrices written in the HDF5 is row-major (Python/C-style) order,
     which is different from the column-major (Julia/Fortran-style) order
     used throughout the rest of WannierIO.
-    If you use the [`read_w90_tb`](@ref) and [`write_w90_tb`](@ref) functions
-    to read/write HDF5 files, this is handled automatically. However, if you
-    want to load them in python, be aware of this difference accordingly.
+    [`read_operator`](@ref) and [`write_operator`](@ref) handle this
+    automatically. However, if you want to load them in python, be aware of
+    this difference accordingly; the `dims` of each operator are stored in
+    Julia order.
 """
 struct HDF5Format <: AbstractFileFormat end
 
@@ -145,10 +141,10 @@ Requires loading the `Zarr` package.
 
 !!! note
     Similar to the HDF5 format, the matrices written in Zarr are row-major
-    (Python/C-style) order. If you use the [`read_w90_tb`](@ref) and
-    [`write_w90_tb`](@ref) functions to read/write Zarr files, this is handled
-    automatically. However, if you want to load them in python, be aware of this
-    difference accordingly.
+    (Python/C-style) order. [`read_operator`](@ref) and
+    [`write_operator`](@ref) handle this automatically. However, if you want to
+    load them in python, be aware of this difference accordingly; the `dims` of
+    each operator are stored in Julia order.
 """
 struct ZarrFormat <: AbstractFileFormat end
 
@@ -163,7 +159,6 @@ Requires loading the `Zarr` package.
 """
 struct ZarrZipFormat <: AbstractFileFormat end
 
-format_name(::W90Dat) = "wannier90-dat"
 format_name(::HDF5Format) = "hdf5"
 format_name(::JLD2Format) = "jld2"
 format_name(::ZarrFormat) = "zarr"

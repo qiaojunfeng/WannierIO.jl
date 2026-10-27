@@ -63,11 +63,8 @@ include("volume/bxsf.jl")
 include("misc/epw.jl")
 
 # Operators
-include("operator/Rvector.jl")
 include("operator/pack.jl")
 include("operator/sparse.jl")
-include("operator/tb.jl")
-include("operator/hr.jl")
 
 include("precompile.jl")
 

@@ -1,78 +1,74 @@
-# Tight-binding models
+# Tight-binding operators
 
 ```@meta
 CurrentModule = WannierIO
 ```
 
-This page describes the tight-binding (TB) workflow in WannierIO.
+This page describes the tight-binding (TB) files and the operator container
+of WannierIO.
 
-At a high level, the TB API provides:
+At a high level, WannierIO provides:
 
-- reading and writing Wannier90 `*_tb.dat` and `*_wsvec.dat` files,
-- automatic reduction of R-vector degeneracies and MDRS corrections,
-- conversion to a clean operator container for interpolation and post-processing,
-- optional sparse/compressed storage backends (HDF5/JLD2/Zarr/ZarrZip).
+- reading and writing the Wannier90 `*_tb.dat`, `*_hr.dat`, `*_r.dat` and
+  `*_wsvec.dat` files, exactly as stored,
+- [`OperatorPack`](@ref), a container of named operators on a common set of
+  R-vectors,
+- sparse/compressed storage of an [`OperatorPack`](@ref) in HDF5, JLD2, Zarr
+  and zipped Zarr files, see [Sparse storage](./sparse.md).
 
-## R-vector reduction notes
+## Wannier90 files
 
-Wannier90 TB files may include R-degeneracies (Wigner-Seitz method), and
-optionally T-vectors/degeneracies from the minima distance replica selection
-(MDRS) method.
-In Wannier90, these are stored in the `*_tb.dat` and `*_wsvec.dat` files.
+Wannier90 TB files store each operator on the Wigner--Seitz R-vectors with
+degeneracy weights (`Rdegens`), and `*_wsvec.dat` optionally adds the
+translation vectors and degeneracies (`Tvectors`, `Tdegens`) of the
+minimum-distance replica selection (MDRS).
+WannierIO reads and writes these fields as they are, without applying them:
 
-WannierIO handles these through [`RvectorReducer`](@ref), so the resulting
-[`OperatorPack`](@ref) is expressed on a reduced set of R vectors, and the
-degeneracies are absorbed into the operator definitions.
-
-This means downstream interpolation can be implemented as a straightforward
-inverse Fourier transform on the reduced operators.
-
-## Core data flow
-
-Key data structures:
-
-- [`TbDat`](@ref): dense data from `*_tb.dat`, including Hamiltonian and position operators,
-- [`WsvecDat`](@ref): data from `*_wsvec.dat` with optional MDRS information,
-- [`OperatorPack`](@ref): reduced operator representation used by the high-level TB API,
-- [`SparseOperatorPack`](@ref): sparse-packed representation for compact storage.
-
-For most users, [`read_w90_tb`](@ref) is the recommended entry point.
-It loads `*_tb.dat`, auto-detects and uses the matching `*_wsvec.dat` when available,
-and returns a reduced [`OperatorPack`](@ref) that is ready for further processing.
-
-This `read_w90_tb`/`write_w90_tb` API is for Wannier90 text files.
-For sparse/compressed backends, use [`read_operator`](@ref) and [`write_operator`](@ref)
-with [`HDF5Format`](@ref), [`JLD2Format`](@ref), [`ZarrFormat`](@ref),
-or [`ZarrZipFormat`](@ref).
-
-## Typical usage
-
-### 1. Read and write Wannier90 TB files
+- [`TbDat`](@ref): `*_tb.dat`, the Hamiltonian and position operators,
+- [`HrDat`](@ref): `*_hr.dat`, the Hamiltonian only (no lattice),
+- [`RDat`](@ref): `*_r.dat`, the position operator only,
+- [`WsvecDat`](@ref): `*_wsvec.dat`, with optional MDRS information.
 
 ```julia
 using WannierIO
 
-# Reads prefix_tb.dat, and if present, prefix_wsvec.dat.
-pack = read_w90_tb("silicon_tb.dat")
+tbdat = read_w90_tb_dat("silicon_tb.dat")
+wsvec = read_w90_wsvec_dat("silicon_wsvec.dat")
 
-# Write an OperatorPack back to a tb.dat file.
-write_w90_tb("silicon_reduced_tb.dat", pack)
+write_w90_tb_dat("silicon_copy_tb.dat", tbdat)
+write_w90_wsvec_dat("silicon_copy_wsvec.dat", wsvec)
 ```
 
-### 2. Keep explicit control of wsvec handling
+Absorbing the degeneracies and MDRS replicas into the operators is Wannier
+interpolation, not file IO, and is done by
+[Wannier.jl](https://github.com/qiaojunfeng/Wannier.jl): its
+`read_w90_tb(prefix)` and `TightBindingModel(tbdat; wsvec)` return a model
+whose operators are a plain inverse Fourier transform away from any kpoint.
+
+## Operator container
+
+An [`OperatorPack`](@ref) holds a header, the lattice, unique R-vectors and an
+ordered dictionary of named operators. Each operator is an array
+`n_wann × n_wann × … × n_Rvecs`: a scalar operator such as the Hamiltonian is
+`n_wann × n_wann × n_Rvecs`, a vector operator such as the Berry connection is
+`n_wann × n_wann × 3 × n_Rvecs`. The R-vectors carry no degeneracy weights, so
+an operator at a kpoint is the plain sum
+``O(\mathbf{k}) = \sum_{\mathbf{R}} e^{i 2\pi \mathbf{k} \cdot \mathbf{R}} O(\mathbf{R})``.
+
+The container stores data and checks shapes; it does not interpret the
+operators. Build one directly,
 
 ```julia
 using WannierIO
+using OrderedCollections: OrderedDict
 
-tb = read_w90_tb_dat("silicon_tb.dat")
-ws = read_w90_wsvec_dat("silicon_wsvec.dat")
-
-# Apply reduction explicitly.
-pack = pack(tb, ws)
-
-# Write both files explicitly.
-write_w90_tb("silicon_out_tb.dat", tb, ws)
+operators = OrderedDict("hamiltonian" => H)  # n_wann × n_wann × n_Rvecs
+pack = OperatorPack("my model", lattice, Rvectors, operators)
 ```
+
+or export a Wannier.jl tight-binding model with `OperatorPack(tb)`, which
+names the operators after the model's (`"hamiltonian"`,
+`"berry_connection"`, …).
 
 For all related type/function signatures, see the
 [tight-binding API reference](../api/tb.md).
