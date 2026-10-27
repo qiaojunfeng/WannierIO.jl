@@ -30,8 +30,8 @@ function WannierIO.write_operator(
     )
     HDF5.h5open(filename, "w") do fid
         _h5write(fid, "header", pack.header; deflate, shuffle)
-        _h5write(fid, "n_wann", n_wannier(pack); deflate, shuffle)
-        _h5write(fid, "n_Rvecs", n_Rvectors(pack); deflate, shuffle)
+        _h5write(fid, "n_wannier", n_wannier(pack); deflate, shuffle)
+        _h5write(fid, "n_Rvectors", n_Rvectors(pack); deflate, shuffle)
         _h5write(fid, "lattice", Matrix(pack.lattice); deflate, shuffle)
         _h5write(fid, "Rvectors", pack.Rvectors; deflate, shuffle)
         # Keep an explicit operator list for deterministic order and schema stability,
@@ -48,8 +48,8 @@ end
 function WannierIO.read_operator(filename::AbstractString, ::WannierIO.HDF5Format)
     spack = HDF5.h5open(filename, "r") do fid
         header = read(fid["header"])
-        n_wann = read(fid["n_wann"])
-        n_Rvecs = read(fid["n_Rvecs"])
+        n_wann = read(fid["n_wannier"])
+        n_Rvecs = read(fid["n_Rvectors"])
         lattice = read(fid["lattice"])
         Rvectors = read(fid["Rvectors"])
         op_names = read(fid["operator_names"])
@@ -62,9 +62,9 @@ function WannierIO.read_operator(filename::AbstractString, ::WannierIO.HDF5Forma
         )
         # Quick check
         n_wannier(p) == n_wann ||
-            error("n_wann mismatch: $n_wann vs $(n_wannier(p))")
+            error("n_wannier mismatch: $n_wann vs $(n_wannier(p))")
         n_Rvectors(p) == n_Rvecs ||
-            error("n_Rvecs mismatch: $n_Rvecs vs $(n_Rvectors(p))")
+            error("n_Rvectors mismatch: $n_Rvecs vs $(n_Rvectors(p))")
         return p
     end
     return WannierIO.densify(spack)
