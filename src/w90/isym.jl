@@ -198,7 +198,7 @@ struct RawIsym
     symops::Vector{RawSymOp}
 
     "Number of IBZ kpoints"
-    nkpts_ibz::Int64
+    n_kpts_ibz::Int64
 
     "IBZ kpoints in fractional coordinates"
     kpoints_ibz::Vector{Vec3{Float64}}
@@ -243,7 +243,7 @@ struct Isym
     symops::Vector{SymOp}
 
     "Number of IBZ kpoints"
-    nkpts_ibz::Int64
+    n_kpts_ibz::Int64
 
     "IBZ kpoints in fractional coordinates"
     kpoints_ibz::Vector{Vec3{Float64}}
@@ -317,11 +317,11 @@ function read_isym_raw(io::IO)
     readline(io)
     readline(io)  # usually is " K points"
 
-    nkpts_ibz = parse(Int64, strip(readline(io)))
+    n_kpts_ibz = parse(Int64, strip(readline(io)))
     # IBZ kpoints in fractional coordinates
-    kpoints_ibz = Vector{Vec3{Float64}}(undef, nkpts_ibz)
+    kpoints_ibz = Vector{Vec3{Float64}}(undef, n_kpts_ibz)
 
-    for ik in 1:nkpts_ibz
+    for ik in 1:n_kpts_ibz
         kpoints_ibz[ik] = parse.(Float64, split(readline(io)))
     end
 
@@ -381,7 +381,7 @@ function read_isym_raw(io::IO)
         n_symops,
         spinors,
         symops,
-        nkpts_ibz,
+        n_kpts_ibz,
         kpoints_ibz,
         n_bands,
         repmat_band,
@@ -452,7 +452,7 @@ function standardize(raw::RawIsym)
         raw.n_symops,
         raw.spinors,
         symops,
-        raw.nkpts_ibz,
+        raw.n_kpts_ibz,
         raw.kpoints_ibz,
         raw.n_bands,
         raw.repmat_band,

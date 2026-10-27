@@ -85,22 +85,22 @@ end
 Read `prefix_band.labelinfo` file.
 
 # Return
-- `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
-- `symm_point_labels`: name of high-symmetry points
+- `symmetry_point_indices`: index of high-symmetry points in `prefix_band.dat`
+- `symmetry_point_labels`: name of high-symmetry points
 """
 function read_w90_band_labelinfo_dat(io::IO)
     labels = readlines(io)
 
-    n_symm = length(labels)
-    symm_point_indices = Vector{Int}(undef, n_symm)
-    symm_point_labels = Vector{String}(undef, n_symm)
+    n_points = length(labels)
+    symmetry_point_indices = Vector{Int}(undef, n_points)
+    symmetry_point_labels = Vector{String}(undef, n_points)
     for (i, line) in enumerate(labels)
         lab, idx = split(line)[1:2]
-        symm_point_indices[i] = parse(Int, idx)
-        symm_point_labels[i] = lab
+        symmetry_point_indices[i] = parse(Int, idx)
+        symmetry_point_labels[i] = lab
     end
 
-    return (; symm_point_indices, symm_point_labels)
+    return (; symmetry_point_indices, symmetry_point_labels)
 end
 
 function read_w90_band_labelinfo_dat(filename::AbstractString)
@@ -122,8 +122,8 @@ Read `prefix_band.dat`, `prefix_band.kpt`, `prefix_band.labelinfo.dat`.
 - `eigenvalues`: `n_bands × n_kpts` matrix of band energies
 - `kpoints`: a vector of length `n_kpts`, fractional coordinates
 - `kweights`: a vector of length `n_kpts`, weights of kpoints
-- `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
-- `symm_point_labels`: name of high-symmetry points
+- `symmetry_point_indices`: index of high-symmetry points in `prefix_band.dat`
+- `symmetry_point_labels`: name of high-symmetry points
 """
 function read_w90_band(prefix::AbstractString)
     band_dat = prefix * "_band.dat"
@@ -151,13 +151,13 @@ end
 !!! note
 
     The `read_w90_band(prefix)` function returns a `NamedTuple`
-    containing basis variables such as `kpoints`, `symm_point_indices`, etc.
+    containing basis variables such as `kpoints`, `symmetry_point_indices`, etc.
     Here, once we know the `recip_lattice`, we can return a more convenient `KPath`.
 """
 function read_w90_band(prefix::AbstractString, recip_lattice::AbstractMatrix)
     band = WannierIO.read_w90_band(prefix)
     kpath = KPath(
-        recip_lattice, band.kpoints, band.symm_point_indices, band.symm_point_labels
+        recip_lattice, band.kpoints, band.symmetry_point_indices, band.symmetry_point_labels
     )
     return kpath, band.eigenvalues
 end
@@ -279,28 +279,28 @@ Write `prefix_band.labelinfo.dat` file.
 # Keyword Arguments
 - `x`: length-`n_kpts` x-axis coordinates (Cartesian path length)
 - `kpoints`: length-`n_kpts` vector of fractional coordinates
-- `symm_point_indices`: indices of high-symmetry points along the path
-- `symm_point_labels`: labels of high-symmetry points
+- `symmetry_point_indices`: indices of high-symmetry points along the path
+- `symmetry_point_labels`: labels of high-symmetry points
 """
 function write_w90_band_labelinfo_dat(
         io::IO;
         x::AbstractVector{<:Real},
         kpoints::AbstractVector,
-        symm_point_indices::AbstractVector{<:Integer},
-        symm_point_labels::AbstractVector,
+        symmetry_point_indices::AbstractVector{<:Integer},
+        symmetry_point_labels::AbstractVector,
     )
-    n_symm = length(symm_point_indices)
-    n_symm == length(symm_point_labels) ||
-        throw(DimensionMismatch("symm_idx and symm_label must have same length"))
+    n_points = length(symmetry_point_indices)
+    n_points == length(symmetry_point_labels) ||
+        throw(DimensionMismatch("symmetry_point_indices and symmetry_point_labels must have the same length"))
 
-    for i in 1:n_symm
-        idx = symm_point_indices[i]
+    for i in 1:n_points
+        idx = symmetry_point_indices[i]
         kpt = kpoints[idx]
         length(kpt) == 3 || throw(DimensionMismatch("kpoint must be 3-vector"))
         @printf(
             io,
             "%2s %31d %20.10f %17.10f %17.10f %17.10f\n",
-            symm_point_labels[i],
+            symmetry_point_labels[i],
             idx,
             x[idx],
             kpt...
@@ -313,11 +313,11 @@ function write_w90_band_labelinfo_dat(
         filename::AbstractString;
         x::AbstractVector{<:Real},
         kpoints::AbstractVector,
-        symm_point_indices::AbstractVector{<:Integer},
-        symm_point_labels::AbstractVector,
+        symmetry_point_indices::AbstractVector{<:Integer},
+        symmetry_point_labels::AbstractVector,
     )
     open(filename, "w") do io
-        write_w90_band_labelinfo_dat(io; x, kpoints, symm_point_indices, symm_point_labels)
+        write_w90_band_labelinfo_dat(io; x, kpoints, symmetry_point_indices, symmetry_point_labels)
     end
     return nothing
 end
@@ -335,8 +335,8 @@ Write `prefix_band.dat, prefix_band.kpt, prefix_band.labelinfo.dat`.
 - `eigenvalues`: `n_bands × n_kpts` matrix of band energies
 - `kpoints`: length-`n_kpts` vector, fractional coordinates
 - `kweights`: a vector of length `n_kpts`, weights of kpoints
-- `symm_point_indices`: index of high-symmetry points in `prefix_band.dat`
-- `symm_point_labels`: name of high-symmetry points
+- `symmetry_point_indices`: index of high-symmetry points in `prefix_band.dat`
+- `symmetry_point_labels`: name of high-symmetry points
 """
 function write_w90_band(
         prefix::AbstractString;
@@ -344,8 +344,8 @@ function write_w90_band(
         eigenvalues::AbstractMatrix{<:Real},
         kpoints::AbstractVector,
         kweights::AbstractVector = default_band_kpt_kweights(kpoints),
-        symm_point_indices::AbstractVector,
-        symm_point_labels::AbstractVector,
+        symmetry_point_indices::AbstractVector,
+        symmetry_point_labels::AbstractVector,
     )
     n_kpts = length(kpoints)
     size(eigenvalues, 2) == n_kpts ||
@@ -353,9 +353,9 @@ function write_w90_band(
     length(kweights) == n_kpts ||
         throw(DimensionMismatch("kpoints and kweights have different n_kpts"))
     length(x) == n_kpts || throw(DimensionMismatch("kpoints and x have different n_kpts"))
-    n_symm = length(symm_point_indices)
-    n_symm == length(symm_point_labels) ||
-        throw(DimensionMismatch("symm_idx and symm_label must have same length"))
+    n_points = length(symmetry_point_indices)
+    n_points == length(symmetry_point_labels) ||
+        throw(DimensionMismatch("symmetry_point_indices and symmetry_point_labels must have the same length"))
 
     band_kpt = "$(prefix)_band.kpt"
     band_dat = "$(prefix)_band.dat"
@@ -364,7 +364,7 @@ function write_w90_band(
     write_w90_band_dat(band_dat; x, eigenvalues)
     write_w90_band_kpt(band_kpt; kpoints, kweights)
     return write_w90_band_labelinfo_dat(
-        band_labelinfo; x, kpoints, symm_point_indices, symm_point_labels
+        band_labelinfo; x, kpoints, symmetry_point_indices, symmetry_point_labels
     )
 end
 
@@ -381,10 +381,10 @@ function write_w90_band(
         prefix::AbstractString, kpath::CrystalBase.KPath, eigenvalues::AbstractMatrix{<:Real}
     )
     x = cumulative_distances(kpath)
-    symm_points = ticks(kpath; merge = false)
+    symmetry_points = ticks(kpath; merge = false)
     return WannierIO.write_w90_band(
         prefix; x, eigenvalues, kpoints = kpoints(kpath),
-        symm_point_indices = symm_points.indices, symm_point_labels = symm_points.labels,
+        symmetry_point_indices = symmetry_points.indices, symmetry_point_labels = symmetry_points.labels,
     )
 end
 
@@ -416,15 +416,15 @@ write_w90_band_kpt_labelinfo("si2", kp)
 function write_w90_band_kpt_labelinfo(prefix::AbstractString, kpath::KPath)
     kpts = kpoints(kpath)
     x = cumulative_distances(kpath)
-    symm_points = ticks(kpath; merge = false)
-    symm_point_indices, symm_point_labels = symm_points.indices, symm_points.labels
+    symmetry_points = ticks(kpath; merge = false)
+    symmetry_point_indices, symmetry_point_labels = symmetry_points.indices, symmetry_points.labels
 
     filename = prefix * "_band.kpt"
     write_w90_band_kpt(filename; kpoints = kpts)
 
     filename = prefix * "_band.labelinfo.dat"
     return write_w90_band_labelinfo_dat(
-        filename; x, kpoints = kpts, symm_point_indices, symm_point_labels
+        filename; x, kpoints = kpts, symmetry_point_indices, symmetry_point_labels
     )
 end
 
@@ -443,6 +443,6 @@ Read kpoints and labels from wannier90 formats: `prefix_band.kpt`, `prefix_band.
 function read_w90_band_kpt_labelinfo(prefix::AbstractString, recip_lattice::AbstractMatrix)
     kpt = read_w90_band_kpt(prefix * "_band.kpt")
     labelinfo = read_w90_band_labelinfo_dat(prefix * "_band.labelinfo.dat")
-    kpath = KPath(recip_lattice, kpt.kpoints, labelinfo.symm_point_indices, labelinfo.symm_point_labels)
+    kpath = KPath(recip_lattice, kpt.kpoints, labelinfo.symmetry_point_indices, labelinfo.symmetry_point_labels)
     return kpath
 end

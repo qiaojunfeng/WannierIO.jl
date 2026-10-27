@@ -12,7 +12,7 @@
     @test sym.symops[end].isym == 96
     @test sym.symops[end].invs == 91
 
-    @test sym.nkpts_ibz == 29
+    @test sym.n_kpts_ibz == 29
     @test sym.kpoints_ibz[end] ≈ [1 / 4, -1 / 2, -1 / 4]
 
     @test sym.n_bands == 16
@@ -79,7 +79,7 @@ end
 
     @test sym.n_symops == raw.n_symops
     @test sym.spinors == raw.spinors
-    @test sym.nkpts_ibz == raw.nkpts_ibz
+    @test sym.n_kpts_ibz == raw.n_kpts_ibz
     @test sym.kpoints_ibz == raw.kpoints_ibz
     @test sym.n_bands == raw.n_bands
     @test sym.n_wann == raw.n_wann

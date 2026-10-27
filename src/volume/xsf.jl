@@ -19,8 +19,8 @@ struct Xsf{T <: Real}
     "Conventional lattice vectors, each column is a conventional lattice vector in Å"
     convvec::Union{Mat3{T}, Nothing}
 
-    "Atomic labels or numbers"
-    atoms::Union{Vector{String}, Nothing}
+    "Per-site atom labels as written in the file: element symbols or atomic numbers"
+    atom_labels::Union{Vector{String}, Nothing}
 
     "Atomic positions in Cartesian coordinates in Å"
     atom_positions::Union{Vector{Vec3{T}}, Nothing}
@@ -89,7 +89,7 @@ Read `xsf` file.
 function read_xsf(io::IO)
     primvec = nothing
     convvec = nothing
-    atoms = nothing
+    atom_labels = nothing
     atom_positions = nothing
     origin = nothing
     span_vectors = nothing
@@ -135,13 +135,13 @@ function read_xsf(io::IO)
                 # read atom positions
                 line = strip(readline(io))
                 n_atom = parse(Int, split(line)[1])
-                atoms = Vector{String}(undef, n_atom)
+                atom_labels = Vector{String}(undef, n_atom)
                 # each column is a position vector
                 atom_positions = zeros(Vec3{Float64}, n_atom)
                 for i in 1:n_atom
                     line = strip(readline(io))
                     # might be element label, or atomic number
-                    atoms[i] = split(line)[1]
+                    atom_labels[i] = split(line)[1]
                     atom_positions[i] = Vec3(parse.(Float64, split(line)[2:4])...)
                 end
             else
@@ -189,7 +189,7 @@ function read_xsf(io::IO)
         Z = collect(range(0.0, 1.0, n_z))
     end
 
-    return Xsf(primvec, convvec, atoms, atom_positions, origin, span_vectors, X, Y, Z, W)
+    return Xsf(primvec, convvec, atom_labels, atom_positions, origin, span_vectors, X, Y, Z, W)
 end
 
 function read_xsf(filename::AbstractString)
@@ -209,17 +209,17 @@ Write `xsf` file.
 
 !!! note
 
-    `xsf.atoms` must contain integer-parseable labels (atomic numbers).
+    `xsf.atom_labels` must contain integer-parseable labels (atomic numbers).
     If atom labels are strings (e.g. `"Si"`), convert them to atomic numbers first.
 """
 function write_xsf(io::IO, xsf::Xsf)
     lattice = isnothing(xsf.primvec) ? xsf.convvec : xsf.primvec
 
-    if !isnothing(xsf.atoms)
-        atom_numbers = tryparse.(Int, xsf.atoms)
+    if !isnothing(xsf.atom_labels)
+        atom_numbers = tryparse.(Int, xsf.atom_labels)
         any(isnothing, atom_numbers) && throw(
             ArgumentError(
-                "xsf.atoms contains non-integer labels; convert to atomic numbers first"
+                "xsf.atom_labels contains non-integer labels; convert to atomic numbers first"
             ),
         )
         atom_numbers = Int.(atom_numbers)

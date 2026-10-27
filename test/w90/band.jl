@@ -5,8 +5,8 @@
     @test length(band.kpoints) == 511
     @test length(band.kpoints[1]) == 3
     @test band.kpoints[511] == [0.5, 0.0, 0.5]
-    @test band.symm_point_indices == [1, 101, 136, 197, 303, 390, 461, 511]
-    @test band.symm_point_labels == ["G", "X", "U", "K", "G", "L", "W", "X"]
+    @test band.symmetry_point_indices == [1, 101, 136, 197, 303, 390, 461, 511]
+    @test band.symmetry_point_labels == ["G", "X", "U", "K", "G", "L", "W", "X"]
     @test length(band.x) == 511
     @test band.x[511] == 5.9004323
     @test size(band.eigenvalues) == (4, 511)
