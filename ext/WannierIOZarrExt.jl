@@ -70,8 +70,8 @@ end
 function _zarr_tb_attrs(pack::WannierIO.SparseOperatorPack)
     return Dict(
         "header" => pack.header,
-        "n_wann" => n_wannier(pack),
-        "n_Rvecs" => n_Rvectors(pack),
+        "n_wannier" => n_wannier(pack),
+        "n_Rvectors" => n_Rvectors(pack),
         # Zarr does not preserve key/group order, so we store the
         # operator list as an explicit attribute for deterministic reading.
         "operator_names" => collect(keys(pack.operators)),
@@ -109,8 +109,8 @@ end
 
 function _zarr_read_tb(g::Zarr.ZGroup)
     header = g.attrs["header"]
-    n_wann = g.attrs["n_wann"]
-    n_Rvecs = g.attrs["n_Rvecs"]
+    n_wann = g.attrs["n_wannier"]
+    n_Rvecs = g.attrs["n_Rvectors"]
     op_names = g.attrs["operator_names"]
     lattice = Array(g["lattice"][:, :])
     Rvectors = Array(g["Rvectors"][:, :])
