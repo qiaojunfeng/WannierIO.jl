@@ -71,11 +71,11 @@ end
     @test sym.symops[1].invs == 1
 end
 
-@testitem "standardize isym" begin
+@testitem "Isym from RawIsym" begin
     using LazyArtifacts, LinearAlgebra
     using WannierIO: Mat3
     raw = read_isym_raw(artifact"Si2_hse/Si2.isym")
-    sym = standardize(raw)
+    sym = WannierIO.Isym(raw)
 
     @test sym.n_symops == raw.n_symops
     @test sym.spinors == raw.spinors
@@ -99,7 +99,7 @@ end
     end
 
     # orbital_reps[ig] stores D(g_ig): the raw file stores D(g_ig^{-1})
-    # at index ig, so the standardized entry is its inverse (the adjoint
+    # at index ig, so the converted entry is its inverse (the adjoint
     # for a unitary operation, the transpose for an antiunitary one)
     @test any(op -> op.time_reversal, sym.symops)
     @test all(op.ig == ig for (ig, op) in enumerate(sym.symops))
@@ -108,7 +108,7 @@ end
         @test sym.orbital_reps[ig].D == (raw.symops[ig].t_rev ? transpose(Draw) : Draw')
     end
 
-    # read_isym is the standardized read
+    # read_isym is Isym of the raw read
     @test read_isym(artifact"Si2_hse/Si2.isym").symops[end].W == sym.symops[end].W
 end
 

@@ -1,4 +1,4 @@
-export read_isym, read_isym_raw, standardize
+export read_isym, read_isym_raw
 
 # The `prefix.isym` file is written by Quantum ESPRESSO's pw2wannier90.x
 # (`compute_mmn_ibz`, activated by `irr_bz = .true.`). Its symmetry data are
@@ -17,7 +17,7 @@ export read_isym, read_isym_raw, standardize
 #   variables, for debugging and comparison with pw2wannier90
 # - a standard layer ([`SymOp`](@ref), [`Isym`](@ref), [`read_isym`](@ref))
 #   in the standard (ITA) Seitz convention `g r = W r + v`, produced by
-#   [`standardize`](@ref)
+#   the constructors [`Isym(::RawIsym)`](@ref) and [`SymOp(::RawSymOp)`](@ref)
 
 """
 A representation matrix ``d(ĥ, k)`` of an element ``ĥ`` of the little group
@@ -65,7 +65,7 @@ representation must know its operation.
 
     In the raw layer ([`RawIsym`](@ref)), entry `ig` stores ``D(ĝ_{ig}^{-1})``,
     the representation of the *inverse* operation, exactly as written by
-    pw2wannier90. After [`standardize`](@ref), entry `ig` stores
+    pw2wannier90. After [`Isym(::RawIsym)`](@ref), entry `ig` stores
     ``D(ĝ_{ig})``, its inverse, with the SU(2) sign choice of the `u` field
     of the operation (that of the little-group matrices). An antiunitary
     operation acts as ``D K`` (``K`` complex conjugation).
@@ -221,7 +221,7 @@ end
 
 """
 Container for `prefix.isym` data in the standard Seitz convention.
-Produced by [`standardize`](@ref) (or directly by [`read_isym`](@ref)).
+Produced by [`Isym(::RawIsym)`](@ref) (or directly by [`read_isym`](@ref)).
 
 $(TYPEDEF)
 
@@ -409,7 +409,7 @@ v  = W * ft               # translation
 Wk = s                    # k-space rotation, k' = Wk k
 ```
 """
-function standardize(op::RawSymOp)
+function SymOp(op::RawSymOp)
     Winv_float = transpose(inv(Matrix{Float64}(op.s)))
     W = Mat3{Int64}(round.(Int64, Winv_float))
     isapprox(W, Winv_float; atol = 1.0e-8) ||
@@ -423,7 +423,7 @@ end
 
 Convert a [`RawIsym`](@ref) (file/QE conventions) to an [`Isym`](@ref) in the
 standard Seitz convention:
-- symmetry operations are converted by [`standardize(::RawSymOp)`](@ref)
+- symmetry operations are converted by [`SymOp(::RawSymOp)`](@ref)
 - `orbital_reps[ig]` stores `D(g_ig)`, the inverse of the raw entry
   `repmat_wann[ig]`, which is the matrix of the exact inverse operation
   `g_ig^{-1}` (`D^†` for a unitary operation; for an antiunitary one, which
@@ -440,8 +440,8 @@ stored inverse element `invs(ig)` instead would flip the sign for some
 operations (the twofold rotations and mirrors), because the SU(2) matrix of
 the stored inverse is `±u(g)^{-1}`.
 """
-function standardize(raw::RawIsym)
-    symops = standardize.(raw.symops)
+function Isym(raw::RawIsym)
+    symops = SymOp.(raw.symops)
 
     orbital_reps = map(raw.symops, raw.repmat_wann) do op, rep
         OrbitalRep(Matrix(op.t_rev ? transpose(rep.D) : adjoint(rep.D)))
@@ -466,8 +466,8 @@ end
 
 Read `prefix.isym` and convert to the standard Seitz convention.
 
-Equivalent to `standardize(read_isym_raw(filename))`; see
-[`standardize`](@ref) for the conversion and [`Isym`](@ref) for the
+Equivalent to `Isym(read_isym_raw(filename))`; see
+[`Isym(::RawIsym)`](@ref) for the conversion and [`Isym`](@ref) for the
 conventions of the returned struct.
 """
-read_isym(io_or_filename) = standardize(read_isym_raw(io_or_filename))
+read_isym(io_or_filename) = Isym(read_isym_raw(io_or_filename))
