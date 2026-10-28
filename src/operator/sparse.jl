@@ -15,6 +15,27 @@ order into `L` matrices; each `N × N` matrix is stored in compressed sparse
 column (CSC) format, and the `L` matrices are concatenated along the nonzero
 dimension.
 
+For example, `N = 3` and `L = 2` (`dims = [3, 3, 2]`):
+
+```text
+       l = 1             l = 2
+    [ a  .  . ]       [ .  e  . ]
+    [ .  .  b ]       [ .  .  . ]
+    [ c  .  d ]       [ .  .  f ]
+
+             |<---- l = 1 -->|<l = 2>|
+  index      1   2   3   4   5   6   7
+  nzval  = [ a   c   b   d   e   f ]
+  rowval = [ 1   3   2   3   1   3 ]
+  nzptr  = [ 1               5       7 ]
+
+            l=1 l=2
+  colptr = [ 1   1 ]    column j of matrix l is the local range
+           [ 3   1 ]    colptr[j, l] : colptr[j+1, l] - 1, i.e. the
+           [ 3   2 ]    indices nzptr[l] - 1 .+ (that range) of
+           [ 5   3 ]    rowval and nzval
+```
+
 # Fields
 $(FIELDS)
 """
