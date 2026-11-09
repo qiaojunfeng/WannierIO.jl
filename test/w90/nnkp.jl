@@ -24,6 +24,38 @@ end
     @test nnkp == nnkp2
 end
 
+@testitem "write nnkp keeps full precision" begin
+    using LinearAlgebra
+    # a hexagonal cell, a 7x7x1 mesh, centers at 1/3 and 2/3, and axes whose
+    # entries have no short decimal form: all must read back bitwise, since
+    # pw2wannier90 builds the projections and symmetry matrices from them
+    a, c = 2.46, 20.0
+    lattice = WannierIO.Mat3([a -a / 2 0; 0 a * sqrt(3) / 2 0; 0 0 c])
+    recip_lattice = WannierIO.Mat3(2π * inv(Matrix(lattice))')
+    kpoints = [WannierIO.Vec3(i / 7, j / 7, 0.0) for j in 0:6 for i in 0:6]
+    n_kpts = length(kpoints)
+    blocks = (;
+        lattice, recip_lattice, kpoints,
+        kpb_k = reshape(collect(1:n_kpts), 1, n_kpts),
+        kpb_G = fill(WannierIO.Vec3(0, 0, 0), 1, n_kpts),
+    )
+    center = WannierIO.Vec3(1 / 3, 2 / 3, 1.0e-20)
+    zaxis = WannierIO.Vec3(0.0, 0.0, 1.0)
+    xaxis = WannierIO.Vec3(sqrt(3) / 2, 1 / 2, 0.0)
+    α = 1 / 3
+    spin_qaxis = WannierIO.Vec3(normalize([1.0, 1.0, 1.0]))
+    orbitals = [WannierIO.HydrogenOrbital(; center, n = 1, l = 1, m, α, zaxis, xaxis) for m in 1:3]
+    spinors = [
+        WannierIO.SpinorHydrogenOrbital(; center, n = 1, l = 1, m, α, zaxis, xaxis, spin, spin_qaxis)
+            for m in 1:3 for spin in (1, -1)
+    ]
+    for nnkp in (Nnkp(; blocks..., projections = orbitals), Nnkp(; blocks..., spinor_projections = spinors))
+        file = tempname(; cleanup = true)
+        write_nnkp(file, nnkp)
+        @test read_nnkp(file) == nnkp
+    end
+end
+
 @testitem "read/write nnkp toml" begin
     using LazyArtifacts
     # Note that this requires https://github.com/JuliaLang/julia/pull/57584

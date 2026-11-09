@@ -510,6 +510,13 @@ end
 
 Write a `nnkp` file that can be used by DFT codes, e.g., QE `pw2wannier90`.
 
+The text format prints every real number as the shortest decimal that reads
+back as the same `Float64`, so that the lattice, kpoints, projection centers
+and axes keep their full precision: wannier90 prints 7 or 8 decimals, and a
+kpoint such as 1/7 or a hexagonal axis would otherwise enter `pw2wannier90`
+rounded. Readers that parse the file in Fortran list-directed form, as
+`pw2wannier90` does, accept any number of digits.
+
 # Arguments
 - `file`: The name of the output file, or an `IO`.
 - `nnkp`: a [`Nnkp`](@ref); each block that is not `nothing` is written
@@ -534,6 +541,13 @@ function write_nnkp(io::IO, nnkp::Nnkp, ::W90InputText; header = default_header(
     return nothing
 end
 
+"""
+Format the reals `xs` as the shortest decimals that read back as the same
+`Float64`, each right-aligned in a column wide enough for a fractional
+coordinate printed to full precision.
+"""
+_nnkp_reals(xs...) = join((lpad(string(Float64(x)), 22) for x in xs), " ")
+
 """Write nnkp header and fixed metadata line."""
 function _nnkp_write_header(io::IO, header)
     @printf(io, "%s\n", header)
@@ -548,7 +562,7 @@ end
 function _nnkp_write_block_real_lattice(io::IO, lattice)
     @printf(io, "begin real_lattice\n")
     for v in eachcol(lattice)
-        @printf(io, "%12.7f %12.7f %12.7f\n", v...)
+        println(io, _nnkp_reals(v...))
     end
     @printf(io, "end real_lattice\n")
     @printf(io, "\n")
@@ -559,7 +573,7 @@ end
 function _nnkp_write_block_recip_lattice(io::IO, recip_lattice)
     @printf(io, "begin recip_lattice\n")
     for v in eachcol(recip_lattice)
-        @printf(io, "%12.7f %12.7f %12.7f\n", v...)
+        println(io, _nnkp_reals(v...))
     end
     @printf(io, "end recip_lattice\n")
     @printf(io, "\n")
@@ -571,7 +585,7 @@ function _nnkp_write_block_kpoints(io::IO, kpoints)
     @printf(io, "begin kpoints\n")
     @printf(io, "%d\n", length(kpoints))
     for kpt in kpoints
-        @printf(io, "%14.8f %14.8f %14.8f\n", kpt...)
+        println(io, _nnkp_reals(kpt...))
     end
     @printf(io, "end kpoints\n")
     @printf(io, "\n")
@@ -583,10 +597,8 @@ function _nnkp_write_block_projections(io::IO, projections)
     @printf(io, "begin projections\n")
     @printf(io, "%d\n", length(projections))
     for p in projections
-        @printf(io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n)
-        @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
-        @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
-        @printf(io, "%8.4f\n", p.α)
+        @printf(io, "%s %3d %3d %3d\n", _nnkp_reals(p.center...), p.l, p.m, p.n)
+        println(io, _nnkp_reals(p.zaxis..., p.xaxis..., p.α))
     end
     @printf(io, "end projections\n")
     @printf(io, "\n")
@@ -598,11 +610,9 @@ function _nnkp_write_block_spinor_projections(io::IO, projections)
     @printf(io, "begin spinor_projections\n")
     @printf(io, "%d\n", length(projections))
     for p in projections
-        @printf(io, "%12.7f %12.7f %12.7f %3d %3d %3d\n", p.center..., p.l, p.m, p.n)
-        @printf(io, "%12.7f %12.7f %12.7f    ", p.zaxis...)
-        @printf(io, "%12.7f %12.7f %12.7f    ", p.xaxis...)
-        @printf(io, "%8.4f\n", p.α)
-        @printf(io, "%3d %12.7f %12.7f %12.7f\n", p.spin, p.spin_qaxis...)
+        @printf(io, "%s %3d %3d %3d\n", _nnkp_reals(p.center...), p.l, p.m, p.n)
+        println(io, _nnkp_reals(p.zaxis..., p.xaxis..., p.α))
+        @printf(io, "%3d %s\n", p.spin, _nnkp_reals(p.spin_qaxis...))
     end
     @printf(io, "end spinor_projections\n")
     @printf(io, "\n")
