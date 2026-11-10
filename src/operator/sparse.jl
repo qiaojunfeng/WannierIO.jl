@@ -322,8 +322,9 @@ struct SparseOperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
     "Short description of the operator set"
     header::String
 
-    "Lattice vectors as columns of a 3×3 matrix, in Å."
-    lattice::Mat3{Tv}
+    """Lattice vectors as columns of a 3×3 matrix, in Å. Always Float64,
+    whatever the precision `Tv` of the operators."""
+    lattice::Mat3{Float64}
 
     "R-vectors as columns of a `3 × n_Rvecs` matrix, integers."
     Rvectors::Matrix{Ti}
@@ -333,10 +334,11 @@ struct SparseOperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
 
     function SparseOperatorPack(
             header::AbstractString,
-            lattice::AbstractMatrix{Tv},
+            lattice::AbstractMatrix{<:Real},
             Rvectors::AbstractMatrix{Ti},
             operators::AbstractDict{<:AbstractString, <:CscPack},
-        ) where {Tv <: Real, Ti <: Integer}
+        ) where {Ti <: Integer}
+        Tv = _operator_real_type(operators)
         Rvs = Vec3{Ti}.(eachcol(Rvectors))
         _validate_operator_pack(Tv, Rvs, operators)
 
@@ -346,7 +348,7 @@ struct SparseOperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
             ops[String(name)] = op
         end
 
-        return new{Tv, Ti}(String(header), Mat3{Tv}(lattice), Matrix{Ti}(Rvectors), ops)
+        return new{Tv, Ti}(String(header), Mat3{Float64}(lattice), Matrix{Ti}(Rvectors), ops)
     end
 end
 
@@ -390,14 +392,13 @@ function sparsify(pack::OperatorPack, opt::SparseOption = SparseOption())
 
     ops = OrderedDict(name => sparsify(op, opt) for (name, op) in pairs(pack.operators))
 
-    Tr = real(opt.value_type)
     Ti = opt.index_type
     Rvectors = if isempty(pack.Rvectors)
         Matrix{Ti}(undef, 3, 0)
     else
         Matrix{Ti}(reduce(hcat, Vec3{Ti}.(pack.Rvectors)))
     end
-    return SparseOperatorPack(pack.header, Mat3{Tr}(pack.lattice), Rvectors, ops)
+    return SparseOperatorPack(pack.header, pack.lattice, Rvectors, ops)
 end
 
 """
@@ -413,9 +414,8 @@ function densify(
         name => densify(op; value_type) for (name, op) in pairs(pack.operators)
     )
 
-    Trout = real(value_type)
     Rvectors = Vec3{I}.(eachcol(pack.Rvectors))
-    return OperatorPack(pack.header, Mat3{Trout}(pack.lattice), Rvectors, ops)
+    return OperatorPack(pack.header, pack.lattice, Rvectors, ops)
 end
 
 # 2^18 = 262_144 elements max per 1D chunk.

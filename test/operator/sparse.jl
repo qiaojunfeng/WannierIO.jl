@@ -84,7 +84,8 @@ end
     @test n_wannier(spack) == Int16(n_wannier(dpack))
     @test dpack32 isa WannierIO.OperatorPack{Float32, Int16}
     @test dpack64 isa WannierIO.OperatorPack{Float64, Int16}
-    @test dpack32.lattice ≈ dpack.lattice
+    @test dpack32.lattice == dpack.lattice
+    @test spack.lattice isa WannierIO.Mat3{Float64}
     @test dpack32.Rvectors == WannierIO.Vec3{Int16}.(dpack.Rvectors)
     for name in keys(operators)
         @test dpack32.operators[name] ≈ dpack.operators[name]

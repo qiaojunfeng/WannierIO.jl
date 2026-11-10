@@ -55,11 +55,7 @@ function WannierIO.read_operator(filename::AbstractString, ::WannierIO.HDF5Forma
         op_names = read(fid["operator_names"])
         g = fid["operators"]
         operators = OrderedDict(name => _h5read_cscpack(g[name]) for name in op_names)
-
-        Tr = eltype(lattice)
-        p = WannierIO.SparseOperatorPack(
-            header, WannierIO.Mat3{Tr}(lattice), Rvectors, operators
-        )
+        p = WannierIO.SparseOperatorPack(header, lattice, Rvectors, operators)
         # Quick check
         n_wannier(p) == n_wann ||
             error("n_wannier mismatch: $n_wann vs $(n_wannier(p))")

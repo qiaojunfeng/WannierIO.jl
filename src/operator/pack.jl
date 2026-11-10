@@ -14,6 +14,15 @@ function n_wannier(operators::AbstractDict{String, <:Any})
     return n_wann
 end
 
+# The real type `Tv` of the operator values, promoted over the operators, which may
+# mix real and complex arrays. The lattice does not take part: it is always kept in
+# Float64, whatever the precision of the operators, since it fixes the geometry of
+# every quantity computed from the pack.
+function _operator_real_type(operators::AbstractDict)
+    isempty(operators) && return Float64
+    return mapreduce(op -> real(eltype(op)), promote_type, values(operators))
+end
+
 function _normalize_operators(::Type{Tv}, operators::AbstractDict) where {Tv <: Real}
     out = OrderedDict{String, Union{Array{Tv}, Array{Complex{Tv}}}}()
     for (name, op) in pairs(operators)
@@ -79,8 +88,9 @@ struct OperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
     "Short description of the operator set"
     header::String
 
-    "Lattice vectors as columns of a 3×3 matrix, in Å."
-    lattice::Mat3{Tv}
+    """Lattice vectors as columns of a 3×3 matrix, in Å. Always Float64,
+    whatever the precision `Tv` of the operators."""
+    lattice::Mat3{Float64}
 
     "R-vectors as a vector of 3-component integer vectors."
     Rvectors::Vector{Vec3{Ti}}
@@ -92,15 +102,16 @@ struct OperatorPack{Tv <: Real, Ti <: Integer} <: AbstractOperatorPack
 
     function OperatorPack(
             header::AbstractString,
-            lattice::AbstractMatrix{Tv},
+            lattice::AbstractMatrix{<:Real},
             Rvectors::AbstractVector{<:Vec3{Ti}},
             operators::AbstractDict,
-        ) where {Tv <: Real, Ti <: Integer}
+        ) where {Ti <: Integer}
         header = String(header)
-        lattice = Mat3{Tv}(lattice)
+        lattice = Mat3{Float64}(lattice)
+        Tv = _operator_real_type(operators)
+        operators = _normalize_operators(Tv, operators)
         _validate_operator_pack(Tv, Rvectors, operators)
         Rvectors = collect(Vec3{Ti}.(Rvectors))
-        operators = _normalize_operators(Tv, operators)
         return new{Tv, Ti}(header, lattice, Rvectors, operators)
     end
 end

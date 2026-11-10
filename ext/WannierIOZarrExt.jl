@@ -116,11 +116,7 @@ function _zarr_read_tb(g::Zarr.ZGroup)
     Rvectors = Array(g["Rvectors"][:, :])
     ops_group = g["operators"]
     operators = OrderedDict(name => _zread_cscpack(ops_group[name]) for name in op_names)
-
-    Tr = eltype(lattice)
-    spack = WannierIO.SparseOperatorPack(
-        header, WannierIO.Mat3{Tr}(lattice), Rvectors, operators
-    )
+    spack = WannierIO.SparseOperatorPack(header, lattice, Rvectors, operators)
     # Just one quick sanity for dimensions
     n_wannier(spack) == n_wann || error("n_wann does not match operator dimensions")
     n_Rvectors(spack) == n_Rvecs || error("n_Rvecs does not match operator dimensions")

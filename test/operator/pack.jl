@@ -27,6 +27,18 @@
     @test pack.operators["position"] == operators["position"]
     @test n_Rvectors(pack) == 2
     @test n_wannier(pack) == 2
+
+    # the operators set the value precision, the lattice stays Float64
+    lattice_frac = [3.77943445 -1.88971723 0.0; 0.0 3.27308625 0.0; 0.0 0.0 6.05751038]
+    pack32 = OperatorPack(
+        header, lattice_frac, Rvectors, OrderedDict("H" => rand(ComplexF32, 2, 2, 2))
+    )
+    @test pack32 isa OperatorPack{Float32}
+    @test pack32.lattice isa Mat3{Float64}
+    @test pack32.lattice == lattice_frac
+    # mixed precisions are promoted
+    mixed = OrderedDict("A" => rand(Float32, 2, 2, 2), "B" => rand(ComplexF64, 2, 2, 2))
+    @test OperatorPack(header, lattice, Rvectors, mixed) isa OperatorPack{Float64}
 end
 
 @testitem "OperatorPack validation" begin
@@ -103,7 +115,8 @@ end
         @test pack2 isa WannierIO.OperatorPack{Float32, Int32}
         @test n_wannier(pack2) == n_wannier(pack0)
         @test pack2.Rvectors == pack0.Rvectors
-        @test pack2.lattice ≈ pack0.lattice
+        # the lattice is kept in Float64 whatever the precision of the operators
+        @test pack2.lattice == pack0.lattice
         for name in keys(pack0.operators)
             op2 = pack2.operators[name]
             op0 = pack0.operators[name]
