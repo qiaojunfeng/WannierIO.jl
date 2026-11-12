@@ -76,10 +76,31 @@ R-vectors, Hamiltonian and Berry connection; `tb.dat` and `wsvec.dat` take
 | `SparseOperatorPack{Float32}(pack)`              | 72 MB  | 0.8 µeV                 |
 | `SparseOperatorPack{Float32}(pack; atol = 1e-6)` | 45 MB  | 16 µeV                  |
 
-Rounding to `Float32` costs little; dropping elements costs more, since every
-dropped element shifts the Fourier sum by up to `atol`. Larger values of `atol`
-reduce the file further, but can remove physically relevant small matrix
-elements.
+The cost of `atol` depends on the model. Across the 20 `tb.dat` models of
+WannierDatasets (4 to 26 Wannier functions), all three conversions read back
+as written, the lossless file is about 3.5 times smaller than `tb.dat` and
+`wsvec.dat`, and `Float32` halves it again with bands within about 1 µeV. The
+further gain of `atol = 1e-6` ranges widely:
+
+| model                     | lossless | `Float32`          | `Float32`, `atol = 1e-6` |
+|:--------------------------|:---------|:-------------------|:-------------------------|
+| Fe, collinear (9 WFs)     | 1.1 MB   | 0.6 MB, 0.7 µeV    | 0.6 MB, 7 µeV            |
+| GaAs (8 WFs)              | 3.0 MB   | 1.5 MB, 0.4 µeV    | 1.3 MB, 34 µeV           |
+| TiO₂ (26 WFs)             | 12.2 MB  | 6.1 MB, 0.3 µeV    | 3.1 MB, 23 µeV           |
+| Si, `3d` (18 WFs)         | 14.8 MB  | 7.3 MB, 0.3 µeV    | 3.8 MB, 130 µeV          |
+
+Rounding to `Float32` costs little, since each element keeps its relative
+precision. `atol` costs more: it removes every part at most `atol` in
+magnitude, and in Wannier90 models most of these are not whole elements but
+the small imaginary parts of kept ones, whose sum over the R-vectors moves the
+bands. `Float32` is therefore the safe compact choice; check the bands of the
+model before relying on an `atol`. Larger values of `atol` reduce the file
+further, but can remove physically relevant small matrix elements.
+
+The conversion to real rarely applies to Wannier90 output: even maximally
+localized functions that are real in principle carry imaginary parts up to
+`1e-4` (Si) in their operators, far above the `atol` of a compact file. It helps for operators that are real by
+construction.
 
 The index type `Ti` (default `Int32`) also counts the nonzeros of each
 operator, so a smaller type overflows for all but the smallest models.

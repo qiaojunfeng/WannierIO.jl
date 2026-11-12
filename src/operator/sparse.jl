@@ -364,9 +364,12 @@ R-vectors, Hamiltonian and Berry connection), the HDF5 file is
 | `Float32` | 0      | 72 MB     | 0.8 µeV                 |
 | `Float32` | `1e-6` | 45 MB     | 16 µeV                  |
 
-so `SparseOperatorPack{Float32}(pack; atol = 1e-6)` is a compact choice when
-µeV accuracy is enough. See [`OperatorPack(::SparseOperatorPack)`](@ref) for
-the inverse.
+Across the `tb.dat` models of WannierDatasets, `Float32` halves the lossless
+file and changes the bands by at most about 1 µeV, while the further gain and
+the band error of `atol = 1e-6` depend on the model: from nothing at 5 µeV
+(Fe) to half the file at 130 µeV (Si with 18 Wannier functions). Check the
+bands of the model before relying on an `atol`. See
+[`OperatorPack(::SparseOperatorPack)`](@ref) for the inverse.
 """
 SparseOperatorPack(pack::OperatorPack{Tv}; atol::Real = 0) where {Tv} =
     SparseOperatorPack{Tv, Int32}(pack; atol)
