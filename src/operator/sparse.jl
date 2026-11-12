@@ -210,7 +210,8 @@ $(FIELDS)
 """
 Base.@kwdef struct SparseOption
     """Absolute tolerance for treating values as zero. Must be nonnegative.
-    Elements with `abs(real(v)) < atol` and `abs(imag(v)) < atol` are dropped.
+    Elements with `abs(real(v)) <= atol` and `abs(imag(v)) <= atol` are dropped,
+    so `atol = 0` drops exactly the zeros and is lossless.
     """
     atol::Float64 = 1.0e-6
 
@@ -229,10 +230,10 @@ Base.@kwdef struct SparseOption
 end
 
 """
-Check if the imaginary part is negligible compared to `atol`.
+Check if every imaginary part is at most `atol` in magnitude.
 """
 function is_almost_real(arr::AbstractArray{<:Complex}, atol::Real)
-    return all(v -> abs(imag(v)) < atol, arr)
+    return all(v -> abs(imag(v)) <= atol, arr)
 end
 
 is_almost_real(::AbstractArray{<:Real}, ::Real) = true
@@ -253,7 +254,7 @@ end
 
 Convert an operator to sparse CSC representation.
 
-Only entries with `abs(real(v)) >= atol || abs(imag(v)) >= atol` are stored.
+Only entries with `abs(real(v)) > atol || abs(imag(v)) > atol` are stored.
 
 See [`densify`](@ref) for the inverse.
 
@@ -280,11 +281,11 @@ function sparsify(op::AbstractArray{T}, opt::SparseOption = SparseOption()) wher
                 v = O[m, n]
                 rv = real(v)
                 iv = imag(v)
-                if abs(rv) >= opt.atol || abs(iv) >= opt.atol
+                if abs(rv) > opt.atol || abs(iv) > opt.atol
                     push!(row, Ti(m))
                     push!(col, Ti(n))
-                    ro = abs(rv) >= opt.atol ? Trout(rv) : Trout(0)
-                    io = abs(iv) >= opt.atol ? Trout(iv) : Trout(0)
+                    ro = abs(rv) > opt.atol ? Trout(rv) : Trout(0)
+                    io = abs(iv) > opt.atol ? Trout(iv) : Trout(0)
                     push!(val, to_real ? ro : Complex(ro, io))
                 end
             end

@@ -114,3 +114,20 @@ end
         @test !all(isapprox(sop[:, :, l], dop[:, :, l]; atol = (opt.atol / 10)) for l in 1:length(sop))
     end
 end
+
+@testitem "sparsify atol = 0 drops exact zeros" begin
+    op = zeros(ComplexF64, 3, 3, 2)
+    op[1, 1, 1] = 1.0e-300
+    op[2, 3, 1] = 2.0 + 0.0im
+    op[3, 2, 2] = 0.0 - 1.0e-300im
+
+    csc = sparsify(op, WannierIO.SparseOption(; atol = 0, value_type = ComplexF64))
+    @test csc.nzptr[end] - 1 == 3
+    @test densify(csc) == op
+
+    # an exactly real operator becomes real at atol = 0
+    real_op = complex.(real.(op))
+    csc = sparsify(real_op, WannierIO.SparseOption(; atol = 0, value_type = Float64))
+    @test csc isa WannierIO.CscPack{Float64}
+    @test densify(csc) == real.(op)
+end
