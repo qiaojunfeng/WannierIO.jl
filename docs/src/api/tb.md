@@ -20,7 +20,7 @@ Pages   = ["operator/pack.jl"]
 
 ## Sparse representation
 
-Sparse containers and conversion routines (`sparsify`, `densify`).
+Sparse containers and their conversions to and from dense operators.
 
 ```@autodocs
 Modules = [WannierIO]

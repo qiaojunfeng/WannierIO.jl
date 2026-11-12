@@ -113,10 +113,11 @@ using PrecompileTools: @setup_workload, @compile_workload
         read_w90_tb_dat(IOBuffer(tbdat_txt))
 
         operators = OrderedDict("hamiltonian" => H, "berry_connection" => stack((rx, ry, rz); dims = 3))
-        densify(sparsify(OperatorPack("precompile", lattice, Rvectors, operators)))
+        pack = OperatorPack("precompile", lattice, Rvectors, operators)
+        OperatorPack(SparseOperatorPack(pack))
+        OperatorPack(SparseOperatorPack{Float32}(pack; atol = 1.0e-6))
 
-        sp = sparsify(dense)
-        densify(sp)
+        Array(CscPack(dense))
 
         cube_txt = serialized_text() do io
             write_cube(io, cube)

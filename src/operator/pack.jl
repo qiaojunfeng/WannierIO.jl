@@ -77,9 +77,9 @@ degeneracy weights, so an operator at a kpoint is the plain sum
 replicas of Wannier90 `tb.dat`/`wsvec.dat` files must have been absorbed
 before packing, e.g. by Wannier.jl's `OperatorPack(::TightBindingModel)`.
 
-The operator names are free-form strings; the dense layout is preserved by
-[`sparsify`](@ref)/[`densify`](@ref) and by [`write_operator`](@ref)/
-[`read_operator`](@ref).
+The operator names are free-form strings. For storage, convert to a
+[`SparseOperatorPack`](@ref), which keeps the dense layout; `OperatorPack(spack)`
+converts back.
 
 # Fields
 $(FIELDS)
@@ -143,8 +143,9 @@ end
     read_operator(file, format)
     read_operator(file)
 
-Read operators from a backend storage format (HDF5/JLD2/Zarr) and return an
-[`OperatorPack`](@ref).
+Read the [`SparseOperatorPack`](@ref) of a backend storage format
+(HDF5/JLD2/Zarr), as it was written; `OperatorPack(read_operator(file))` gives
+the dense operators.
 
 When called without a format argument, the format is inferred from the file
 extension via [`detect_operator_format`](@ref).
@@ -155,7 +156,11 @@ function read_operator end
     write_operator(file, pack, format; kwargs...)
     write_operator(file, pack; kwargs...)
 
-Write an operator pack to a backend storage format (HDF5/JLD2/Zarr).
+Write a [`SparseOperatorPack`](@ref) to a backend storage format (HDF5/JLD2/Zarr).
+The keywords are the compression options of the backend. Convert a dense
+[`OperatorPack`](@ref) first, choosing the precision there:
+`SparseOperatorPack(pack)` is lossless, `SparseOperatorPack{Float32}(pack; atol)`
+compact.
 
 When called without a format argument, the format is inferred from the file
 extension via [`detect_operator_format`](@ref).
@@ -179,6 +184,16 @@ function write_operator(
     error(
         "Format `$(format_name(fmt))` requires loading the corresponding package. " *
             "See the WannierIO documentation for supported formats.",
+    )
+end
+
+function write_operator(file::AbstractString, ::OperatorPack, ::AbstractFileFormat; kwargs...)
+    throw(
+        ArgumentError(
+            "write_operator stores a SparseOperatorPack; convert the OperatorPack first, " *
+                "with `SparseOperatorPack(pack)` (lossless) or " *
+                "`SparseOperatorPack{Float32}(pack; atol)` (compact)",
+        ),
     )
 end
 

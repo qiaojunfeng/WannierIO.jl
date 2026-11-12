@@ -9,20 +9,6 @@ const _DEFAULT_HDF5_SHUFFLE = true
 
 function WannierIO.write_operator(
         filename::AbstractString,
-        pack::WannierIO.OperatorPack,
-        fmt::WannierIO.HDF5Format;
-        deflate::Integer = _DEFAULT_HDF5_DEFLATE,
-        shuffle::Bool = _DEFAULT_HDF5_SHUFFLE,
-        kwargs...,
-    )
-    opt = WannierIO.SparseOption(; kwargs...)
-    spack = WannierIO.sparsify(pack, opt)
-    write_operator(filename, spack, fmt; deflate, shuffle)
-    return nothing
-end
-
-function WannierIO.write_operator(
-        filename::AbstractString,
         pack::WannierIO.SparseOperatorPack,
         ::WannierIO.HDF5Format;
         deflate::Integer = _DEFAULT_HDF5_DEFLATE,
@@ -46,7 +32,7 @@ function WannierIO.write_operator(
 end
 
 function WannierIO.read_operator(filename::AbstractString, ::WannierIO.HDF5Format)
-    spack = HDF5.h5open(filename, "r") do fid
+    return HDF5.h5open(filename, "r") do fid
         header = read(fid["header"])
         n_wann = read(fid["n_wannier"])
         n_Rvecs = read(fid["n_Rvectors"])
@@ -63,7 +49,6 @@ function WannierIO.read_operator(filename::AbstractString, ::WannierIO.HDF5Forma
             error("n_Rvectors mismatch: $n_Rvecs vs $(n_Rvectors(p))")
         return p
     end
-    return WannierIO.densify(spack)
 end
 
 function _h5write(fid, name::AbstractString, value; deflate::Integer, shuffle::Bool)

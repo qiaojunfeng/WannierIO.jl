@@ -10,20 +10,6 @@ const _DEFAULT_ZARR_SHUFFLE = true
 
 function WannierIO.write_operator(
         filename::AbstractString,
-        pack::WannierIO.OperatorPack,
-        fmt::Union{WannierIO.ZarrFormat, WannierIO.ZarrZipFormat};
-        clevel::Integer = _DEFAULT_ZARR_CLEVEL,
-        shuffle::Bool = _DEFAULT_ZARR_SHUFFLE,
-        kwargs...,
-    )
-    opt = WannierIO.SparseOption(; kwargs...)
-    spack = WannierIO.sparsify(pack, opt)
-    write_operator(filename, spack, fmt; clevel, shuffle)
-    return nothing
-end
-
-function WannierIO.write_operator(
-        filename::AbstractString,
         pack::WannierIO.SparseOperatorPack,
         ::WannierIO.ZarrFormat;
         clevel::Integer = _DEFAULT_ZARR_CLEVEL,
@@ -121,7 +107,7 @@ function _zarr_read_tb(g::Zarr.ZGroup)
     n_wannier(spack) == n_wann || error("n_wann does not match operator dimensions")
     n_Rvectors(spack) == n_Rvecs || error("n_Rvecs does not match operator dimensions")
 
-    return WannierIO.densify(spack)
+    return spack
 end
 
 function _zwrite(g::Zarr.ZGroup, name::AbstractString, data::AbstractArray; compressor)

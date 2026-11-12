@@ -13,7 +13,7 @@ At a high level, WannierIO provides:
   `*_wsvec.dat` files, exactly as stored,
 - [`OperatorPack`](@ref), a container of named operators on a common set of
   R-vectors,
-- sparse/compressed storage of an [`OperatorPack`](@ref) in HDF5, JLD2, Zarr
+- [`SparseOperatorPack`](@ref), the sparse/compressed storage of an [`OperatorPack`](@ref) in HDF5, JLD2, Zarr
   and zipped Zarr files, see [Sparse storage](./sparse.md).
 
 ## Wannier90 files

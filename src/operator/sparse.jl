@@ -1,4 +1,4 @@
-export sparsify, densify
+export CscPack, SparseOperatorPack
 
 using SparseArrays: SparseMatrixCSC, sparse
 using OrderedCollections: OrderedDict
@@ -135,9 +135,68 @@ end
 
 _stacked_dims(mats) = (N = isempty(mats) ? 0 : size(mats[1], 1); [N, N, length(mats)])
 
-function CscPack{Tv, Ti}(arr::AbstractArray{T}) where {Tv <: Number, Ti <: Integer, T <: Number}
-    mats = [sparse(M) for M in eachslice(_matrix_slices(arr); dims = 3)]
-    return CscPack{Tv, Ti}(mats, collect(size(arr)))
+"""
+    CscPack(op; atol = 0)
+    CscPack{Tv}(op; atol = 0)
+    CscPack{Tv, Ti}(op; atol = 0)
+
+Pack the dense array `op`, `N × N × trailing...`, keeping the entries with
+`abs(real(v)) > atol || abs(imag(v)) > atol`. In a kept entry, a real or
+imaginary part of magnitude at most `atol` is set to zero. The default
+`atol = 0` drops exactly the zeros, so the pack is lossless at value type
+`Tv = eltype(op)`; the index type `Ti` defaults to `Int32`.
+
+A real `Tv` for a complex `op` stores the real parts, and throws an
+`InexactError` if an imaginary part larger than `atol` remains.
+
+See `Array(pack)` for the inverse.
+"""
+CscPack(op::AbstractArray{T}; atol::Real = 0) where {T <: Number} = CscPack{T, Int32}(op; atol)
+
+CscPack{Tv}(op::AbstractArray{<:Number}; atol::Real = 0) where {Tv <: Number} =
+    CscPack{Tv, Int32}(op; atol)
+
+function CscPack{Tv, Ti}(
+        op::AbstractArray{<:Number}; atol::Real = 0
+    ) where {Tv <: Number, Ti <: Integer}
+    atol >= 0 || throw(ArgumentError("atol must be nonnegative, got $atol"))
+    isempty(op) && throw(ArgumentError("operator must not be empty"))
+    N = size(op, 1)
+    mats = map(eachslice(_matrix_slices(op); dims = 3)) do O
+        row = Ti[]
+        col = Ti[]
+        val = Tv[]
+        @inbounds for n in 1:N, m in 1:N
+            v = O[m, n]
+            keep_re = abs(real(v)) > atol
+            keep_im = abs(imag(v)) > atol
+            (keep_re || keep_im) || continue
+            vr = keep_re ? real(v) : zero(real(v))
+            vi = keep_im ? imag(v) : zero(imag(v))
+            push!(row, Ti(m))
+            push!(col, Ti(n))
+            push!(val, Tv(v isa Real ? vr : complex(vr, vi)))
+        end
+        return sparse(row, col, val, N, N)
+    end
+    return CscPack{Tv, Ti}(mats, collect(size(op)))
+end
+
+"""
+    Array(pack::CscPack)
+    Array{T}(pack::CscPack)
+
+The dense array of `pack`, at its stored value type or converted to `T`.
+"""
+Base.Array(pack::CscPack{Tv}) where {Tv} = Array{Tv}(pack)
+
+function Base.Array{T}(pack::CscPack) where {T <: Number}
+    arr = zeros(T, size(pack))
+    slices = _matrix_slices(arr)
+    for l in 1:length(pack)
+        slices[:, :, l] = pack[:, :, l]
+    end
+    return arr
 end
 
 # View an `N × N × trailing...` array as `N × N × L` with the trailing axes
@@ -202,116 +261,10 @@ function Base.show(io::IO, ::MIME"text/plain", csc::CscPack)
     )
 end
 
-"""
-Control sparsification behavior.
-
-# Fields
-$(FIELDS)
-"""
-Base.@kwdef struct SparseOption
-    """Absolute tolerance for treating values as zero. Must be nonnegative.
-    Elements with `abs(real(v)) <= atol` and `abs(imag(v)) <= atol` are dropped,
-    so `atol = 0` drops exactly the zeros and is lossless.
-    """
-    atol::Float64 = 1.0e-6
-
-    "Integer type for storing row and column indices in sparse matrices."
-    index_type::Type{<:Integer} = Int32
-
-    """Numeric type for storing nonzero values in sparse matrices.
-    Can be real or complex. If real, will attempt to convert complex values
-    to real if all imaginary parts are smaller than `atol`."""
-    value_type::Type{<:Number} = Float32
-
-    function SparseOption(atol::Real, index_type, value_type)
-        atol >= 0 || error("atol must be nonnegative")
-        return new(Float64(atol), index_type, value_type)
-    end
-end
-
-"""
-Check if every imaginary part is at most `atol` in magnitude.
-"""
-function is_almost_real(arr::AbstractArray{<:Complex}, atol::Real)
-    return all(v -> abs(imag(v)) <= atol, arr)
-end
-
-is_almost_real(::AbstractArray{<:Real}, ::Real) = true
-
-"""
-    _force_value_type(operator_eltype, value_type)
-
-Return the sparse storage element type for an operator with element type
-`operator_eltype` and requested precision `value_type`.
-"""
-_force_value_type(::Type{T}, ::Type{S}) where {T <: Real, S <: Number} = S
-function _force_value_type(::Type{Complex{T}}, ::Type{S}) where {T <: Real, S <: Number}
-    return Complex{real(S)}
-end
-
-"""
-    $(SIGNATURES)
-
-Convert an operator to sparse CSC representation.
-
-Only entries with `abs(real(v)) > atol || abs(imag(v)) > atol` are stored.
-
-See [`densify`](@ref) for the inverse.
-
-# Arguments
-- `op`: an `n_wann × n_wann × … × n_Rvecs` array, the operator at the
-  R-vectors, with any component axes between the matrix axes and the R axis
-- `opt`: a [`SparseOption`](@ref)
-"""
-function sparsify(op::AbstractArray{T}, opt::SparseOption = SparseOption()) where {T <: Number}
-    isempty(op) && error("operator list must not be empty")
-
-    Ti = opt.index_type
-    N = size(op, 1)
-    to_real = (T <: Complex) && (opt.value_type <: Real) && is_almost_real(op, opt.atol)
-    Tvout = to_real ? opt.value_type : _force_value_type(T, opt.value_type)
-    Trout = real(Tvout)
-
-    mats = map(eachslice(_matrix_slices(op); dims = 3)) do O
-        row = Ti[]
-        col = Ti[]
-        val = Tvout[]
-        @inbounds for n in 1:N
-            for m in 1:N
-                v = O[m, n]
-                rv = real(v)
-                iv = imag(v)
-                if abs(rv) > opt.atol || abs(iv) > opt.atol
-                    push!(row, Ti(m))
-                    push!(col, Ti(n))
-                    ro = abs(rv) > opt.atol ? Trout(rv) : Trout(0)
-                    io = abs(iv) > opt.atol ? Trout(iv) : Trout(0)
-                    push!(val, to_real ? ro : Complex(ro, io))
-                end
-            end
-        end
-        return sparse(row, col, val, N, N)
-    end
-
-    return CscPack{Tvout, Ti}(mats, collect(size(op)))
-end
-
-"""
-    $(SIGNATURES)
-
-Reconstruct dense matrices from sparse CSC matrices produced by [`sparsify`](@ref).
-
-Set `value_type` to force conversion. Use `nothing` to preserve stored type.
-"""
-function densify(pack::CscPack{Tv, Ti}; value_type::Type{<:Number} = Tv) where {Tv, Ti}
-    T = _force_value_type(Tv, value_type)
-    arr = Array{T}(undef, size(pack))
-    slices = _matrix_slices(arr)
-    for l in 1:length(pack)
-        slices[:, :, l] = pack[:, :, l]
-    end
-    return arr
-end
+# Whether every imaginary part of `arr` is at most `atol` in magnitude, so that
+# `arr` can be stored as real.
+_is_almost_real(arr::AbstractArray{<:Complex}, atol::Real) = all(v -> abs(imag(v)) <= atol, arr)
+_is_almost_real(::AbstractArray{<:Real}, ::Real) = true
 
 """
 Series of operators with sparse CSC storage.
@@ -380,42 +333,76 @@ function Base.show(io::IO, ::MIME"text/plain", sop::SparseOperatorPack)
 end
 
 """
-    $(SIGNATURES)
+    SparseOperatorPack(pack::OperatorPack; atol = 0)
+    SparseOperatorPack{Tv}(pack::OperatorPack; atol = 0)
+    SparseOperatorPack{Tv, Ti}(pack::OperatorPack; atol = 0)
 
-Convert the operators of an [`OperatorPack`](@ref) to sparse CSC matrices
-suitable for storage in HDF5, JLD2, or Zarr.
+Pack the operators of `pack` as [`CscPack`](@ref)s, for storage with
+[`write_operator`](@ref).
 
-See [`densify`](@ref) for the inverse.
+- `Tv` is the real type of the stored values, by default that of `pack`, so
+  that the default is lossless. `Tv = Float32` halves the values and rounds
+  each element to about 7 significant digits.
+- `Ti` is the integer type of the indices and R-vectors, by default `Int32`.
+  It also counts the nonzeros of each operator, so a type smaller than `Int32`
+  overflows for all but the smallest models.
+- `atol` drops the entries whose real and imaginary parts are both at most
+  `atol` in magnitude, and zeros either part when it alone is that small; see
+  [`CscPack`](@ref). It is absolute, in the units of each operator (eV for a
+  Hamiltonian, Å for a Berry connection). The default `0` drops only the exact
+  zeros.
+
+An operator whose imaginary parts are all at most `atol` is stored as real,
+which at `atol = 0` loses nothing.
+
+For a 70-Wannier-function Cu₂P₂Zr model with spin-orbit coupling (923
+R-vectors, Hamiltonian and Berry connection), the HDF5 file is
+
+| `Tv`      | `atol` | size      | max change in the bands |
+|:----------|:-------|:----------|:------------------------|
+| `Float64` | 0      | 110 MB    | 0                       |
+| `Float32` | 0      | 72 MB     | 0.8 µeV                 |
+| `Float32` | `1e-6` | 45 MB     | 16 µeV                  |
+
+so `SparseOperatorPack{Float32}(pack; atol = 1e-6)` is a compact choice when
+µeV accuracy is enough. See [`OperatorPack(::SparseOperatorPack)`](@ref) for
+the inverse.
 """
-function sparsify(pack::OperatorPack, opt::SparseOption = SparseOption())
-    isempty(pack.operators) && error("operators must not be empty")
-    n_Rvectors(pack) > 0 || error("operators contain no R-vectors")
+SparseOperatorPack(pack::OperatorPack{Tv}; atol::Real = 0) where {Tv} =
+    SparseOperatorPack{Tv, Int32}(pack; atol)
 
-    ops = OrderedDict(name => sparsify(op, opt) for (name, op) in pairs(pack.operators))
+SparseOperatorPack{Tv}(pack::OperatorPack; atol::Real = 0) where {Tv <: Real} =
+    SparseOperatorPack{Tv, Int32}(pack; atol)
 
-    Ti = opt.index_type
-    Rvectors = if isempty(pack.Rvectors)
-        Matrix{Ti}(undef, 3, 0)
-    else
-        Matrix{Ti}(reduce(hcat, Vec3{Ti}.(pack.Rvectors)))
-    end
+function SparseOperatorPack{Tv, Ti}(
+        pack::OperatorPack; atol::Real = 0
+    ) where {Tv <: Real, Ti <: Integer}
+    isempty(pack.operators) && throw(ArgumentError("operators must not be empty"))
+    n_Rvectors(pack) > 0 || throw(ArgumentError("operators contain no R-vectors"))
+
+    ops = OrderedDict(
+        name => CscPack{_is_almost_real(op, atol) ? Tv : Complex{Tv}, Ti}(op; atol)
+            for (name, op) in pairs(pack.operators)
+    )
+    Rvectors = Matrix{Ti}(reduce(hcat, pack.Rvectors))
     return SparseOperatorPack(pack.header, pack.lattice, Rvectors, ops)
 end
 
 """
-    $(SIGNATURES)
+    OperatorPack(pack::SparseOperatorPack)
+    OperatorPack{Tv}(pack::SparseOperatorPack)
 
-Reconstruct dense operators from a sparse CSC pack produced by
-[`sparsify`](@ref).
+The dense operators of `pack`, each at the value type it was stored with, or
+with real type `Tv`. An operator stored as real comes back real.
 """
-function densify(
-        pack::SparseOperatorPack{Tr, I}; value_type::Type{<:Number} = Complex{Tr}
-    ) where {Tr, I}
-    ops = OrderedDict(
-        name => densify(op; value_type) for (name, op) in pairs(pack.operators)
-    )
+OperatorPack(pack::SparseOperatorPack{Tv}) where {Tv} = OperatorPack{Tv}(pack)
 
-    Rvectors = Vec3{I}.(eachcol(pack.Rvectors))
+function OperatorPack{Tv}(pack::SparseOperatorPack{<:Real, Ti}) where {Tv <: Real, Ti}
+    ops = OrderedDict(
+        name => Array{eltype(op) <: Real ? Tv : Complex{Tv}}(op)
+            for (name, op) in pairs(pack.operators)
+    )
+    Rvectors = Vec3{Ti}.(eachcol(pack.Rvectors))
     return OperatorPack(pack.header, pack.lattice, Rvectors, ops)
 end
 

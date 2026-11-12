@@ -89,42 +89,38 @@ end
         (WannierIO.ZarrZipFormat(), tempname() * ".zarr.zip"),
     ]
 
-    for (fmt, dst) in targets()
-        write_operator(dst, pack0, fmt; atol = 0.0, value_type = ComplexF64)
-        pack2 = read_operator(dst, fmt)
-        pack3 = read_operator(dst)
-
-        for pack in (pack2, pack3)
-            @test pack isa WannierIO.OperatorPack
-            @test pack.header == pack0.header
-            @test n_wannier(pack) == n_wannier(pack0)
-            @test pack.Rvectors == pack0.Rvectors
-            @test pack.lattice == pack0.lattice
-            @test collect(keys(pack.operators)) == ["hamiltonian", "berry_connection"]
-            for name in keys(pack0.operators)
-                @test size(pack.operators[name]) == size(pack0.operators[name])
-                @test pack.operators[name] == pack0.operators[name]
+    # a file holds a SparseOperatorPack and reads back as written
+    for spack0 in (SparseOperatorPack(pack0), SparseOperatorPack{Float32}(pack0; atol = 1.0e-6))
+        for (fmt, dst) in targets()
+            write_operator(dst, spack0, fmt)
+            for spack in (read_operator(dst, fmt), read_operator(dst))
+                @test spack isa typeof(spack0)
+                @test spack.header == spack0.header
+                @test spack.Rvectors == spack0.Rvectors
+                # the lattice is kept in Float64 whatever the precision of the operators
+                @test spack.lattice == pack0.lattice
+                @test collect(keys(spack.operators)) == ["hamiltonian", "berry_connection"]
+                for (name, csc0) in spack0.operators
+                    csc = spack.operators[name]
+                    @test typeof(csc) == typeof(csc0)
+                    for field in fieldnames(CscPack)
+                        @test getfield(csc, field) == getfield(csc0, field)
+                    end
+                end
             end
         end
     end
 
+    # lossless storage gives back the dense pack
     for (fmt, dst) in targets()
-        write_operator(dst, pack0, fmt)
-        pack2 = read_operator(dst, fmt)
+        write_operator(dst, SparseOperatorPack(pack0), fmt)
+        pack = OperatorPack(read_operator(dst))
+        @test pack.operators == pack0.operators
+    end
 
-        @test pack2 isa WannierIO.OperatorPack{Float32, Int32}
-        @test n_wannier(pack2) == n_wannier(pack0)
-        @test pack2.Rvectors == pack0.Rvectors
-        # the lattice is kept in Float64 whatever the precision of the operators
-        @test pack2.lattice == pack0.lattice
-        for name in keys(pack0.operators)
-            op2 = pack2.operators[name]
-            op0 = pack0.operators[name]
-            @test size(op2) == size(op0)
-            # the default `SparseOption` drops entries (and imaginary parts)
-            # below `atol = 1e-6` and stores Float32: lossy per element
-            @test maximum(abs, op2 - op0) < 2.0e-6
-            @test op2 != op0
-        end
+    # a dense pack must be converted first
+    for (fmt, dst) in targets()
+        @test_throws ArgumentError write_operator(dst, pack0, fmt)
+        @test_throws ArgumentError write_operator(dst, pack0)
     end
 end
